@@ -14,8 +14,10 @@ dependencies = [
 
     # Transformation. DuckDB is the engine; dbt provides lineage, tests, docs.
     "duckdb>=1.1.0",
-    "dbt-core>=1.9.0",
-    "dbt-duckdb>=1.9.0",
+    # Upper-bounded deliberately: 1.10+ changes test-property handling and was
+    # not what this project was developed and tested against.
+    "dbt-core>=1.9,<1.10",
+    "dbt-duckdb>=1.9,<1.10",
 
     # Publication
     "pyarrow>=18.0",

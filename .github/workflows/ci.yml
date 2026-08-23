@@ -38,6 +38,9 @@ jobs:
       - name: Ingest geography
         run: .venv/bin/python -m ingestion.run --source hdx_admin
 
+      - name: Ingest place names
+        run: .venv/bin/python -m ingestion.run --source wikidata_names
+
       - name: dbt build
         working-directory: transform
         run: ../.venv/bin/dbt build --profiles-dir .
