@@ -12,6 +12,11 @@ models:
         tests: [not_null]
       - name: palika_type
         tests: [not_null]
+      - name: name_match_method
+        description: How the Nepali name was resolved, or 'unmatched'.
+        tests:
+          - accepted_values:
+              values: [district+name, unique-name, unmatched]
       - name: province_id
         tests:
           - relationships:

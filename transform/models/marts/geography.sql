@@ -4,28 +4,40 @@
   Published administrative geography: Nepal's 753 local units with their
   district and province lineage, keyed by OCHA P-code.
 
-  Published standalone because the join key itself is valuable -- other Nepal
-  data projects need a canonical geography table and there isn't a good public
-  one. See catalog/datasets/geography.yml for provenance.
+  Nepali names are joined from the int_place_names crosswalk rather than being
+  part of the spine itself. That keeps the spine dependent only on the COD --
+  the authority for which places exist -- while names, which come from a
+  different source with partial coverage, stay a separate concern that can
+  improve without touching the geography.
+
+  palika_name_ne is NULL where no verified name exists. Not transliterated:
+  a guessed name in a reference dataset is worse than a visible gap.
 */
 
 select
-    palika_pcode,
-    palika_name_en,
-    palika_type,
+    g.palika_pcode,
+    g.palika_name_en,
+    n.palika_name_ne,
+    g.palika_type,
 
-    district_pcode,
-    district_name_en,
+    g.district_pcode,
+    g.district_name_en,
 
-    province_pcode,
-    province_id,
-    province_iso_code,
-    province_name_en,
-    province_name_ne,
+    g.province_pcode,
+    g.province_id,
+    g.province_iso_code,
+    g.province_name_en,
+    g.province_name_ne,
 
-    area_sqkm,
-    center_lat,
-    center_lon
+    g.area_sqkm,
+    g.center_lat,
+    g.center_lon,
 
-from {{ ref('int_geography') }}
-order by palika_pcode
+    -- Provenance for the Nepali name, so consumers can judge it.
+    n.wikidata_qid,
+    n.match_method as name_match_method
+
+from {{ ref('int_geography') }} g
+left join {{ ref('int_place_names') }} n
+    on g.palika_pcode = n.palika_pcode
+order by g.palika_pcode

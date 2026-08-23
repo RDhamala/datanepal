@@ -3,10 +3,10 @@ title: Nepal administrative geography
 title_ne: नेपालको प्रशासनिक भूगोल
 description: >
   Canonical province, district, and local unit (palika) reference table with
-  stable identifiers and names in English and Nepali. 753 local units across
-  77 districts and 7 provinces. This is the join key for every other dataset
-  on the platform, and is published standalone because other projects need it
-  too.
+  stable P-codes and names. 753 local units across 77 districts and 7
+  provinces. This is the join key for every other dataset on the platform, and
+  is published standalone because other projects need a canonical Nepal
+  geography table and there is not a good public one.
 
 source:
   name: OCHA Field Information Services Section (via Humanitarian Data Exchange)
@@ -25,6 +25,17 @@ contains_personal_data: false
 
 caveats:
   - >
+    Nepali names are only ~66% complete. They come from Wikidata (CC0), matched
+    to P-codes on district plus name; palika_name_ne is NULL where no verified
+    name exists. Names are deliberately not transliterated: Nepali romanisation
+    is not standardised, and a guessed name in a reference dataset is worse than
+    a visible gap. Check name_match_method to see how each name was resolved.
+  - >
+    Keyed by OCHA P-code, which is hierarchical: a child's code is prefixed by
+    its parent's, and position 7 encodes local unit type. Other Nepali sources
+    use incompatible identifiers and reach this table through published
+    crosswalks, not by name matching.
+  - >
     Nepal's 2017 federal restructuring replaced the previous VDC and
     municipality structure entirely. Data from before 2017 does not map onto
     these units without an explicit crosswalk, which this table does not yet
@@ -33,14 +44,6 @@ caveats:
     Province names follow the post-2023 official naming. Koshi and Madhesh
     appear as "Province No. 1" and "Province No. 2" in older sources; they map
     by province_id.
-  - >
-    Keyed by OCHA P-code, which is hierarchical: a child's code is prefixed by
-    its parent's. Other Nepali sources use incompatible identifiers and reach
-    this table through published crosswalks, not by name matching.
-  - >
-    Local unit names are English only. The COD publishes no Nepali names;
-    province names in Nepali come from a hand-verified seed. Nepali names for
-    districts and local units are an open gap.
   - >
     Excludes 22 protected areas that the COD models at admin level 3. They are
     federally administered rather than local units; see the protected_areas

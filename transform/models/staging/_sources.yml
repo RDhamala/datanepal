@@ -13,6 +13,16 @@ sources:
       - name: admin_units
         description: Admin levels 1-3 (province, district, local unit) plus protected areas.
 
+  - name: raw_wikidata_names
+    schema: raw_wikidata_names
+    description: >
+      Nepali names for local units, from Wikidata (CC0). Preferred over
+      OpenStreetMap on licensing grounds: OSM is ODbL, whose share-alike terms
+      would propagate to the published database.
+    tables:
+      - name: place_names
+        description: Candidate local units with English and Nepali labels and coordinates.
+
   - name: raw_census
     schema: raw_census
     description: National Population and Housing Census, National Statistics Office.
