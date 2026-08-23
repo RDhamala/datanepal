@@ -37,14 +37,11 @@ jobs:
       # The geography source is a single 243KB licensed download from HDX, so
       # CI runs the real ingest rather than fixtures. Sources that require
       # heavy crawling should be fixtured instead when they are added.
-      - name: Ingest geography
-        run: .venv/bin/python -m ingestion.run --source hdx_admin
-
-      - name: Ingest place names
-        run: .venv/bin/python -m ingestion.run --source wikidata_names
-
-      - name: Ingest population
-        run: .venv/bin/python -m ingestion.run --source hdx_population
+      # One step, so a newly registered source cannot be forgotten here -- which
+      # is exactly what happened when the World Bank connector was added and CI
+      # kept ingesting only the first three.
+      - name: Ingest all sources
+        run: .venv/bin/python -m ingestion.run --all
 
       - name: dbt build
         working-directory: transform

@@ -49,10 +49,8 @@ jobs:
 
       - name: Ingest sources
         run: |
-          .venv/bin/python -m ingestion.run --source hdx_admin
-          .venv/bin/python -m ingestion.run --source wikidata_names
-          .venv/bin/python -m ingestion.run --source hdx_population
-          .venv/bin/python -m ingestion.run --source worldbank
+          # --all, so adding a connector does not require editing this file.
+          .venv/bin/python -m ingestion.run --all
 
       - name: Build and test warehouse
         working-directory: transform
