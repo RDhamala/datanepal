@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv venv .venv --python 3.12
+
+      - name: Install dependencies
+        run: uv pip install -e ".[dev]"
+
+      - name: Lint
+        run: .venv/bin/ruff check .
+
+      - name: Validate dataset catalog
+        run: .venv/bin/python -m tests.check_catalog
+
+      - name: Install dbt packages
+        working-directory: transform
+        run: ../.venv/bin/dbt deps
+
+      # Fixture data rather than a real ingest: a full crawl is ~800 requests
+      # to a government server and takes about an hour. CI verifies the
+      # transformation logic, not the source's availability.
+      - name: Load fixtures
+        run: .venv/bin/python -m ingestion.fixtures
+
+      - name: dbt build
+        working-directory: transform
+        run: ../.venv/bin/dbt build --profiles-dir .
+
+      - name: Export published datasets
+        run: .venv/bin/python -m publish.export
+
+      - name: Check published output
+        run: |
+          test -f publish/dist/manifest.json || { echo "No manifest produced"; exit 1; }
+          python3 -c "
+          import json, sys
+          m = json.load(open('publish/dist/manifest.json'))
+          if m['dataset_count'] < 1:
+              sys.exit('Manifest contains no datasets')
+          print(f\"Published {m['dataset_count']} dataset(s)\")
+          for d in m['datasets']:
+              print(f\"  {d['table']}: {d['row_count']} rows, {d['bytes']} bytes\")
+          "
+
+      - name: Upload published data
+        uses: actions/upload-artifact@v4
+        with:
+          name: published-data
+          path: publish/dist/
+          retention-days: 14

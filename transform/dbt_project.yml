@@ -1,0 +1,47 @@
+name: datanepal
+version: "0.1.0"
+config-version: 2
+
+profile: datanepal
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+models:
+  datanepal:
+    # Raw source data, lightly cleaned: renamed, typed, deduplicated.
+    # One staging model per source table, no joins, no business logic.
+    staging:
+      +materialized: view
+      +schema: staging
+
+    # Conformed dimensions and reusable joins. The geography spine lives here
+    # because every dataset in the platform keys against it.
+    intermediate:
+      +materialized: table
+      +schema: intermediate
+
+    # Published aggregates. Everything here is safe to expose publicly and is
+    # exported to static Parquet/JSON by publish/export.py.
+    marts:
+      +materialized: table
+      +schema: marts
+
+seeds:
+  datanepal:
+    +schema: seeds
+    np_provinces:
+      +column_types:
+        province_code: VARCHAR
+        province_id: INTEGER
+
+vars:
+  # Nepal's federal restructuring took effect in 2017; geography before and
+  # after is not directly comparable. Datasets declare their vintage so models
+  # can map historical boundaries onto current ones.
+  federal_restructuring_year: 2017

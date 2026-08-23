@@ -1,0 +1,43 @@
+table: geography
+title: Nepal administrative geography
+title_ne: नेपालको प्रशासनिक भूगोल
+description: >
+  Canonical province, district, and local unit (palika) reference table with
+  stable identifiers and names in English and Nepali. 753 local units across
+  77 districts and 7 provinces. This is the join key for every other dataset
+  on the platform, and is published standalone because other projects need it
+  too.
+
+source:
+  name: Election Commission of Nepal
+  url: https://voterlist.election.gov.np
+  accessed: "2026-08-23"
+
+licence: unknown
+
+vintage: "2025"
+
+geography_level: palika
+
+update_frequency: irregular
+
+contains_personal_data: false
+
+caveats:
+  - >
+    Nepal's 2017 federal restructuring replaced the previous VDC and
+    municipality structure entirely. Data from before 2017 does not map onto
+    these units without an explicit crosswalk, which this table does not yet
+    provide.
+  - >
+    Province names follow the post-2023 official naming. Koshi and Madhesh
+    appear as "Province No. 1" and "Province No. 2" in older sources; they map
+    by province_id.
+  - >
+    Local unit names are sourced from the Election Commission and may differ in
+    transliteration from Central Bureau of Statistics publications. Identifiers
+    are authoritative; names are for display.
+  - >
+    The source publishes no explicit licence. Treated as public information
+    since it is a public electoral registry, but reusers should verify their
+    own position rather than relying on this note.

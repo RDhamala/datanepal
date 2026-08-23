@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# dlt
+.dlt/secrets.toml
+**/_storage/
+
+# dbt
+transform/target/
+transform/dbt_packages/
+transform/logs/
+.user.yml
+
+# Data. Nothing derived or raw belongs in git -- the pipeline reproduces it.
+warehouse/
+data/raw/
+data/staging/
+publish/dist/
+*.duckdb
+*.duckdb.wal
+
+# Never commit source data containing personal information. The platform
+# publishes aggregates only; row-level records stay out of version control
+# and off any public host.
+**/voter_list*.duckdb
+**/voters*.csv
+
+# Env
+.env
+.env.*
+!.env.example
+
+# OS / editors
+.DS_Store
+.vscode/
+.idea/

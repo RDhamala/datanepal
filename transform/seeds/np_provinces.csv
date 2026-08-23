@@ -1,0 +1,8 @@
+province_id,province_code,province_name_en,province_name_ne,capital_en,capital_ne,expected_districts,expected_palikas
+1,NP-P1,Koshi,कोशी प्रदेश,Biratnagar,विराटनगर,14,137
+2,NP-P2,Madhesh,मधेश प्रदेश,Janakpur,जनकपुर,8,136
+3,NP-P3,Bagmati,बागमती प्रदेश,Hetauda,हेटौंडा,13,119
+4,NP-P4,Gandaki,गण्डकी प्रदेश,Pokhara,पोखरा,11,85
+5,NP-P5,Lumbini,लुम्बिनी प्रदेश,Deukhuri,देउखुरी,12,109
+6,NP-P6,Karnali,कर्णाली प्रदेश,Birendranagar,वीरेन्द्रनगर,10,79
+7,NP-P7,Sudurpashchim,सुदूरपश्चिम प्रदेश,Godawari,गोदावरी,9,88

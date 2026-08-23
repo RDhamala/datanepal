@@ -1,0 +1,43 @@
+version: 2
+
+seeds:
+  - name: np_provinces
+    description: >
+      Nepal's seven federal provinces, hand-verified. This is the only part of
+      the geography spine that is seeded rather than derived: seven rows are
+      small enough to verify by hand and stable enough to hardcode.
+
+      Districts (77) and palikas (753) are derived from source data instead, and
+      tested against the expected_* counts here. Deriving them means a source
+      that disagrees with reality fails a test rather than silently producing a
+      wrong join.
+
+      Province names reflect the post-2023 official names. Koshi and Madhesh
+      were previously "Province No. 1" and "Province No. 2"; older datasets use
+      the numeric forms, which map cleanly by province_id.
+    columns:
+      - name: province_id
+        description: Official 1-7 numbering, used as the join key across datasets.
+        tests:
+          - unique
+          - not_null
+      - name: province_code
+        description: ISO 3166-2:NP subdivision code.
+        tests:
+          - unique
+          - not_null
+      - name: province_name_en
+        tests: [unique, not_null]
+      - name: province_name_ne
+        description: Official Devanagari name.
+        tests: [unique, not_null]
+      - name: expected_districts
+        description: >
+          Districts in this province, per the federal structure. Used by tests
+          to catch incomplete source loads.
+        tests: [not_null]
+      - name: expected_palikas
+        description: >
+          Local units (metropolitan, sub-metropolitan, municipality, rural
+          municipality) in this province. Sums to 753 nationally.
+        tests: [not_null]

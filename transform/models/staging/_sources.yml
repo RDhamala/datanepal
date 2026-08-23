@@ -1,0 +1,25 @@
+version: 2
+
+sources:
+  # Tables written by dlt. Schema names match the dlt dataset names in
+  # ingestion/run.py; dlt owns these, dbt only reads them.
+  - name: raw_election_commission
+    schema: raw_election_commission
+    description: >
+      Voter roll aggregates scraped from voterlist.election.gov.np.
+
+      Aggregates only. This platform does not ingest, store, or publish
+      individual voter records -- names, voter ID numbers, and family names are
+      personal data and stay out of the pipeline entirely.
+    tables:
+      - name: geography
+        description: Province/district/palika listing as published by the Election Commission.
+      - name: voter_counts
+        description: Voter totals by palika, ward, sex, and age band.
+
+  - name: raw_census
+    schema: raw_census
+    description: National Population and Housing Census, Central Bureau of Statistics.
+    tables:
+      - name: population
+        description: Population counts by geography, sex, and age band.

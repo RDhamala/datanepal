@@ -1,0 +1,25 @@
+# Checked in deliberately: DuckDB is a local file, so there are no credentials
+# here. Anyone who clones the repo can run the full pipeline with no setup.
+datanepal:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "../warehouse/datanepal.duckdb"
+      threads: 4
+      # No extensions listed on purpose. Parquet and JSON are statically linked
+      # into DuckDB, so requesting them forces a network fetch that fails behind
+      # a TLS-inspecting proxy for no benefit.
+      #
+      # httpfs (object storage) and spatial (palika boundary geometry) are NOT
+      # built in. Add them here when a model actually needs them, and expect to
+      # pre-install them on restricted networks:
+      #   duckdb -c "install httpfs; install spatial;"
+      extensions: []
+
+    # Used by CI. Same engine, throwaway database.
+    ci:
+      type: duckdb
+      path: "../warehouse/ci.duckdb"
+      threads: 4
+      extensions: []

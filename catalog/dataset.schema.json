@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DataNepal dataset catalog entry",
+  "description": "Provenance metadata required for every published dataset. A published aggregate with no stated source, licence, or vintage is not citable, and citability is what makes the platform useful rather than merely interesting.",
+  "type": "object",
+  "required": ["table", "title", "description", "source", "licence", "vintage", "geography_level"],
+  "additionalProperties": false,
+  "properties": {
+    "table": {
+      "type": "string",
+      "description": "Name of the table in the marts schema.",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable title, English."
+    },
+    "title_ne": {
+      "type": "string",
+      "description": "Human-readable title, Nepali."
+    },
+    "description": {
+      "type": "string",
+      "description": "What the dataset contains and what it does not."
+    },
+    "source": {
+      "type": "object",
+      "required": ["name", "url"],
+      "properties": {
+        "name": { "type": "string", "description": "Publishing body, e.g. Central Bureau of Statistics." },
+        "url": { "type": "string", "format": "uri" },
+        "accessed": { "type": "string", "format": "date", "description": "When we last retrieved it." }
+      }
+    },
+    "licence": {
+      "type": "string",
+      "description": "Licence of the underlying data, or 'unknown' if the source states none. Do not guess."
+    },
+    "vintage": {
+      "type": "string",
+      "description": "Reference period of the data, e.g. '2021' or '2025-11'. Distinct from when we fetched it."
+    },
+    "geography_level": {
+      "type": "string",
+      "enum": ["country", "province", "district", "palika", "ward"],
+      "description": "Finest geographic grain published."
+    },
+    "caveats": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Known limitations a good-faith user needs in order to not misread the data."
+    },
+    "update_frequency": {
+      "type": "string",
+      "enum": ["one-off", "annual", "quarterly", "monthly", "irregular"]
+    },
+    "contains_personal_data": {
+      "type": "boolean",
+      "description": "Must be false for anything published. Present as an explicit assertion rather than an assumption.",
+      "const": false
+    }
+  }
+}

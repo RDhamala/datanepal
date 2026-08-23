@@ -1,0 +1,21 @@
+version: 2
+
+models:
+  - name: geography
+    description: >
+      Published administrative geography: 753 local units with their district
+      and province lineage, in English and Nepali. Public dataset; see
+      catalog/datasets/geography.yml for provenance and caveats.
+    columns:
+      - name: palika_id
+        tests: [unique, not_null]
+      - name: district_id
+        tests: [not_null]
+      - name: province_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('np_provinces')
+              field: province_id
+      - name: palika_name_ne
+        tests: [not_null]
