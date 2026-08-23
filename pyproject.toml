@@ -10,6 +10,7 @@ dependencies = [
     "httpx>=0.27",
     "beautifulsoup4>=4.12",
     "tenacity>=9.0",           # retry policy for flaky government endpoints
+    "openpyxl>=3.1",           # government sources publish XLSX far more than CSV
 
     # Transformation. DuckDB is the engine; dbt provides lineage, tests, docs.
     "duckdb>=1.1.0",
