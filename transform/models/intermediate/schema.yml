@@ -3,15 +3,16 @@ version: 2
 models:
   - name: int_geography
     description: >
-      Canonical province/district/palika spine. The join key for every dataset
-      in the platform. One row per local unit; 753 nationally.
+      Canonical geography spine: 753 local units with province and district
+      lineage, keyed by OCHA P-code. Protected areas excluded. Every dataset on
+      the platform joins here.
     columns:
-      - name: palika_id
-        description: Stable identifier for the local unit.
-        tests:
-          - unique
-          - not_null
-      - name: district_id
+      - name: palika_pcode
+        description: OCHA P-code. The canonical join key for the platform.
+        tests: [unique, not_null]
+      - name: district_pcode
+        tests: [not_null]
+      - name: province_pcode
         tests: [not_null]
       - name: province_id
         tests:
@@ -21,18 +22,8 @@ models:
               field: province_id
       - name: palika_type
         tests:
+          - not_null
           - accepted_values:
-              values:
-                - metropolitan
-                - sub_metropolitan
-                - municipality
-                - rural_municipality
-              # Sources sometimes omit type; flag rather than fail the build.
-              config:
-                severity: warn
+              values: [metropolitan, sub_metropolitan, municipality, rural_municipality]
 
-    # Completeness (753 palikas, 77 districts) is asserted by the singular test
-    # tests/assert_geography_completeness.sql. It belongs there rather than
-    # here: dbt_utils.expression_is_true evaluates per row, so a scalar
-    # aggregate check written as a column/model test resolves {{ this }} to the
-    # test's own audit relation and fails at runtime.
+    # Completeness is asserted by tests/assert_geography_completeness.sql.

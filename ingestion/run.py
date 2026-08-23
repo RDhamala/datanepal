@@ -17,6 +17,7 @@ from pathlib import Path
 import dlt
 
 from ingestion.sources.election_commission import election_commission_source
+from ingestion.sources.hdx_admin import hdx_admin_source
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -25,6 +26,7 @@ WAREHOUSE = Path(__file__).resolve().parent.parent / "warehouse" / "datanepal.du
 
 # Adding a source means adding one entry here and one module in sources/.
 SOURCES = {
+    "hdx_admin": hdx_admin_source,
     "election_commission": election_commission_source,
 }
 

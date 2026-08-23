@@ -3,19 +3,27 @@ version: 2
 models:
   - name: geography
     description: >
-      Published administrative geography: 753 local units with their district
-      and province lineage, in English and Nepali. Public dataset; see
-      catalog/datasets/geography.yml for provenance and caveats.
+      Published administrative geography: 753 local units keyed by P-code, with
+      district and province lineage in English and Nepali.
     columns:
-      - name: palika_id
+      - name: palika_pcode
         tests: [unique, not_null]
-      - name: district_id
+      - name: palika_name_en
+        tests: [not_null]
+      - name: palika_type
         tests: [not_null]
       - name: province_id
         tests:
-          - not_null
           - relationships:
               to: ref('np_provinces')
               field: province_id
-      - name: palika_name_ne
+
+  - name: protected_areas
+    description: >
+      National parks, wildlife reserves, and conservation areas. One row per
+      (area, district) intersection, so multi-district parks appear more than once.
+    columns:
+      - name: area_pcode
+        tests: [unique, not_null]
+      - name: area_name_en
         tests: [not_null]

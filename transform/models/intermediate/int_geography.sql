@@ -1,71 +1,63 @@
-{{
-  config(
-    materialized = 'table',
-    unique_key = 'palika_id',
-  )
-}}
+{{ config(materialized = 'table') }}
 
 /*
-  The geography spine: one row per local unit (palika), carrying its full
-  province -> district -> palika lineage in both English and Nepali.
+  The geography spine: one row per local unit (palika), with full
+  province -> district -> palika lineage denormalised onto it.
 
-  Every dataset in the platform joins to this table. Nepali sources key
-  geography inconsistently -- the Election Commission, the census, and the
-  ministries each use their own codes and transliterations -- so conforming
-  once here is what makes cross-dataset questions answerable at all.
+  753 rows. Protected areas are excluded here and published separately; they
+  are not local units, and including them would inflate every denominator.
 
-  Provinces come from a hand-verified seed. Districts and palikas are derived
-  from whichever sources have loaded, then tested against the seed's expected
-  counts, so an incomplete load fails loudly instead of silently under-reporting.
+  Every dataset on the platform joins to this table on `palika_pcode`. Sources
+  that key differently (the Election Commission's integer IDs, NSO census
+  codes) reach it through crosswalk tables rather than by matching names --
+  see int_crosswalk_*.
 */
 
-with source_geography as (
-    -- Union every ingested source that carries geography. Each staging model
-    -- exposes the same six columns so adding a source needs no change here
-    -- beyond one more select.
-    select province_id, district_id, district_name_ne, palika_id, palika_name_ne, palika_type
-    from {{ ref('stg_election_commission__geography') }}
-
-    -- As further sources land, union them in with the same column list, e.g.
-    --   union all
-    --   select province_id, district_id, ... from (ref the census staging model)
-    -- Note: dbt renders Jinja inside SQL comments too, so do not write a
-    -- literal ref() call here for a model that does not exist yet.
+with local_units as (
+    select *
+    from {{ ref('stg_hdx__admin_units') }}
+    where admin_level = 3
+      and not is_protected_area
 ),
 
-deduplicated as (
-    -- Sources disagree on spelling and whitespace. Take the most common
-    -- rendering of each name rather than an arbitrary one.
-    select
-        palika_id,
-        any_value(province_id)   as province_id,
-        any_value(district_id)   as district_id,
-        mode(district_name_ne)   as district_name_ne,
-        mode(palika_name_ne)     as palika_name_ne,
-        mode(palika_type)        as palika_type
-    from source_geography
-    where palika_id is not null
-    group by palika_id
+districts as (
+    select pcode, name_en
+    from {{ ref('stg_hdx__admin_units') }}
+    where admin_level = 2
+),
+
+provinces_hdx as (
+    select pcode, name_en
+    from {{ ref('stg_hdx__admin_units') }}
+    where admin_level = 1
 )
 
 select
-    d.palika_id,
-    d.district_id,
-    d.province_id,
+    -- Canonical key for the whole platform.
+    lu.pcode                        as palika_pcode,
+    lu.name_en                      as palika_name_en,
+    lu.unit_type                    as palika_type,
 
-    p.province_code,
-    p.province_name_en,
+    lu.district_pcode,
+    d.name_en                       as district_name_en,
+
+    lu.province_pcode,
+    ph.name_en                      as province_name_en,
+
+    -- Nepali names and the official 1-7 province numbering come from the
+    -- hand-verified seed; the COD publishes English only.
+    p.province_id,
     p.province_name_ne,
+    p.province_code                 as province_iso_code,
 
-    d.district_name_ne,
-    d.palika_name_ne,
+    lu.area_sqkm,
+    lu.center_lat,
+    lu.center_lon
 
-    -- Metropolitan / sub-metropolitan / municipality / rural municipality.
-    -- Urban-rural comparisons depend on this being consistent.
-    d.palika_type,
-
-    {{ dbt.current_timestamp() }} as _loaded_at
-
-from deduplicated d
+from local_units lu
+inner join districts     d  on lu.district_pcode = d.pcode
+inner join provinces_hdx ph on lu.province_pcode = ph.pcode
 inner join {{ ref('np_provinces') }} p
-    on d.province_id = p.province_id
+    -- The COD encodes the province number in P-code positions 3-4, which
+    -- matches the official 1-7 numbering used by every Nepali source.
+    on cast(substr(lu.province_pcode, 3, 2) as integer) = p.province_id

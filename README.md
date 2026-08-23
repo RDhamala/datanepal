@@ -16,8 +16,9 @@ onboarded one at a time.
 
 | Dataset | Status |
 |---|---|
-| Administrative geography | scaffolded, fixture data |
-| Voter roll aggregates | connector written, not yet run |
+| Administrative geography | **live** — 753 local units, 77 districts, 7 provinces |
+| Protected areas | **live** — 22 national parks and reserves |
+| Voter roll aggregates | blocked — source disallows crawling, see below |
 | Census 2021 | planned |
 | Economic indicators (NRB) | planned |
 
@@ -66,8 +67,8 @@ uv venv .venv --python 3.12
 uv pip install -e ".[dev]"
 cd transform && ../.venv/bin/dbt deps && cd ..
 
-# Load fixture data (a full ingest hits a government server for ~an hour)
-.venv/bin/python -m ingestion.fixtures
+# Ingest geography (one licensed 243KB download from HDX)
+.venv/bin/python -m ingestion.run --source hdx_admin
 
 # Build and test
 cd transform && ../.venv/bin/dbt build --profiles-dir . && cd ..
@@ -78,11 +79,44 @@ cd transform && ../.venv/bin/dbt build --profiles-dir . && cd ..
 
 Or just `make setup && make all`.
 
-To run a real ingest instead of fixtures:
+## Join keys
 
-```bash
-.venv/bin/python -m ingestion.run --source election_commission
+Everything keys on **OCHA P-codes**, which are hierarchical and positional:
+
 ```
+NP 03 27 1 01
+│  │  │  │  └─ sequence within district
+│  │  │  └──── local unit type (1 metro, 2 sub-metro, 3 municipality,
+│  │  │                        4 rural municipality, 5 protected area)
+│  │  └─────── district
+│  └────────── province
+└───────────── country
+```
+
+A child's code is prefixed by its parent's, so hierarchy joins are substring
+operations rather than lookups. The type digit classifies authoritatively,
+which avoids matching on Nepali name suffixes — those nest as substrings
+(`उपमहानगरपालिका` contains `महानगरपालिका`) and misclassify silently.
+
+Nepal has no universal local-unit identifier, so other sources reach this
+spine through **crosswalk tables**, never by name matching. English/Nepali
+transliteration is not standardised and will not join reliably. Crosswalks are
+built by matching on (district, normalised name), then geometry via
+point-in-polygon, then hand-verifying the residue — and are tested for being
+1:1 and total.
+
+## A note on the Election Commission
+
+An earlier connector scraped `voterlist.election.gov.np`. That source is not
+used, for two reasons:
+
+- Its `robots.txt` is `Disallow: /` for all agents, and the application sets
+  `noindex, nofollow, noarchive`. It asks automated clients to stay away.
+- Nepal's Privacy Act 2075 (2018) names voter identity card details as
+  protected personal information.
+
+The connector remains in `ingestion/sources/` unregistered, as a record of the
+site's structure. Do not run it against the live site.
 
 ## Adding a dataset
 

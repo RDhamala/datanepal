@@ -1,8 +1,7 @@
 {{
   config(
-    severity = 'warn',
-    warn_if = '>0',
-    error_if = '>1000000',
+    severity = 'error',
+    error_if = '>0',
   )
 }}
 
@@ -16,16 +15,16 @@
   in a way nobody notices. Counting against a known-good expectation is the
   only cheap way to catch it.
 
-  Severity is `warn` while the platform is scaffolded and running on fixture
-  data. Change it to `error` once a full ingest has run, so incomplete loads
-  block the build instead of merely mentioning themselves.
+  Severity is `error`: the spine now loads from the OCHA COD, which carries all
+  753 units, so any shortfall means a broken or truncated load and should stop
+  the build rather than emit a warning nobody reads.
 */
 
 with actual as (
     select
         province_id,
         count(*)                    as actual_palikas,
-        count(distinct district_id) as actual_districts
+        count(distinct district_pcode) as actual_districts
     from {{ ref('int_geography') }}
     group by province_id
 ),

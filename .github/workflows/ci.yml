@@ -32,11 +32,11 @@ jobs:
         working-directory: transform
         run: ../.venv/bin/dbt deps
 
-      # Fixture data rather than a real ingest: a full crawl is ~800 requests
-      # to a government server and takes about an hour. CI verifies the
-      # transformation logic, not the source's availability.
-      - name: Load fixtures
-        run: .venv/bin/python -m ingestion.fixtures
+      # The geography source is a single 243KB licensed download from HDX, so
+      # CI runs the real ingest rather than fixtures. Sources that require
+      # heavy crawling should be fixtured instead when they are added.
+      - name: Ingest geography
+        run: .venv/bin/python -m ingestion.run --source hdx_admin
 
       - name: dbt build
         working-directory: transform

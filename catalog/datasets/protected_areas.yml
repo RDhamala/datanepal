@@ -1,0 +1,38 @@
+table: protected_areas
+title: Nepal protected areas
+title_ne: नेपालका संरक्षित क्षेत्रहरू
+description: >
+  National parks, wildlife reserves, hunting reserves, and conservation areas,
+  as mapped in the OCHA Common Operational Dataset. One row per area-district
+  intersection: several protected areas span multiple districts and are
+  represented once per district.
+
+  These are deliberately excluded from the administrative geography dataset.
+  They are federally administered and lie outside local-unit jurisdiction, so
+  treating them as palikas would inflate per-unit denominators.
+
+source:
+  name: OCHA Field Information Services Section (via Humanitarian Data Exchange)
+  url: https://data.humdata.org/dataset/cod-ab-npl
+  accessed: "2026-08-23"
+
+licence: CC BY-IGO
+
+vintage: "2024"
+
+geography_level: palika
+
+update_frequency: irregular
+
+contains_personal_data: false
+
+caveats:
+  - >
+    Identified by P-code type digit 5 rather than by an explicit attribute in
+    the source, so the classification depends on OCHA's coding convention
+    holding.
+  - >
+    Boundaries reflect the COD as reviewed in October 2024 and may not match
+    the latest Department of National Parks and Wildlife Conservation gazette.
+  - >
+    Area names are English only; the source publishes no Nepali names.
