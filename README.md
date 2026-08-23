@@ -11,16 +11,28 @@ open, documented, downloadable data.
 
 ## Status
 
-Early. The pipeline runs end to end on fixture data; real sources are being
-onboarded one at a time.
+Live at **[datanepal.org](https://datanepal.org)** — 86 static pages covering
+7 provinces and 77 districts.
 
 | Dataset | Status |
 |---|---|
 | Administrative geography | **live** — 753 local units, 77 districts, 7 provinces |
+| Population (COD-PS) | **live** — country/province/district, by sex and age band |
 | Protected areas | **live** — 22 national parks and reserves |
-| Voter roll aggregates | blocked — source disallows crawling, see below |
-| Census 2021 | planned |
+| Voter roll aggregates | not used — source disallows crawling, see below |
+| Palika-level population | needs the NSO census portal; COD-PS stops at district |
 | Economic indicators (NRB) | planned |
+
+### How it deploys
+
+```
+GitHub Actions  ingest -> dbt build + test -> export -> commit publish/dist
+Cloudflare Pages  watches the repo -> npm run build in web/ -> datanepal.org
+```
+
+`publish/dist` is committed on purpose: it gives the published data a version
+history, and it lets Pages build with Node alone rather than running the whole
+Python pipeline in its build image. No deploy credentials live in this repo.
 
 ## Design
 
