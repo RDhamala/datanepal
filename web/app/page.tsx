@@ -1,18 +1,30 @@
 import Link from "next/link";
 import {
+  country,
+  datasetsFor,
+  districtsOf,
   formatNumber,
   manifest,
   places,
   populationOf,
   provinces,
 } from "@/lib/data";
-import { Sources, Tile } from "@/components/Chrome";
+import { Cell, DataTable, Row, Section, Sources, Tile, TileRow } from "@/components/ui";
 
-export default function Home() {
-  const all = places();
-  const provs = provinces();
-  const nepal = all.find((p) => p.admin_level === 0)!;
-  const pop = populationOf(nepal);
+export default async function Home() {
+  const all = await places();
+  const np = await country();
+  const pop = np ? await populationOf(np) : null;
+  const provs = await provinces();
+
+  const rows = await Promise.all(
+    provs.map(async (p) => ({
+      place: p,
+      pop: await populationOf(p),
+      districts: (await districtsOf(p.place_pcode)).length,
+    })),
+  );
+  rows.sort((a, b) => (b.pop?.total ?? 0) - (a.pop?.total ?? 0));
 
   const counts = {
     provinces: all.filter((p) => p.admin_level === 1).length,
@@ -20,24 +32,22 @@ export default function Home() {
     localUnits: all.filter((p) => p.admin_level === 3).length,
   };
 
-  const rows = provs
-    .map((p) => ({ place: p, pop: populationOf(p) }))
-    .sort((a, b) => (b.pop?.total ?? 0) - (a.pop?.total ?? 0));
-
   return (
     <>
-      <div className="page-head">
-        <h1>Nepal, in data.</h1>
-        <p className="native">नेपाल, तथ्याङ्कमा</p>
-        <p className="meta">
+      <header className="border-line mb-10 border-b pb-10">
+        <h1 className="text-display text-ink max-w-2xl font-semibold">
+          Nepal, in data.
+        </h1>
+        <p className="text-title text-ink-soft mt-2 font-normal">नेपाल, तथ्याङ्कमा</p>
+        <p className="text-ink-soft mt-5 max-w-xl text-[15px]">
           Open, documented statistics for every province and district in Nepal.
-          Every figure links to its source.
+          Conformed to one geographic spine, and every figure traceable to its source.
         </p>
-      </div>
+      </header>
 
       {/* Real counts only. Placeholder figures on a data platform are
-          self-discrediting, so nothing here is shown without data behind it. */}
-      <div className="tiles">
+          self-discrediting, so nothing appears here without data behind it. */}
+      <TileRow>
         {pop && (
           <Tile
             label="Population"
@@ -53,58 +63,47 @@ export default function Home() {
           value={String(manifest().dataset_count)}
           sub="published"
         />
-      </div>
+        {pop?.workingAgeShare != null && (
+          <Tile
+            label="Working age"
+            value={`${(pop.workingAgeShare * 100).toFixed(0)}%`}
+            sub="aged 15–64"
+          />
+        )}
+      </TileRow>
 
-      {pop && (
-        <div className="caveat">
-          Population figures are {pop.period} projections, not census counts.
-          Nepal&rsquo;s most recent census was 2021, which counted 29,164,578
-          people.
-        </div>
-      )}
+      <Section
+        title="Provinces"
+        note="Ordered by population. Follow a province to its districts."
+      >
+        <DataTable
+          columns={[
+            { label: "Province" },
+            { label: "नेपाली" },
+            { label: "Population", numeric: true },
+            { label: "Districts", numeric: true },
+            { label: "Area km²", numeric: true },
+            { label: "Density", numeric: true },
+          ]}
+        >
+          {rows.map(({ place, pop: p, districts }) => (
+            <Row key={place.place_pcode}>
+              <Cell strong>
+                <Link href={`/np/${place.slug}/`}>{place.name_en}</Link>
+              </Cell>
+              <Cell>{place.name_ne ?? "—"}</Cell>
+              <Cell numeric strong>
+                {formatNumber(p?.total)}
+              </Cell>
+              <Cell numeric>{districts}</Cell>
+              <Cell numeric>{formatNumber(place.area_sqkm)}</Cell>
+              <Cell numeric>{formatNumber(p?.density)}</Cell>
+            </Row>
+          ))}
+        </DataTable>
+      </Section>
 
-      <section>
-        <h2>Provinces</h2>
-        <p className="note">
-          Ordered by population. Follow a province to its districts.
-        </p>
-        <div className="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>Province</th>
-                <th>Nepali</th>
-                <th className="num">Population</th>
-                <th className="num">Districts</th>
-                <th className="num">Area (km²)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map(({ place, pop: p }) => (
-                <tr key={place.place_pcode}>
-                  <td>
-                    <Link href={`/np/${place.slug}/`}>{place.name_en}</Link>
-                  </td>
-                  <td>{place.name_ne ?? "—"}</td>
-                  <td className="num">{formatNumber(p?.total)}</td>
-                  <td className="num">
-                    {
-                      all.filter(
-                        (d) =>
-                          d.admin_level === 2 &&
-                          d.parent_pcode === place.place_pcode,
-                      ).length
-                    }
-                  </td>
-                  <td className="num">{formatNumber(place.area_sqkm)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <Sources datasets={manifest().datasets} />
+      <Sources datasets={datasetsFor(["observations", "places", "geography"])} />
     </>
   );
 }
