@@ -5,16 +5,26 @@ Licence: CC BY-IGO
 Publisher: OCHA Field Information Services Section
 
 The same package that provides the tabular admin units also ships boundary
-geometry. It is large: 58 MB zipped, 6.1 MB for 7 provinces and 15 MB for 77
-districts as raw GeoJSON, at a vertex density meant for GIS analysis rather
-than a 900px-wide web map.
+geometry, at all three admin levels. It is large: 58 MB zipped, and as raw
+GeoJSON 6.4 MB for 7 provinces, 16 MB for 77 districts and 45 MB for the 775
+local units and protected areas -- a vertex density meant for GIS analysis
+rather than a 900px-wide web map.
+
+Level 3 is here rather than from a third-party republisher for one reason: it
+carries `adm3_pcode`, so it joins the spine by construction. Open Knowledge
+Nepal publishes the same boundaries under CC BY 4.0 with no P-codes, and their
+names are an independent romanisation that disagrees with ours on 222 of 753
+units (Kedarseu/Kedarsyun, Purchaudi/Puchaundi, Sitganga/Shitaganga). Closing
+that gap would mean guessing at transliterations, which is exactly what this
+project refuses to do.
 
 Shipping that to a browser would be absurd, so geometry is simplified here with
 Ramer-Douglas-Peucker at a tolerance chosen per admin level. At the sizes these
 render, 0.004 degrees is below one screen pixel:
 
-    provinces   161,502 vertices -> ~3,000   (~30 KB)
-    districts   far more         -> ~9,000   (~90 KB)
+    provinces      161,502 vertices ->   3,028
+    districts      far more         ->   5,520
+    local units  1,082,163 vertices ->  54,103
 
 Simplification happens at ingestion, not in the browser, because the browser
 should never receive data it cannot use. Tiny rings -- river islands, slivers --
@@ -43,16 +53,30 @@ logger = logging.getLogger(__name__)
 
 HDX_PACKAGE_API = "https://data.humdata.org/api/3/action/package_show?id=cod-ab-npl"
 
-# Tolerance in degrees, per admin level. Provinces render largest so they get
-# the finest tolerance; districts are drawn smaller and individually.
-TOLERANCE = {1: 0.004, 2: 0.006}
+# Tolerance in degrees, per admin level.
+#
+# Not a single global value, because each level is drawn at a different scale.
+# Provinces and districts are drawn as a whole country, so a district is a small
+# fraction of the frame. Local units are drawn a district at a time -- ten or
+# twenty shapes filling the frame -- so each one occupies far more pixels and
+# needs correspondingly finer geometry.
+#
+# Measured rather than guessed. At level 3, tolerance 0.0015 keeps 54,103 of
+# 1,082,163 vertices, averaging 1.4 KB of GeoJSON per unit, and drops no rings
+# at all. A district page renders only its own units, so the cost that matters
+# is roughly 25 KB for an eighteen-unit district, not the 1 MB total.
+TOLERANCE = {1: 0.004, 2: 0.006, 3: 0.0015}
 
 # Rings smaller than this (in square degrees) are dropped. At Nepal's latitude
 # one square degree is roughly 12,000 km², so this discards anything under
 # about 1 km² -- invisible on a web map.
 MIN_RING_AREA = 1e-4
 
-EXPECTED = {1: 7, 2: 77}
+# Externally known counts, asserted rather than trusted. Level 3 is 775: the 753
+# local units plus 22 protected areas, which the P-code type digit distinguishes
+# (5 = protected area). A source that changes shape must fail loudly here rather
+# than quietly under-reporting.
+EXPECTED = {1: 7, 2: 77, 3: 775}
 
 
 def _verify() -> str | bool:

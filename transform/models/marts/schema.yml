@@ -142,7 +142,7 @@ models:
       - name: admin_level
         tests:
           - not_null
-          - accepted_values: {values: [1, 2], quote: false}
+          - accepted_values: {values: [1, 2, 3], quote: false}
 
   - name: place_identifiers
     description: External identifiers mapped to canonical place_ids.

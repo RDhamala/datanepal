@@ -28,16 +28,24 @@ export type Project = (lon: number, lat: number) => [number, number];
 const PAD = 6;
 
 /**
- * Fit a set of shapes into a frame of the given height, preserving aspect ratio.
+ * Fit a set of shapes inside a bounding frame, preserving aspect ratio.
  *
  * Takes *every* shape that will be drawn so they stay in register: a district
  * layer and a province outline layer must share one bounding box or the borders
  * will not line up.
+ *
+ * Bounded by width *and* height, rather than height alone, because SVG user
+ * units are not pixels — they scale with the viewBox. Deriving the frame from
+ * height alone gave Nepal a ~900-unit-wide viewBox and a single district a
+ * ~200-unit-wide one; both then stretched to the same container width, so a
+ * 9-unit label rendered at 11px on the national map and at 40px on the district
+ * map. Constraining width keeps one user unit close to one rendered pixel on
+ * every map, which is what makes a shared font size mean the same thing.
  */
 export function projector(
   shapes: Ring[][][],
-  height: number,
-): { width: number; project: Project } {
+  frame: { maxWidth: number; maxHeight: number },
+): { width: number; height: number; project: Project } {
   let minX = Infinity;
   let maxX = -Infinity;
   let minY = Infinity;
@@ -60,11 +68,22 @@ export function projector(
 
   const spanX = maxX - minX || 1;
   const spanY = maxY - minY || 1;
-  const width = Math.round((height - PAD * 2) * (spanX / spanY)) + PAD * 2;
+  const aspect = spanX / spanY;
+
+  // Whichever bound binds first decides the frame; the other shrinks to fit, so
+  // the shape is never stretched and never overflows.
+  const innerW = frame.maxWidth - PAD * 2;
+  const innerH = frame.maxHeight - PAD * 2;
+  const [fitW, fitH] =
+    innerW / innerH > aspect ? [innerH * aspect, innerH] : [innerW, innerW / aspect];
+
+  const width = Math.round(fitW) + PAD * 2;
+  const height = Math.round(fitH) + PAD * 2;
+
   // Pixels per Mercator unit.
-  const pxPerUnit = Math.min((width - PAD * 2) / spanX, (height - PAD * 2) / spanY);
-  const offsetX = PAD + (width - PAD * 2 - spanX * pxPerUnit) / 2;
-  const offsetY = PAD + (height - PAD * 2 - spanY * pxPerUnit) / 2;
+  const pxPerUnit = Math.min(fitW / spanX, fitH / spanY);
+  const offsetX = PAD + (fitW - spanX * pxPerUnit) / 2;
+  const offsetY = PAD + (fitH - spanY * pxPerUnit) / 2;
 
   const project: Project = (lon, lat) => [
     offsetX + (mercatorX(lon) - minX) * pxPerUnit,
@@ -72,7 +91,7 @@ export function projector(
     offsetY + (maxY - mercatorY(lat)) * pxPerUnit,
   ];
 
-  return { width, project };
+  return { width, height, project };
 }
 
 /** An SVG path for a MultiPolygon's worth of rings. */

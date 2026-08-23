@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-23T17:24:36.904808+00:00",
+  "generated_at": "2026-08-23T18:23:10.571024+00:00",
   "table_count": 16,
   "tables": [
     {
@@ -232,7 +232,7 @@
       "table": "place_boundaries",
       "title": "Nepal boundary geometry",
       "title_ne": "नेपालको सीमा भूगोल",
-      "description": "Simplified administrative boundary geometry for Nepal's 7 provinces and 77 districts, as GeoJSON MultiPolygon strings in lon/lat, joined to canonical place identifiers.",
+      "description": "Simplified administrative boundary geometry for Nepal at all three admin levels -- 7 provinces, 77 districts, and 775 local units and protected areas -- as GeoJSON MultiPolygon strings in lon/lat, joined to canonical place identifiers.",
       "grain": "One row per place with geometry.",
       "geography_level": "mixed",
       "sources": [
@@ -247,14 +247,16 @@
         "UN Office for the Coordination of Humanitarian Affairs"
       ],
       "caveats": [
-        "Simplified with Ramer-Douglas-Peucker at 0.004 degrees for provinces and 0.006 for districts, reducing 161,502 province vertices to about 3,000. Fine for cartographic display at web sizes; not suitable for area calculation, adjacency analysis, or any measurement. Use the source package for that.\n",
+        "Simplified with Ramer-Douglas-Peucker, at a tolerance chosen per admin level because each is drawn at a different scale: 0.004 degrees for provinces, 0.006 for districts, and 0.0015 for local units, which are drawn a district at a time and so occupy far more of the frame. Across the three levels this reduces about 1.4 million vertices to roughly 63,000. Fine for cartographic display at web sizes; not suitable for area calculation, adjacency analysis, or any measurement. Use the source package for that.\n",
         "Rings under roughly 1 km² are dropped, so small river islands and slivers are absent.\n",
+        "Because each level is simplified independently, a border shared between two levels carries different vertices at each one. Province, district and local boundaries are therefore not exactly coincident and should not be overlaid on one another expecting them to line up.\n",
+        "Level 3 contains 775 features: the 753 local units plus 22 protected areas. Protected areas are federally administered and are not local government units. The distinction is carried by the P-code type digit, never by name.\n",
         "Coordinates are lon/lat (EPSG:4326). No projection is applied."
       ],
-      "row_count": 84,
+      "row_count": 859,
       "parquet": "place_boundaries.parquet",
       "json": "place_boundaries.json",
-      "bytes": 94670
+      "bytes": 649869
     },
     {
       "table": "place_identifiers",

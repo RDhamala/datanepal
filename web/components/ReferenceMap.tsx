@@ -30,20 +30,33 @@ import { parseGeometry, projector, toPath, type Ring } from "@/lib/geo";
   dropping sixty-nine would be worse than either.
 */
 
-type District = {
+type Shape = {
   placeId: string;
   name: string;
   nameNe?: string | null;
-  href: string;
+  /**
+   * Page for this area, if it has one.
+   *
+   * Null for local units, which have no pages yet. A shape without a
+   * destination renders as a named shape rather than a link, because a link
+   * that goes nowhere useful is worse than plain text -- and the caption stops
+   * claiming every area is clickable.
+   */
+  href: string | null;
   geometryGeoJson: string;
-  /** Province this district belongs to. Drives the grouping tint. */
-  parentPlaceId: string | null;
+  /**
+   * What this shape belongs to. Drives the grouping tint.
+   *
+   * On the national map this is the province id, so districts group by province.
+   * On a district page it is the local-unit type, so municipalities group by
+   * kind -- the same grouping the page's own lists already use.
+   */
+  group: string | null;
 };
 
-type Province = {
+/** A heavier boundary drawn over the shapes: the group's own outline. */
+type Outline = {
   placeId: string;
-  name: string;
-  href: string;
   geometryGeoJson: string;
 };
 
@@ -148,33 +161,52 @@ function textWidth(text: string, fontPx: number): number {
 }
 
 export function ReferenceMap({
-  districts,
-  provinces,
-  height = 520,
+  shapes,
+  outlines,
+  groupOrder,
+  legend,
+  caption,
+  maxWidth = 1000,
+  maxHeight = 460,
 }: {
-  districts: District[];
-  provinces: Province[];
-  height?: number;
+  shapes: Shape[];
+  outlines: Outline[];
+  /**
+   * Explicit tint order for the groups.
+   *
+   * Supply this when the groups are a fixed vocabulary with a natural order --
+   * local-unit types, say. Omit it when the groups are geographic, and tints get
+   * assigned by graph colouring over adjacency instead, so no two neighbours
+   * share one.
+   */
+  groupOrder?: string[];
+  legend?: { group: string; label: string }[];
+  caption: React.ReactNode;
+  /** Nominal frame. One user unit stays close to one rendered pixel. */
+  maxWidth?: number;
+  maxHeight?: number;
 }) {
-  const dis = districts
+  const dis = shapes
     .map((d) => ({ ...d, rings: parseGeometry(d.geometryGeoJson) }))
     .filter((d) => d.rings.length > 0);
-  const provs = provinces
+  const provs = outlines
     .map((p) => ({ ...p, rings: parseGeometry(p.geometryGeoJson) }))
     .filter((p) => p.rings.length > 0);
 
   if (!dis.length) return null;
 
-  // Both layers go into the same bounding box: a province outline that was
-  // fitted separately would not line up with the district borders beneath it.
-  const { width, project } = projector(
+  // Both layers go into the same bounding box: an outline that was fitted
+  // separately would not line up with the shape borders beneath it.
+  const { width, height, project } = projector(
     [...dis.map((d) => d.rings), ...provs.map((p) => p.rings)],
-    height,
+    { maxWidth, maxHeight },
   );
 
-  const tintOf = colourProvinces(provs);
+  const tintOf = groupOrder
+    ? new Map(groupOrder.map((g, i) => [g, i % TINTS.length]))
+    : colourProvinces(provs);
 
-  const FONT = 9;
+  const FONT = 10;
 
   // Label boxes, computed once. `box` is the extent of the largest ring, which
   // is what a centred label actually has to fit inside.
@@ -271,60 +303,164 @@ export function ReferenceMap({
     labelled.push(d);
   }
 
+  /*
+    Leader lines for everything that did not fit.
+
+    A dot alone told a reader "something is here, look it up elsewhere", which on
+    the densest and most-searched part of the country -- the Kathmandu valley --
+    is where the map should be working hardest. So the remainder get a name in a
+    band below the country, joined to their district by a thin line.
+
+    Labels are laid out in x order across two rows, which is what keeps the
+    leaders from crossing: if label x order matches district x order, the lines
+    fan out without intersecting. Two rows rather than one because eighteen names
+    across the width of Nepal would otherwise overlap; alternating rows doubles
+    the horizontal room each name gets.
+  */
+  /*
+    Leader band layout.
+
+    The band is allowed to be *wider* than the map. A tall narrow district like
+    Dhanusa projects to a 342-unit-wide frame, and seven names averaging 90 units
+    each will not fit across it however many rows they get -- laid out inside the
+    map's own width they collided and the leftmost one clipped off the edge. So
+    the band claims whatever width the names actually need, up to the page, and
+    the map is centred within it.
+
+    Rows are derived from the same measurement rather than fixed at two, and x is
+    clamped so no label can leave the frame. Labels stay in x order, which is
+    what keeps the leaders from crossing.
+  */
+  const ROW_GAP = 13;
+  const LABEL_GAP = 8;
+
+  /*
+    Rows and band width chosen together, from the widest label.
+
+    Deriving the width from the *total* label width and then the rows from the
+    width was circular, and it under-provisioned: seven names in two rows across
+    a 342-unit band gave each slot 85 units while the longest,
+    "Mukhiyapatti Musaharmiya", needs 121. Nothing technically overlapped -- the
+    clamp prevented that -- but adjacent names touched and read as one string.
+
+    So: try successively more rows until every slot is at least as wide as the
+    longest name, and let the band grow past the map if it needs to.
+  */
+  const widest = dotted.length
+    ? Math.max(...dotted.map((d) => textWidth(d.name, FONT - 0.5))) + LABEL_GAP
+    : 0;
+
+  let leaderRows = 0;
+  let bandWidth = width;
+  if (dotted.length) {
+    for (let rows = 1; rows <= 4; rows++) {
+      leaderRows = rows;
+      bandWidth = Math.max(width, Math.ceil(dotted.length / rows) * widest);
+      if (bandWidth <= maxWidth) break;
+    }
+    bandWidth = Math.min(bandWidth, maxWidth);
+  }
+
+  const LEADER_BAND = leaderRows ? 14 + leaderRows * ROW_GAP : 0;
+
+  const svgWidth = Math.max(width, bandWidth);
+  const svgHeight = height + LEADER_BAND;
+  // Centre the map inside a band that may be wider than it is.
+  const dx = (svgWidth - width) / 2;
+
+  const leaders = [...dotted]
+    .sort((a, b) => boxes.get(a.placeId)!.x - boxes.get(b.placeId)!.x)
+    .map((d, i) => {
+      const b = boxes.get(d.placeId)!;
+      const row = i % leaderRows;
+      const slot = Math.floor(i / leaderRows);
+      const perRow = Math.ceil(dotted.length / leaderRows);
+      const step = svgWidth / Math.max(1, perRow);
+      const half = textWidth(d.name, FONT - 0.5) / 2;
+      return {
+        d,
+        from: { x: b.x + dx, y: b.y },
+        to: {
+          // Clamped so a long name cannot run off either edge.
+          x: Math.min(Math.max(step * (slot + 0.5), half + 2), svgWidth - half - 2),
+          y: height + 11 + row * ROW_GAP,
+        },
+      };
+    });
+
   return (
     <figure className="m-0">
       <svg
-        viewBox={`0 0 ${width} ${height}`}
-        className="h-auto w-full"
-        role="img"
-        aria-label={`Administrative reference map of Nepal: ${dis.length} districts grouped within ${provs.length} provinces. Every district is listed by name in the province tables below.`}
-      >
-        {/* Districts, filled by their province's grouping tint. */}
-        {dis.map((d) => (
-          <Link key={d.placeId} href={d.href}>
-            <title>{d.name}</title>
-            <path
-              d={toPath(d.rings, project)}
-              className="geo-district"
-              fill={
-                TINTS[(d.parentPlaceId ? tintOf.get(d.parentPlaceId) : undefined) ?? 0]
-              }
-            />
-          </Link>
-        ))}
+        viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+        /*
+          Natural size, capped at the container -- not `w-full`.
 
-        {/* Province outlines last, so the heavy stroke sits above every
+          `w-full` stretches the SVG to the container regardless of its viewBox,
+          which magnifies by whatever ratio happens to fall out of the shape's
+          aspect. Nepal is wide, so it magnified about 1.4x and a 9-unit label
+          read at 11px. Dhanusa is tall and narrow, so its viewBox came out
+          277 units wide, stretched 4.6x to fill 1280px, and the same label read
+          at 42px. Sizing to the viewBox keeps one user unit at one pixel, so a
+          font size means the same thing on every map.
+        */
+        style={{ width: `${svgWidth}px`, maxWidth: "100%", height: "auto" }}
+        role="img"
+        aria-label={`Administrative reference map: ${dis.length} areas in ${provs.length} groups. Every area is named, either on the map or in the leader labels below it.`}
+      >
+        <g transform={`translate(${dx},0)`}>
+          {/* Shapes, filled by their group's tint. Wrapped in a link only when
+            the area actually has a page. */}
+          {dis.map((d) => {
+            const shape = (
+              <>
+                <title>{d.name}</title>
+                <path
+                  d={toPath(d.rings, project)}
+                  className="geo-district"
+                  fill={TINTS[(d.group ? tintOf.get(d.group) : undefined) ?? 0]}
+                />
+              </>
+            );
+            return d.href ? (
+              <Link key={d.placeId} href={d.href}>
+                {shape}
+              </Link>
+            ) : (
+              <g key={d.placeId}>{shape}</g>
+            );
+          })}
+
+          {/* Province outlines last, so the heavy stroke sits above every
             district edge it crosses. Not interactive -- the districts beneath
             are the links, and an invisible overlay would swallow their clicks. */}
-        {provs.map((p) => (
-          <path
-            key={p.placeId}
-            d={toPath(p.rings, project)}
-            className="geo-province-outline"
-          />
-        ))}
-
-        {/* Locator dots for districts too small to hold their own name. */}
-        {dotted.map((d) => {
-          const b = boxes.get(d.placeId)!;
-          return (
-            <circle
-              key={`dot-${d.placeId}`}
-              cx={b.x}
-              cy={b.y}
-              r={1.4}
-              fill="var(--color-ink-soft)"
-              pointerEvents="none"
+          {provs.map((p) => (
+            <path
+              key={p.placeId}
+              d={toPath(p.rings, project)}
+              className="geo-province-outline"
             />
-          );
-        })}
+          ))}
+        </g>
+
+        {/* Leaders: a dot on the district, a line out to a name below. */}
+        {leaders.map(({ d, from, to }) => (
+          <g key={`ld-${d.placeId}`} pointerEvents="none">
+            <path
+              d={`M${from.x.toFixed(1)},${from.y.toFixed(1)} L${to.x.toFixed(1)},${(to.y - 7).toFixed(1)}`}
+              stroke="var(--color-line-strong)"
+              strokeWidth={0.6}
+              fill="none"
+            />
+            <circle cx={from.x} cy={from.y} r={1.4} fill="var(--color-ink-soft)" />
+          </g>
+        ))}
 
         {labelled.map((d) => {
           const b = boxes.get(d.placeId)!;
           return (
             <text
               key={`lb-${d.placeId}`}
-              x={b.x}
+              x={b.x + dx}
               y={b.y + 3}
               textAnchor="middle"
               className="font-medium"
@@ -336,20 +472,56 @@ export function ReferenceMap({
             </text>
           );
         })}
+
+        {/* Leader labels are links, not decoration. The districts they name are
+            a few pixels wide on the map, so this is the only practical way to
+            click through to Bhaktapur or Lalitpur. */}
+        {leaders.map(({ d, to }) => {
+          const label = (
+            <text
+              x={to.x}
+              y={to.y}
+              textAnchor="middle"
+              fontSize={FONT - 0.5}
+              fill={d.href ? "var(--color-link)" : "var(--color-ink-soft)"}
+            >
+              {d.name}
+            </text>
+          );
+          return d.href ? (
+            <Link key={`ll-${d.placeId}`} href={d.href}>
+              {label}
+            </Link>
+          ) : (
+            <g key={`ll-${d.placeId}`}>{label}</g>
+          );
+        })}
       </svg>
 
+      {legend && legend.length > 0 && (
+        <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
+          {legend.map((l) => (
+            <li key={l.group} className="flex items-center gap-1.5 text-[12px]">
+              <span
+                aria-hidden
+                className="border-line-strong size-3 rounded-[2px] border"
+                style={{ background: TINTS[tintOf.get(l.group) ?? 0] }}
+              />
+              <span className="text-ink-soft">{l.label}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
       <figcaption className="text-ink-faint mt-4 text-[12px] leading-relaxed">
-        {provs.length} provinces, {dis.length} districts. Shading groups districts by
-        province; the heavier outline is the provincial border. {labelled.length}{" "}
-        districts are named on the map
+        {caption} {labelled.length} of {dis.length} are named on the map
         {dotted.length > 0 && (
           <>
-            {" "}
-            — the remaining {dotted.length} are marked with a dot and are too small to
-            hold a label at this size. Every district is named in the province tables
-            below.
+            ; the remaining {dotted.length} are too small to hold a label and are named
+            below it, joined by a leader line
           </>
         )}
+        {dis.every((d) => d.href) ? ". Every area is a link." : "."}
       </figcaption>
     </figure>
   );

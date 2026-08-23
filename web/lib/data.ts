@@ -746,3 +746,60 @@ export async function updateLog(): Promise<{
     totalRevised: rows.filter((r) => r.superseded_at !== null).length,
   };
 }
+
+/* --------------------------------------------------- local-unit geometry */
+
+export type LocalUnitShape = {
+  placeId: string;
+  name: string;
+  nameNe: string | null;
+  placeType: string;
+  geometryGeoJson: string;
+};
+
+/**
+ * Boundary geometry for the local units of one district, plus the district's
+ * own outline.
+ *
+ * Local units are the finest geography DataNepal holds and the level almost
+ * nobody publishes statistics for -- the population source stops at district.
+ * So this exists to answer "what is in this district and where", not "how much",
+ * which is why the district page draws it as a reference map rather than a
+ * choropleth. Shading a map by data we do not have would be worse than not
+ * drawing it.
+ *
+ * The join is on place_id, which works because COD admin level 3 carries
+ * `adm3_pcode` and the spine keys on P-codes. No crosswalk, no name matching.
+ */
+export async function localUnitMapFor(districtPlaceId: string): Promise<{
+  units: LocalUnitShape[];
+  outline: string | null;
+}> {
+  const geo = await boundaries();
+  const byId = new Map(geo.map((g) => [g.place_id, g]));
+
+  const units = geo
+    .filter((g) => g.parent_place_id === districtPlaceId && g.admin_level === 3)
+    .filter((g) => g.place_type !== "protected_area")
+    .map((g) => ({
+      placeId: g.place_id,
+      name: g.name_en,
+      nameNe: g.name_ne,
+      placeType: g.place_type,
+      geometryGeoJson: g.geometry_geojson,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  return {
+    units,
+    outline: byId.get(districtPlaceId)?.geometry_geojson ?? null,
+  };
+}
+
+/** Display order and labels for local-unit types, coarsest first. */
+export const LOCAL_UNIT_TYPES = [
+  { type: "metropolitan", label: "Metropolitan city" },
+  { type: "sub_metropolitan", label: "Sub-metropolitan city" },
+  { type: "municipality", label: "Municipality" },
+  { type: "rural_municipality", label: "Rural municipality" },
+] as const;

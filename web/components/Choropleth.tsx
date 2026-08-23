@@ -90,9 +90,15 @@ export function Choropleth({
 
   if (!parsed.length) return null;
 
-  const { width, project } = projector(
+  // Bounded on both axes so a user unit stays close to a rendered pixel; the
+  // in-shape labels use a fixed font size and depend on that.
+  const {
+    width,
+    height: frameHeight,
+    project,
+  } = projector(
     parsed.map((f) => f.polygons),
-    height,
+    { maxWidth: 1000, maxHeight: height },
   );
 
   const values = parsed
@@ -165,8 +171,19 @@ export function Choropleth({
   return (
     <figure className="m-0">
       <svg
-        viewBox={`0 0 ${width} ${height}`}
-        className="h-auto w-full"
+        viewBox={`0 0 ${width} ${frameHeight}`}
+        /*
+          Natural size, capped at the container -- not `w-full`.
+
+          `w-full` stretches the SVG to the container regardless of its viewBox,
+          which magnifies by whatever ratio happens to fall out of the shape's
+          aspect. Nepal is wide, so it magnified about 1.4x and a 9-unit label
+          read at 11px. Dhanusa is tall and narrow, so its viewBox came out
+          277 units wide, stretched 4.6x to fill 1280px, and the same label read
+          at 42px. Sizing to the viewBox keeps one user unit at one pixel, so a
+          font size means the same thing on every map.
+        */
+        style={{ width: `${width}px`, maxWidth: "100%", height: "auto" }}
         role="img"
         aria-label={`Map of Nepal showing ${label}${period ? `, ${period}` : ""}. ${
           sorted.length

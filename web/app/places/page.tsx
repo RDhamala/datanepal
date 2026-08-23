@@ -116,21 +116,21 @@ export default async function PlacesIndex() {
           note="Districts grouped by province, with the provincial border drawn heavier. Select a district to open it."
         >
           <ReferenceMap
-            districts={districtMap.features.map((f) => ({
+            shapes={districtMap.features.map((f) => ({
               placeId: f.placeId,
               name: f.name,
               nameNe: f.nameNe,
               href: f.href,
               geometryGeoJson: f.geometryGeoJson,
-              parentPlaceId: f.parentPlaceId,
+              group: f.parentPlaceId,
             }))}
-            provinces={provinceMap.features.map((f) => ({
+            outlines={provinceMap.features.map((f) => ({
               placeId: f.placeId,
-              name: f.name,
-              href: f.href,
               geometryGeoJson: f.geometryGeoJson,
             }))}
-            height={520}
+            maxWidth={1240}
+            maxHeight={520}
+            caption="7 provinces, 77 districts. Shading groups districts by province; the heavier outline is the provincial border."
           />
         </Section>
       )}

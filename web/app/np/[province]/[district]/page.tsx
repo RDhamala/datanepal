@@ -8,7 +8,9 @@ import {
   formatNumber,
   formatPercent,
   indicatorSlug,
+  localUnitMapFor,
   localUnitsOf,
+  LOCAL_UNIT_TYPES,
   placeBySlug,
   populationOf,
   provinces,
@@ -17,6 +19,7 @@ import {
   tablesFor,
 } from "@/lib/data";
 import { AgePyramid } from "@/components/AgePyramid";
+import { ReferenceMap } from "@/components/ReferenceMap";
 import {
   AnchoredSection,
   Crumbs,
@@ -81,10 +84,11 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
   const place = await placeBySlug("district", district, prov.place_id);
   if (!place) notFound();
 
-  const [pop, units, np] = await Promise.all([
+  const [pop, units, np, localMap] = await Promise.all([
     populationOf(place),
     localUnitsOf(place.place_id),
     country(),
+    localUnitMapFor(place.place_id),
   ]);
   const national = np ? await populationOf(np) : null;
   const provincePop = await populationOf(prov);
@@ -228,6 +232,50 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
           title="Local governments"
           note={`${units.length} in this district. Population at this level is not published by the source used here, which stops at district.`}
         >
+          {/*
+            A reference map, not a choropleth. Nothing is published at this
+            level -- the population source stops at district -- so there is no
+            magnitude to shade by, and shading a map with data we do not have
+            would be worse than not drawing one. Fill carries unit type instead,
+            which is the same grouping the lists below already use.
+          */}
+          {localMap.units.length > 0 && (
+            <div className="mb-8">
+              <ReferenceMap
+                shapes={localMap.units.map((u) => ({
+                  placeId: u.placeId,
+                  name: u.name,
+                  nameNe: u.nameNe,
+                  // Local units have no pages of their own yet, so a link would
+                  // be a promise we cannot keep. Null renders a named shape
+                  // rather than a link, and keeps the caption honest.
+                  href: null,
+                  geometryGeoJson: u.geometryGeoJson,
+                  group: u.placeType,
+                }))}
+                /*
+                  No district outline, deliberately.
+
+                  The local units tile the district exactly, so their outer edge
+                  *is* the district border and an outline adds nothing. Drawing
+                  the admin-2 boundary over them looked wrong for a real reason:
+                  each admin level is simplified independently, admin 2 at
+                  tolerance 0.006 and admin 3 at 0.0015, so the same border
+                  carries different vertices at each level and the heavier
+                  stroke visibly missed the fill beneath it.
+                */
+                outlines={[]}
+                groupOrder={LOCAL_UNIT_TYPES.map((t) => t.type)}
+                legend={LOCAL_UNIT_TYPES.filter((t) =>
+                  localMap.units.some((u) => u.placeType === t.type),
+                ).map((t) => ({ group: t.type, label: t.label }))}
+                maxWidth={760}
+                maxHeight={520}
+                caption={`${localMap.units.length} local governments of ${place.name_en}, shaded by type.`}
+              />
+            </div>
+          )}
+
           <div className="space-y-6">
             {typeOrder.map((type) => (
               <div key={type}>
