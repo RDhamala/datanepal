@@ -61,16 +61,41 @@ jobs:
 
       - name: Check published output
         run: |
-          test -f publish/dist/manifest.json || { echo "No manifest produced"; exit 1; }
-          python3 -c "
+          test -f publish/dist/manifest.json || { echo "::error::No manifest"; exit 1; }
+          python3 - <<'PY'
           import json, sys
-          m = json.load(open('publish/dist/manifest.json'))
-          if m['dataset_count'] < 1:
-              sys.exit('Manifest contains no datasets')
-          print(f\"Published {m['dataset_count']} dataset(s)\")
-          for d in m['datasets']:
-              print(f\"  {d['table']}: {d['row_count']} rows, {d['bytes']} bytes\")
-          "
+          m = json.load(open("publish/dist/manifest.json"))
+
+          if m["table_count"] < 1:
+              sys.exit("Manifest contains no tables")
+          if not m["sources"]:
+              sys.exit("Manifest documents no sources")
+
+          # Provenance must be complete for every source, not most of them. An
+          # undocumented source is how a published figure becomes uncitable.
+          for s in m["sources"]:
+              for field in ("publisher", "licence", "vintage", "retrieved", "url"):
+                  if not s.get(field):
+                      sys.exit(f"{s['dataset_id']} is missing {field}")
+
+          # Nothing may publish under a share-alike licence. OpenStreetMap was
+          # rejected as a source on exactly these grounds; this keeps that
+          # decision from being quietly undone. See docs/adr/0007.
+          contaminated = [t["table"] for t in m["tables"] if t.get("share_alike")]
+          if contaminated:
+              sys.exit(f"share-alike licence on: {', '.join(contaminated)}")
+
+          # Every table must resolve an effective licence.
+          for t in m["tables"]:
+              if not t.get("effective_licence"):
+                  sys.exit(f"{t['table']} has no effective licence")
+
+          print(f"{m['table_count']} tables, {len(m['sources'])} sources")
+          for t in m["tables"]:
+              print(f"  {t['table']:24} {t['row_count']:>8,} rows  {t['effective_licence']}")
+          if m.get("history"):
+              print(f"  history: {m['history']['row_count']:,} rows")
+          PY
 
       - name: Upload published data
         uses: actions/upload-artifact@v4
