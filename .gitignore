@@ -16,11 +16,17 @@ transform/dbt_packages/
 transform/logs/
 .user.yml
 
-# Data. Nothing derived or raw belongs in git -- the pipeline reproduces it.
+# The warehouse is a build artefact; the pipeline reproduces it.
 warehouse/
 data/raw/
 data/staging/
-publish/dist/
+
+# publish/dist IS the product, and it is committed on purpose:
+#   - it gives the published data a version history, so a figure that changes
+#     can be traced to the commit that changed it
+#   - it lets Cloudflare Pages build the site with Node alone, instead of
+#     running the whole Python pipeline inside the build image
+# Regenerate with `python -m publish.export`; never hand-edit.
 *.duckdb
 *.duckdb.wal
 

@@ -1,0 +1,70 @@
+{
+  "generated_at": "2026-08-23T05:20:52.361645+00:00",
+  "dataset_count": 4,
+  "datasets": [
+    {
+      "table": "geography",
+      "title": "Nepal administrative geography",
+      "description": "Canonical province, district, and local unit (palika) reference table with stable P-codes and names. 753 local units across 77 districts and 7 provinces. This is the join key for every other dataset on the platform, and is published standalone because other projects need a canonical Nepal geography table and there is not a good public one.\n",
+      "source": {
+        "name": "OCHA Field Information Services Section (via Humanitarian Data Exchange)",
+        "url": "https://data.humdata.org/dataset/cod-ab-npl",
+        "accessed": "2026-08-23"
+      },
+      "licence": "CC BY-IGO",
+      "vintage": "2024",
+      "row_count": 753,
+      "parquet": "geography.parquet",
+      "json": "geography.json",
+      "bytes": 45893
+    },
+    {
+      "table": "observations",
+      "title": "Nepal statistical observations",
+      "description": "The platform's canonical fact table. One row per measurement, keyed by place, indicator, period, and dimensions (sex, age band). Every dataset on the platform is published in this shape so that any indicator can be charted, compared, or downloaded without dataset-specific handling.\nCurrently contains population from COD-PS at country, province, and district level. Totals coexist with their components: rows with sex='all' or age_band='all' are totals, so filter rather than sum to avoid double counting.\n",
+      "source": {
+        "name": "UNFPA (via Humanitarian Data Exchange), OCHA Common Operational Dataset",
+        "url": "https://data.humdata.org/dataset/cod-ps-npl",
+        "accessed": "2026-08-23"
+      },
+      "licence": "CC BY-IGO",
+      "vintage": "2023",
+      "row_count": 4590,
+      "parquet": "observations.parquet",
+      "json": "observations.json",
+      "bytes": 24891
+    },
+    {
+      "table": "places",
+      "title": "Nepal places",
+      "description": "Every addressable place in Nepal across all administrative levels: the country, 7 provinces, 77 districts, and 753 local units. Keyed by OCHA P-code, with URL slugs and parent references for hierarchical navigation.\nThis is the place dimension that the observations table joins against, and the table that generates the site's URLs.\n",
+      "source": {
+        "name": "OCHA Field Information Services Section (via Humanitarian Data Exchange)",
+        "url": "https://data.humdata.org/dataset/cod-ab-npl",
+        "accessed": "2026-08-23"
+      },
+      "licence": "CC BY-IGO",
+      "vintage": "2024",
+      "row_count": 838,
+      "parquet": "places.parquet",
+      "json": "places.json",
+      "bytes": 51469
+    },
+    {
+      "table": "protected_areas",
+      "title": "Nepal protected areas",
+      "description": "National parks, wildlife reserves, hunting reserves, and conservation areas, as mapped in the OCHA Common Operational Dataset. One row per area-district intersection: several protected areas span multiple districts and are represented once per district.\nThese are deliberately excluded from the administrative geography dataset. They are federally administered and lie outside local-unit jurisdiction, so treating them as palikas would inflate per-unit denominators.\n",
+      "source": {
+        "name": "OCHA Field Information Services Section (via Humanitarian Data Exchange)",
+        "url": "https://data.humdata.org/dataset/cod-ab-npl",
+        "accessed": "2026-08-23"
+      },
+      "licence": "CC BY-IGO",
+      "vintage": "2024",
+      "row_count": 22,
+      "parquet": "protected_areas.parquet",
+      "json": "protected_areas.json",
+      "bytes": 1996
+    }
+  ]
+}
