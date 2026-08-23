@@ -234,6 +234,8 @@ export async function mapFor(
     href: string;
     geometryGeoJson: string;
     value: number | null;
+    /** Parent place. The reference map groups districts by province with it. */
+    parentPlaceId: string | null;
   }[];
 }> {
   const [geo, cmp, all] = await Promise.all([
@@ -266,6 +268,7 @@ export async function mapFor(
         href,
         geometryGeoJson: g.geometry_geojson,
         value: valueOf.get(g.place_id) ?? null,
+        parentPlaceId: place?.parent_place_id ?? null,
       };
     })
     .sort((a, b) => (b.value ?? 0) - (a.value ?? 0));

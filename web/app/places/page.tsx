@@ -11,6 +11,7 @@ import {
   tablesFor,
 } from "@/lib/data";
 import { Choropleth } from "@/components/Choropleth";
+import { ReferenceMap } from "@/components/ReferenceMap";
 import { Search } from "@/components/Search";
 import { Crumbs, PageHeader, Section, SourceNote } from "@/components/ui";
 
@@ -100,12 +101,44 @@ export default async function PlacesIndex() {
         />
       </div>
 
-      {/* District-level map: the finest geography we hold boundaries for, and
-          the one that makes Nepal's population distribution legible. */}
+      {/*
+        Two district maps, deliberately, because they answer different questions
+        and fill can only encode one variable.
+
+        The reference map names the districts and groups them by province: "where
+        is Dhanusa, and which province is it in". The choropleth below shades by
+        population: "where do people actually live". Putting province identity
+        and population magnitude in the same fill would have served neither.
+      */}
       {districtMap.features.length > 0 && (
         <Section
           title="All 77 districts"
-          note={`Shaded by population, ${districtMap.period}. Select a district to open it.`}
+          note="Districts grouped by province, with the provincial border drawn heavier. Select a district to open it."
+        >
+          <ReferenceMap
+            districts={districtMap.features.map((f) => ({
+              placeId: f.placeId,
+              name: f.name,
+              nameNe: f.nameNe,
+              href: f.href,
+              geometryGeoJson: f.geometryGeoJson,
+              parentPlaceId: f.parentPlaceId,
+            }))}
+            provinces={provinceMap.features.map((f) => ({
+              placeId: f.placeId,
+              name: f.name,
+              href: f.href,
+              geometryGeoJson: f.geometryGeoJson,
+            }))}
+            height={520}
+          />
+        </Section>
+      )}
+
+      {districtMap.features.length > 0 && (
+        <Section
+          title="Where people live"
+          note={`The same 77 districts shaded by population, ${districtMap.period}.`}
         >
           <Choropleth
             features={districtMap.features}
@@ -113,7 +146,7 @@ export default async function PlacesIndex() {
             label="Population by district"
             period={districtMap.period}
             valueLabel="Population"
-            height={520}
+            height={460}
             showLabels={false}
             scale="quantile"
           />
@@ -177,27 +210,6 @@ export default async function PlacesIndex() {
           ))}
         </div>
       </Section>
-
-      {/* Province-level map kept as an orientation aid: it is the level at which
-          labels fit inside the shapes, so it names the seven provinces the
-          district map above cannot. */}
-      {provinceMap.features.length > 0 && (
-        <Section
-          title="Provinces"
-          note={`Shaded by population, ${provinceMap.period}.`}
-        >
-          <div className="max-w-3xl">
-            <Choropleth
-              features={provinceMap.features}
-              unit={provinceMap.unit}
-              label="Population by province"
-              period={provinceMap.period}
-              valueLabel="Population"
-              height={420}
-            />
-          </div>
-        </Section>
-      )}
 
       <Section title="How places are identified">
         <p className="text-ink-soft max-w-prose text-[14px] leading-relaxed">

@@ -51,6 +51,29 @@
   --color-seq-4: #3d84da;
   --color-seq-5: #1c5aa6;
 
+  /*
+    ---- grouping tints: identity on a reference map ----
+
+    For the administrative reference map, where fill answers "which province is
+    this district in" rather than "how large is it". Four is the most any planar
+    map needs, so no province ever shares a tint with a neighbour, and four
+    low-chroma tints across two hue families stay a long way short of a rainbow.
+
+    Deliberately pale: the grouping signal is the heavy province stroke. These
+    only reinforce it, and they sit under black district labels.
+
+    Every pair is separable, not just consecutive ones. An earlier version only
+    separated consecutive indices, reasoning that greedy colouring pairs those
+    most often. Greedy colouring takes the lowest free index, so on Nepal's
+    province graph it chose 0, 1 and 2 -- and 0 vs 2 was the weak blue-on-blue
+    pair, which landed squarely on the Bagmati/Gandaki border. Validated by
+    scripts/check-palette.mjs, which now holds all six pairs to the same floor.
+  */
+  --color-group-1: #e9eff7;
+  --color-group-2: #eaece5;
+  --color-group-3: #d5e2f2;
+  --color-group-4: #d7dcd0;
+
   /* ---- movement. Not good/bad: more inflation is not "bad data". ---- */
   --color-rise: #1f6f4a;
   --color-fall: #a33b2a;
@@ -117,6 +140,11 @@
       --color-seq-3: #2a6bb5;
       --color-seq-4: #5698e2;
       --color-seq-5: #a8caf1;
+
+      --color-group-1: #1a222e;
+      --color-group-2: #1d1f1b;
+      --color-group-3: #243046;
+      --color-group-4: #2b3029;
 
       --color-rise: #5fbe8d;
       --color-fall: #e08974;
@@ -196,5 +224,32 @@
   a:focus-visible > .geo-shape {
     stroke: var(--color-ink);
     stroke-width: 1.4;
+  }
+
+  /*
+    Reference-map strokes. Grouping is carried by line weight, not colour: a
+    district hairline against a heavy province outline is how an atlas shows
+    "these belong together", and it survives greyscale, colour-vision
+    deficiency, and the palest possible fills.
+  */
+  .geo-district {
+    stroke: var(--color-line-strong);
+    stroke-width: 0.5;
+    vector-effect: non-scaling-stroke;
+    transition: fill 120ms ease;
+  }
+  a:hover > .geo-district,
+  a:focus-visible > .geo-district {
+    fill: var(--color-selected);
+    stroke: var(--color-ink);
+    stroke-width: 1.4;
+  }
+  .geo-province-outline {
+    fill: none;
+    stroke: var(--color-ink-soft);
+    stroke-width: 1.6;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+    pointer-events: none;
   }
 }

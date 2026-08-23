@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { formatCompact, formatNumber, type Unit } from "@/lib/data";
+import { parseGeometry, projector, toPath, type Ring } from "@/lib/geo";
 
 /*
   Geographic exploration.
@@ -45,42 +46,9 @@ const RAMP = [
   "var(--color-seq-5)",
 ];
 
-/*
-  Web Mercator, both axes in the same units.
-
-  Getting this wrong is easy and looks dramatic: mercatorY returns a
-  radian-scale value while longitude is in degrees, so leaving x unconverted
-  gives Nepal an aspect ratio of 91:1 instead of about 1.6:1 -- the country
-  renders as a horizontal smear a few pixels tall. Convert both.
-*/
-function mercatorX(lon: number): number {
-  return (lon * Math.PI) / 180;
-}
-
-function mercatorY(lat: number): number {
-  const clamped = Math.max(-85, Math.min(85, lat));
-  return Math.log(Math.tan(Math.PI / 4 + (clamped * Math.PI) / 360));
-}
-
 /** One value formatter for labels and legend, so they cannot disagree. */
 function fmt(v: number, unit?: Unit): string {
   return unit?.unit_kind === "ratio" ? `${v.toFixed(1)}%` : formatCompact(v);
-}
-
-type Ring = [number, number][];
-
-function parseGeometry(geojson: string): Ring[][] {
-  try {
-    const g = JSON.parse(geojson) as {
-      type: string;
-      coordinates: number[][][][] | number[][][];
-    };
-    if (g.type === "MultiPolygon") return g.coordinates as unknown as Ring[][];
-    if (g.type === "Polygon") return [g.coordinates as unknown as Ring[]];
-    return [];
-  } catch {
-    return [];
-  }
 }
 
 export function Choropleth({
@@ -122,59 +90,10 @@ export function Choropleth({
 
   if (!parsed.length) return null;
 
-  // One bounding box across every feature, so shapes stay in register.
-  let minX = Infinity;
-  let maxX = -Infinity;
-  let minY = Infinity;
-  let maxY = -Infinity;
-  for (const f of parsed) {
-    for (const poly of f.polygons) {
-      for (const ring of poly) {
-        for (const [lon, lat] of ring) {
-          const x = mercatorX(lon);
-          const y = mercatorY(lat);
-          if (x < minX) minX = x;
-          if (x > maxX) maxX = x;
-          if (y < minY) minY = y;
-          if (y > maxY) maxY = y;
-        }
-      }
-    }
-  }
-
-  const PAD = 6;
-  const spanX = maxX - minX || 1;
-  const spanY = maxY - minY || 1;
-  // Fit while preserving aspect ratio; Nepal is roughly 2.4:1.
-  const width = Math.round((height - PAD * 2) * (spanX / spanY)) + PAD * 2;
-  // Pixels per Mercator unit. Named for what it is rather than "scale", which
-  // now belongs to the colour-classing prop.
-  const pxPerUnit = Math.min((width - PAD * 2) / spanX, (height - PAD * 2) / spanY);
-  const offsetX = PAD + (width - PAD * 2 - spanX * pxPerUnit) / 2;
-  const offsetY = PAD + (height - PAD * 2 - spanY * pxPerUnit) / 2;
-
-  const project = (lon: number, lat: number): [number, number] => [
-    offsetX + (mercatorX(lon) - minX) * pxPerUnit,
-    // SVG y grows downward; Mercator y grows north.
-    offsetY + (maxY - mercatorY(lat)) * pxPerUnit,
-  ];
-
-  const toPath = (polygons: Ring[][]): string =>
-    polygons
-      .map((poly) =>
-        poly
-          .map(
-            (ring) =>
-              ring
-                .map(([lon, lat], i) => {
-                  const [x, y] = project(lon, lat);
-                  return `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`;
-                })
-                .join(" ") + "Z",
-          )
-          .join(" "),
-      )
-      .join(" ");
+  const { width, project } = projector(
+    parsed.map((f) => f.polygons),
+    height,
+  );
 
   const values = parsed
     .map((f) => f.value)
@@ -265,7 +184,7 @@ export function Choropleth({
               {f.value !== null ? `${f.name} — ${formatNumber(f.value)}` : f.name}
             </title>
             <path
-              d={toPath(f.polygons)}
+              d={toPath(f.polygons, project)}
               className="geo-shape"
               fill={RAMP[bin(f.value)]}
             />
