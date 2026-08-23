@@ -127,8 +127,9 @@ used, for two reasons:
 - Nepal's Privacy Act 2075 (2018) names voter identity card details as
   protected personal information.
 
-The connector remains in `ingestion/sources/` unregistered, as a record of the
-site's structure. Do not run it against the live site.
+The connector has been deleted. Keeping a working scraper for a site that
+forbids crawling is a liability regardless of intent — git history preserves it
+if anyone ever needs to see how that application was structured.
 
 ## Adding a dataset
 

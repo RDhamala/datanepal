@@ -16,7 +16,6 @@ from pathlib import Path
 
 import dlt
 
-from ingestion.sources.election_commission import election_commission_source
 from ingestion.sources.hdx_admin import hdx_admin_source
 from ingestion.sources.hdx_population import hdx_population_source
 from ingestion.sources.wikidata_names import wikidata_names_source
@@ -31,7 +30,6 @@ SOURCES = {
     "hdx_admin": hdx_admin_source,
     "hdx_population": hdx_population_source,
     "wikidata_names": wikidata_names_source,
-    "election_commission": election_commission_source,
 }
 
 
@@ -55,7 +53,9 @@ def run_source(name: str) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run datanepal ingestion")
-    group = parser.add_mutually_exclusive_group(required=True)
+    # Not `required=True`: --list is a valid invocation on its own, and gating it
+    # behind a required group makes `--list` fail with a confusing error.
+    group = parser.add_mutually_exclusive_group()
     group.add_argument("--source", help="Name of a single source to run")
     group.add_argument("--all", action="store_true", help="Run every registered source")
     parser.add_argument(
@@ -67,6 +67,9 @@ def main() -> int:
         for name in sorted(SOURCES):
             print(name)
         return 0
+
+    if not args.all and not args.source:
+        parser.error("one of --source, --all, or --list is required")
 
     targets = sorted(SOURCES) if args.all else [args.source]
     for name in targets:
