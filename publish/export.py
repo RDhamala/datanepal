@@ -36,6 +36,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger(__name__)
 
 ROOT = Path(__file__).resolve().parent.parent
+ORGANISATIONS_CSV = ROOT / "transform" / "seeds" / "organisations.csv"
 WAREHOUSE = ROOT / "warehouse" / "datanepal.duckdb"
 TABLES_DIR = ROOT / "catalog" / "tables"
 SOURCES_DIR = ROOT / "catalog" / "sources"
@@ -60,6 +61,14 @@ LICENCE_RANK = {
 }
 
 
+def load_organisations() -> dict[str, dict]:
+    """The source registry, so provenance can resolve org ids to names."""
+    import csv
+
+    with ORGANISATIONS_CSV.open() as handle:
+        return {row["org_id"]: row for row in csv.DictReader(handle)}
+
+
 def load_yaml_dir(directory: Path) -> dict[str, dict]:
     out = {}
     for path in sorted(directory.glob("*.yml")):
@@ -72,9 +81,12 @@ def load_yaml_dir(directory: Path) -> dict[str, dict]:
     return out
 
 
-def effective_licence(source_ids: list[str], sources: dict[str, dict]) -> dict:
-    """Resolve the licence a consumer of this table actually inherits."""
+def effective_licence(
+    source_ids: list[str], sources: dict[str, dict], orgs: dict[str, dict]
+) -> dict:
+    """Resolve the licence and attribution a consumer of this table inherits."""
     licences = []
+    attribution = []
     for sid in source_ids:
         if sid == "datanepal-internal":
             licences.append("cc0-1.0")
@@ -83,16 +95,20 @@ def effective_licence(source_ids: list[str], sources: dict[str, dict]) -> dict:
         if src is None:
             raise SystemExit(f"Unknown source '{sid}' referenced by a published table.")
         licences.append(src["licence_id"])
+        # Attribution follows the PUBLISHER, never the acquisition source.
+        # Crediting HDX for data UNFPA produced would be wrong, however the copy
+        # reached us.
+        pub = orgs.get(src["publisher_org_id"], {})
+        name = pub.get("name_en") or src["publisher_org_id"]
+        if name not in attribution:
+            attribution.append(name)
 
-    # Most restrictive wins.
     worst = max(licences, key=lambda lid: LICENCE_RANK.get(lid, 99))
     return {
         "effective_licence": worst,
         "share_alike": worst in ("cc-by-sa-4.0", "odbl-1.0"),
         "contributing_licences": sorted(set(licences)),
-        "attribution": [
-            sources[s]["publisher"] for s in source_ids if s in sources
-        ],
+        "attribution": attribution,
     }
 
 
@@ -102,6 +118,7 @@ def export(out_dir: Path, warehouse: Path = WAREHOUSE) -> dict:
 
     tables = load_yaml_dir(TABLES_DIR)
     sources = load_yaml_dir(SOURCES_DIR)
+    orgs = load_organisations()
 
     if out_dir.exists():
         shutil.rmtree(out_dir)
@@ -151,7 +168,7 @@ def export(out_dir: Path, warehouse: Path = WAREHOUSE) -> dict:
                 f"to '{json_path}' (format json, array true)"
             )
 
-        lic = effective_licence(meta.get("sources", []), sources)
+        lic = effective_licence(meta.get("sources", []), sources, orgs)
         entries.append(
             {
                 "table": table,
@@ -200,23 +217,44 @@ def export(out_dir: Path, warehouse: Path = WAREHOUSE) -> dict:
 
     con.close()
 
-    source_entries = [
-        {
-            "dataset_id": s["dataset_id"],
-            "title": s["title"],
-            "publisher": s["publisher"],
-            "url": s["url"],
-            "licence": s["licence_id"],
-            "licence_statement_url": s.get("licence_statement_url"),
-            "retrieved": str(s["retrieved"]),
-            "vintage": str(s["vintage"]),
-            "methodology_url": s.get("methodology_url"),
-            "update_frequency": s.get("update_frequency"),
-            "revises_published_values": bool(s.get("revises_published_values", False)),
-            "caveats": s.get("caveats", []),
-        }
-        for s in sources.values()
-    ]
+    def org_name(org_id: str) -> str:
+        return orgs.get(org_id, {}).get("name_en") or org_id
+
+    source_entries = []
+    for s in sources.values():
+        pub_id = s["publisher_org_id"]
+        acq_id = s["acquired_from_org_id"]
+        source_entries.append(
+            {
+                "dataset_id": s["dataset_id"],
+                "title": s["title"],
+                # Who produced it
+                "publisher": org_name(pub_id),
+                "publisher_org_id": pub_id,
+                "publisher_name_ne": orgs.get(pub_id, {}).get("name_ne") or None,
+                "publisher_homepage": orgs.get(pub_id, {}).get("homepage") or None,
+                "source_tier": s.get("source_tier"),
+                # Where this copy came from
+                "acquired_from": org_name(acq_id),
+                "acquired_from_org_id": acq_id,
+                "acquisition_method": s.get("acquisition_method"),
+                "acquisition_url": s.get("acquisition_url"),
+                "acquired_indirectly": pub_id != acq_id,
+                "url": s["url"],
+                "licence": s["licence_id"],
+                "licence_statement_url": s.get("licence_statement_url"),
+                "commercial_reuse": s.get("commercial_reuse"),
+                "rights_review_status": s.get("rights_review_status"),
+                "retrieved": str(s["retrieved"]),
+                "vintage": str(s["vintage"]),
+                "time_coverage": s.get("time_coverage"),
+                "geographic_granularity": s.get("geographic_granularity"),
+                "methodology_url": s.get("methodology_url"),
+                "update_frequency": s.get("update_frequency"),
+                "revises_published_values": bool(s.get("revises_published_values", False)),
+                "caveats": s.get("caveats", []),
+            }
+        )
 
     manifest = {
         "generated_at": datetime.now(UTC).isoformat(),
@@ -229,6 +267,11 @@ def export(out_dir: Path, warehouse: Path = WAREHOUSE) -> dict:
                 "Each table's effective_licence is computed from the sources it "
                 "draws on, taking the most restrictive. DataNepal does not "
                 "relicense upstream data; attribution requirements travel with it."
+            ),
+            "provenance": (
+                "Every source records both who published the data and where "
+                "DataNepal obtained this copy. Attribute the publisher, not the "
+                "platform the copy came from."
             ),
             "additivity": (
                 "Check the indicators table before aggregating. Rates, ratios, "

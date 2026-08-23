@@ -1,30 +1,39 @@
 dataset_id: worldbank-npl
 title: World Bank World Development Indicators — Nepal
-description: >
-  National annual economic indicators for Nepal from the World Bank's
-  Indicators API: consumer price inflation, GDP per capita, and personal
-  remittances received.
-publisher: World Bank
-publisher_url: https://www.worldbank.org
+description: 'National annual economic indicators for Nepal from the World Bank''s Indicators
+  API: consumer price inflation, GDP per capita, and personal remittances received.
+
+  '
+publisher_org_id: worldbank
+acquired_from_org_id: worldbank
+acquisition_method: official_api
+source_tier: B
 url: https://data.worldbank.org/country/nepal
-artifact_url: https://api.worldbank.org/v2/country/NPL/indicator/FP.CPI.TOTL.ZG?format=json
+acquisition_url: https://api.worldbank.org/v2/country/NPL/indicator/FP.CPI.TOTL.ZG?format=json
 licence_id: cc-by-4.0
 licence_statement_url: https://datacatalog.worldbank.org/public-licenses
-retrieved: "2026-08-23"
-vintage: "1960-2024"
+commercial_reuse: permitted_with_attribution
+rights_review_status: reviewed_ok
+retrieved: '2026-08-23'
+vintage: 1960-2024
+time_coverage: 1960-2024
+geographic_granularity: country
 methodology_url: https://datahelpdesk.worldbank.org/knowledgebase/articles/889392
 update_frequency: quarterly
 revises_published_values: true
+ingestion_difficulty: trivial
 contains_personal_data: false
 caveats:
-  - >
-    The World Bank restates figures as national accounts are revised. The API
-    exposes a lastupdated date per indicator, which is recorded as the
-    publication date of each observation so revisions are traceable.
-  - >
-    National level only. These are compiled from Nepali official statistics
-    (largely NRB and the National Statistics Office); the World Bank is the
-    aggregator, not the primary collector.
-  - >
-    Inflation and per-capita figures are rates and ratios. They must never be
-    summed or averaged across places or periods without weighting.
+- 'The World Bank restates figures as national accounts are revised. The API exposes a lastupdated
+  date per indicator, which is recorded as the publication date of each observation so revisions
+  are traceable.
+
+  '
+- 'National level only. These are compiled from Nepali official statistics (largely NRB and
+  the National Statistics Office); the World Bank is the aggregator, not the primary collector.
+
+  '
+- 'Inflation and per-capita figures are rates and ratios. They must never be summed or averaged
+  across places or periods without weighting.
+
+  '

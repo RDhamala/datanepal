@@ -20,8 +20,8 @@ import { formatCompact, formatNumber } from "@/lib/data";
 
 type Band = { band: string; female: number; male: number };
 
-const ROW_H = 20;
-const GAP = 2; // surface gap between adjacent fills
+const ROW_H = 18;
+const GAP = 4; // surface gap between adjacent fills; thin marks read better
 const BAR_H = ROW_H - GAP;
 const GUTTER = 52; // centre column for age labels
 const WIDTH = 760;
@@ -40,9 +40,12 @@ export function AgePyramid({ bands, period }: { bands: Band[]; period: number })
   const half = (WIDTH - GUTTER) / 2;
   const scale = (v: number) => (v / max) * (half - 10);
 
+  // Three gridlines per side, not as many as the step allows. Twelve full-height
+  // rules compete with the bars for attention, and the grid is meant to be
+  // recessive -- it is a reading aid, not data.
   const step = niceStep(max);
   const ticks: number[] = [];
-  for (let t = step; t <= max * 0.98; t += step) ticks.push(t);
+  for (let t = step; t <= max * 0.98 && ticks.length < 3; t += step) ticks.push(t);
 
   const total = rows.reduce((s, b) => s + b.female + b.male, 0);
 
@@ -75,6 +78,7 @@ export function AgePyramid({ bands, period }: { bands: Band[]; period: number })
               y2={plotH}
               stroke="currentColor"
               strokeWidth={1}
+              opacity={0.6}
             />
             <line
               x1={half + GUTTER + scale(t)}
@@ -83,6 +87,7 @@ export function AgePyramid({ bands, period }: { bands: Band[]; period: number })
               y2={plotH}
               stroke="currentColor"
               strokeWidth={1}
+              opacity={0.6}
             />
           </g>
         ))}
@@ -120,7 +125,7 @@ export function AgePyramid({ bands, period }: { bands: Band[]; period: number })
                 y={y}
                 width={fw}
                 height={BAR_H}
-                rx={3}
+                rx={1.5}
                 className="fill-series-1 transition-opacity group-hover:opacity-80"
               />
               <text
@@ -146,7 +151,7 @@ export function AgePyramid({ bands, period }: { bands: Band[]; period: number })
                 y={y}
                 width={mw}
                 height={BAR_H}
-                rx={3}
+                rx={1.5}
                 className="fill-series-2 transition-opacity group-hover:opacity-80"
               />
               <text

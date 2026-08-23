@@ -1,0 +1,17 @@
+table: organisations
+title: Source registry
+title_ne: स्रोत निर्देशिका
+description: >
+  Every organisation DataNepal cites — as a publisher, an acquisition source, or
+  both — with its Nepali name, type, jurisdiction, and provenance tier.
+sources: [datanepal-internal]
+grain: One row per organisation.
+geography_level: none
+caveats:
+  - >
+    source_tier records provenance authority, not data quality. A Tier A ministry
+    publishing a badly-formatted PDF is more authoritative than a Tier C
+    aggregator's clean CSV of the same numbers.
+  - >
+    The National Statistics Office was called the Central Bureau of Statistics
+    until 2022. Aggregator records still use the old name; both resolve to nso.

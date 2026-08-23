@@ -3,29 +3,196 @@
   "title": "DataNepal source dataset",
   "description": "One upstream dataset as published by its original publisher. Provenance and licence live here, not on published tables: a single source can feed several tables, and licence compatibility is computed from the sources a table draws on.",
   "type": "object",
-  "required": ["dataset_id", "title", "publisher", "url", "licence_id", "retrieved", "vintage", "contains_personal_data"],
+  "required": [
+    "dataset_id",
+    "title",
+    "publisher_org_id",
+    "acquired_from_org_id",
+    "acquisition_method",
+    "url",
+    "licence_id",
+    "retrieved",
+    "vintage",
+    "contains_personal_data"
+  ],
   "additionalProperties": false,
   "properties": {
-    "dataset_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
-    "title": { "type": "string" },
-    "title_ne": { "type": "string" },
-    "description": { "type": "string" },
-    "publisher": { "type": "string", "description": "The body that published it, not the aggregator we fetched it from." },
-    "publisher_url": { "type": "string", "format": "uri" },
-    "url": { "type": "string", "format": "uri", "description": "Landing page for the dataset." },
-    "artifact_url": { "type": "string", "format": "uri", "description": "The exact file fetched, when stable." },
+    "dataset_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "title": {
+      "type": "string"
+    },
+    "title_ne": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "publisher": {
+      "type": "string",
+      "description": "The body that published it, not the aggregator we fetched it from."
+    },
+    "publisher_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Landing page for the dataset."
+    },
+    "artifact_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "The exact file fetched, when stable."
+    },
     "licence_id": {
       "type": "string",
       "description": "Must exist in transform/seeds/licences.csv. Use 'unknown' rather than guessing.",
-      "enum": ["cc0-1.0", "cc-by-4.0", "cc-by-igo-3.0", "cc-by-sa-4.0", "odbl-1.0", "gov-open", "unknown"]
+      "enum": [
+        "cc0-1.0",
+        "cc-by-4.0",
+        "cc-by-igo-3.0",
+        "cc-by-sa-4.0",
+        "odbl-1.0",
+        "gov-open",
+        "unknown"
+      ]
     },
-    "licence_statement_url": { "type": "string", "format": "uri", "description": "Where the publisher states the terms. Absent means we inferred them." },
-    "retrieved": { "type": "string", "format": "date" },
-    "vintage": { "type": "string", "description": "Reference period of the data, distinct from when we fetched it." },
-    "methodology_url": { "type": "string", "format": "uri" },
-    "update_frequency": { "type": "string", "enum": ["one-off", "annual", "quarterly", "monthly", "weekly", "daily", "irregular"] },
-    "revises_published_values": { "type": "boolean", "description": "Whether the publisher restates previously published figures. Drives whether revision history matters for this source." },
-    "contains_personal_data": { "type": "boolean", "const": false },
-    "caveats": { "type": "array", "items": { "type": "string" } }
+    "licence_statement_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Where the publisher states the terms. Absent means we inferred them."
+    },
+    "retrieved": {
+      "type": "string",
+      "format": "date"
+    },
+    "vintage": {
+      "type": "string",
+      "description": "Reference period of the data, distinct from when we fetched it."
+    },
+    "methodology_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "update_frequency": {
+      "type": "string",
+      "enum": [
+        "one-off",
+        "annual",
+        "quarterly",
+        "monthly",
+        "weekly",
+        "daily",
+        "irregular"
+      ]
+    },
+    "revises_published_values": {
+      "type": "boolean",
+      "description": "Whether the publisher restates previously published figures. Drives whether revision history matters for this source."
+    },
+    "contains_personal_data": {
+      "type": "boolean",
+      "const": false
+    },
+    "caveats": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "publisher_org_id": {
+      "type": "string",
+      "description": "Who produced the data. Must exist in transform/seeds/organisations.csv."
+    },
+    "acquired_from_org_id": {
+      "type": "string",
+      "description": "Where DataNepal obtained this copy. Often the same as the publisher; different when a mirror or aggregator was used."
+    },
+    "acquisition_method": {
+      "type": "string",
+      "enum": [
+        "official_api",
+        "official_download",
+        "official_html",
+        "undocumented_endpoint",
+        "mirror",
+        "aggregator_api",
+        "aggregator_download",
+        "scrape",
+        "pdf_extraction",
+        "manual_entry"
+      ],
+      "description": "How the copy was obtained. Drives ingestion fragility and the review bar."
+    },
+    "acquisition_url": {
+      "type": "string",
+      "description": "The exact URL the copy came from, which may differ from the landing page."
+    },
+    "source_tier": {
+      "type": "string",
+      "enum": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "description": "Provenance authority of the publisher, not technical quality."
+    },
+    "geographic_granularity": {
+      "type": "string",
+      "enum": [
+        "country",
+        "province",
+        "district",
+        "municipality",
+        "ward",
+        "constituency",
+        "point",
+        "mixed",
+        "none"
+      ]
+    },
+    "time_coverage": {
+      "type": "string",
+      "description": "Span the dataset covers, e.g. '1960-2025'. Distinct from vintage."
+    },
+    "commercial_reuse": {
+      "type": "string",
+      "enum": [
+        "permitted",
+        "permitted_with_attribution",
+        "restricted",
+        "permission_required",
+        "unclear"
+      ],
+      "description": "Assessed, not assumed. 'unclear' blocks commercial redistribution pending review."
+    },
+    "rights_review_status": {
+      "type": "string",
+      "enum": [
+        "not_reviewed",
+        "reviewed_ok",
+        "reviewed_restricted",
+        "permission_obtained"
+      ]
+    },
+    "raw_artifact_sha256": {
+      "type": "string",
+      "description": "Checksum of the immutable raw artifact, where one is retained."
+    },
+    "ingestion_difficulty": {
+      "type": "string",
+      "enum": [
+        "trivial",
+        "easy",
+        "moderate",
+        "hard",
+        "very_hard"
+      ]
+    }
   }
 }

@@ -1,0 +1,13 @@
+table: topics
+title: Topics
+title_ne: विषयहरू
+description: >
+  The browse dimension: subject areas users navigate by, with counts of how much
+  data each currently holds.
+sources: [datanepal-internal]
+grain: One row per topic.
+geography_level: none
+caveats:
+  - >
+    status = 'planned' means DataNepal intends to cover the topic and holds no
+    data for it yet. The site must not present a planned topic as populated.

@@ -77,13 +77,28 @@ seeds:
         currency_code: VARCHAR
         price_basis: VARCHAR
 
+    topics:
+      +column_types:
+        name_ne: VARCHAR
+        sort_order: INTEGER
+
     indicators:
       +column_types:
+        topic_id: VARCHAR
+        short_name_en: VARCHAR
         is_additive: BOOLEAN
         name_ne: VARCHAR
 
+    organisations:
+      +column_types:
+        name_ne: VARCHAR
+        default_licence_id: VARCHAR
+        notes: VARCHAR
+
     datasets:
       +column_types:
+        acquisition_url: VARCHAR
+        time_coverage: VARCHAR
         artifact_url: VARCHAR
         licence_statement_url: VARCHAR
         methodology_url: VARCHAR

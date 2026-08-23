@@ -295,3 +295,96 @@ export function Sources({
     </Section>
   );
 }
+
+/* -------------------------------------------------------- section jump nav */
+
+/**
+ * In-page navigation for a place's sections.
+ *
+ * Anchors, not tabs. Tabs would need client JavaScript, hide content from
+ * search engines, and break deep linking — and on a static site with SEO as the
+ * primary discovery path, all three matter. Anchors give a keyboard-navigable
+ * jump list, work with no script, and let a reader link to a specific section.
+ *
+ * Only sections that actually have data are listed. A place page offering an
+ * "Economy" jump link that lands on nothing is worse than not offering it.
+ */
+export function SectionNav({
+  sections,
+}: {
+  sections: { id: string; label: string }[];
+}) {
+  if (sections.length < 2) return null;
+  return (
+    <nav aria-label="On this page" className="border-line mb-10 border-y py-2.5">
+      <ul className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[13px]">
+        {sections.map((s) => (
+          <li key={s.id}>
+            <a
+              href={`#${s.id}`}
+              className="text-ink-soft hover:text-ink no-underline hover:underline"
+            >
+              {s.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
+/* --------------------------------------------------------------- KPI strip */
+
+/**
+ * A row of place facts, separated by rules rather than boxed into cards.
+ *
+ * "Not every statistic needs a rounded card." Rules and alignment read as a
+ * table of facts, which is what this is; the same numbers in cards read as a
+ * dashboard.
+ */
+export function FactStrip({
+  facts,
+}: {
+  facts: { label: string; value: string; sub?: string | null }[];
+}) {
+  // Two columns on mobile, five on desktop. Vertical rules appear only at `lg`
+  // where the row is genuinely one line -- on a wrapping grid an odd number of
+  // facts leaves the last item with a divider beside empty space. Below `lg`
+  // separation comes from row rules and the grid gap, which also keeps every
+  // label on a consistent left edge.
+  return (
+    <dl className="border-line divide-line mb-10 grid grid-cols-2 gap-x-6 gap-y-5 border-y py-5 lg:grid-cols-5 lg:gap-x-0 lg:gap-y-0 lg:divide-x lg:py-6">
+      {facts.map((f) => (
+        <div key={f.label} className="lg:px-5 lg:first:pl-0">
+          <dt className="text-label text-ink-faint uppercase">{f.label}</dt>
+          <dd className="text-ink tabular mt-1.5 text-[1.35rem] leading-none font-semibold tracking-[-0.02em] sm:text-[1.4rem]">
+            {f.value}
+          </dd>
+          {f.sub && <dd className="text-ink-faint mt-1.5 text-[12px]">{f.sub}</dd>}
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+/** A section that can be linked to from SectionNav. */
+export function AnchoredSection({
+  id,
+  title,
+  note,
+  children,
+}: {
+  id: string;
+  title: string;
+  note?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section id={id} className="mb-14 scroll-mt-20">
+      <h2 className="text-heading text-ink font-semibold">{title}</h2>
+      {note && <p className="text-ink-faint mt-1 mb-5 text-[13px]">{note}</p>}
+      {!note && <div className="mb-5" />}
+      {children}
+    </section>
+  );
+}

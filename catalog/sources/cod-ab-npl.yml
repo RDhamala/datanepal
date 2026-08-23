@@ -1,24 +1,35 @@
 dataset_id: cod-ab-npl
 title: Nepal — Subnational Administrative Boundaries
-description: >
-  OCHA Common Operational Dataset for administrative boundaries. Admin levels
+description: 'OCHA Common Operational Dataset for administrative boundaries. Admin levels
   0–3 with hierarchical P-codes, areas, centroids, and boundary geometry.
-publisher: OCHA Field Information Services Section
-publisher_url: https://www.unocha.org
+
+  '
+publisher_org_id: ocha
+acquired_from_org_id: hdx
+acquisition_method: aggregator_download
+source_tier: B
 url: https://data.humdata.org/dataset/cod-ab-npl
 licence_id: cc-by-igo-3.0
 licence_statement_url: https://data.humdata.org/dataset/cod-ab-npl
-retrieved: "2026-08-23"
-vintage: "2024"
+commercial_reuse: permitted_with_attribution
+rights_review_status: reviewed_ok
+retrieved: '2026-08-23'
+vintage: '2024'
+time_coverage: '2024'
+geographic_granularity: mixed
 update_frequency: irregular
 revises_published_values: true
+ingestion_difficulty: easy
 contains_personal_data: false
 caveats:
-  - >
-    P-codes are OCHA identifiers, not a Nepali government standard. They are
-    recorded as source identifiers against canonical places rather than used as
-    canonical identity.
-  - >
-    Models 775 units at admin level 3, of which 22 are protected areas rather
-    than local units. Excluding them gives Nepal's official 753.
-  - English names only; the source publishes no Nepali names.
+- 'P-codes are OCHA identifiers, not a Nepali government standard. They are recorded as source
+  identifiers against canonical places rather than used as canonical identity.
+
+  '
+- 'Models 775 units at admin level 3, of which 22 are protected areas rather than local units.
+  Excluding them gives Nepal''s official 753.
+
+  '
+- English names only; the source publishes no Nepali names.
+- Published by OCHA Field Information Services Section; DataNepal obtained this copy via the
+  hdx platform. Attribute the publisher, not the platform.

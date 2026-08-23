@@ -27,16 +27,28 @@ SEEDS_DIR = ROOT / "transform" / "seeds"
 DATASET_COLUMNS = [
     "dataset_id",
     "title",
-    "publisher",
+    # Publisher and acquisition source are separate questions: who produced the
+    # data, and where this copy came from. A single "source" field cannot answer
+    # either properly -- attribution belongs to the publisher, while ingestion
+    # fragility and freshness belong to the acquisition path.
+    "publisher_org_id",
+    "acquired_from_org_id",
+    "acquisition_method",
+    "source_tier",
     "url",
-    "artifact_url",
+    "acquisition_url",
     "licence_id",
     "licence_statement_url",
+    "commercial_reuse",
+    "rights_review_status",
     "retrieved",
     "vintage",
+    "time_coverage",
+    "geographic_granularity",
     "methodology_url",
     "update_frequency",
     "revises_published_values",
+    "ingestion_difficulty",
 ]
 
 TABLE_SOURCE_COLUMNS = ["table_name", "dataset_id"]
@@ -47,16 +59,24 @@ TABLE_SOURCE_COLUMNS = ["table_name", "dataset_id"]
 INTERNAL_DATASET = {
     "dataset_id": "datanepal-internal",
     "title": "DataNepal internal reference data",
-    "publisher": "DataNepal",
+    "publisher_org_id": "datanepal",
+    "acquired_from_org_id": "datanepal",
+    "acquisition_method": "manual_entry",
+    "source_tier": "A",
     "url": "https://github.com/RDhamala/datanepal",
-    "artifact_url": "",
+    "acquisition_url": "",
     "licence_id": "cc0-1.0",
     "licence_statement_url": "",
+    "commercial_reuse": "permitted",
+    "rights_review_status": "reviewed_ok",
     "retrieved": "",
     "vintage": "",
+    "time_coverage": "",
+    "geographic_granularity": "none",
     "methodology_url": "",
     "update_frequency": "irregular",
     "revises_published_values": "false",
+    "ingestion_difficulty": "trivial",
 }
 
 
@@ -83,6 +103,7 @@ def main() -> int:
     sources = load_yaml_dir(SOURCES_DIR)
     tables = load_yaml_dir(TABLES_DIR)
 
+    problems: list[str] = []
     dataset_rows = [INTERNAL_DATASET]
     for s in sources:
         row = {c: s.get(c, "") for c in DATASET_COLUMNS}
@@ -92,9 +113,23 @@ def main() -> int:
         ).lower()
         dataset_rows.append(row)
 
+    # Organisations referenced by datasets must exist in the registry, or
+    # provenance points at nothing.
+    orgs = set()
+    org_csv = SEEDS_DIR / "organisations.csv"
+    if org_csv.exists():
+        with org_csv.open() as handle:
+            orgs = {row["org_id"] for row in csv.DictReader(handle)}
+    for row in dataset_rows:
+        for field in ("publisher_org_id", "acquired_from_org_id"):
+            org = row.get(field)
+            if org and orgs and org not in orgs:
+                problems.append(
+                    f"{row['dataset_id']}: {field} '{org}' is not in organisations.csv"
+                )
+
     known = {r["dataset_id"] for r in dataset_rows}
     link_rows = []
-    problems = []
     for t in tables:
         for dataset_id in t.get("sources", []):
             if dataset_id not in known:

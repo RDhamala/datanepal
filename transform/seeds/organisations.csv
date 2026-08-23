@@ -1,0 +1,25 @@
+org_id,name_en,name_ne,org_type,jurisdiction,homepage,source_tier,default_licence_id,status,notes
+nso,National Statistics Office,राष्ट्रिय तथ्याङ्क कार्यालय,government_statistical_office,nepal,https://nsonepal.gov.np,A,gov-open,active,"Renamed from Central Bureau of Statistics (CBS) in 2022. Aggregator records still use the old name; both must resolve here."
+nrb,Nepal Rastra Bank,नेपाल राष्ट्र बैंक,central_bank,nepal,https://www.nrb.org.np,A,gov-open,active,"Monetary, financial and balance-of-payments authority. Publishes primarily as PDF; structured data sits behind a database UI."
+mof,Ministry of Finance,अर्थ मन्त्रालय,ministry,nepal,https://www.mof.gov.np,A,gov-open,active,Budget allocation and the Economic Survey. Budget is a plan; see FCGO for actuals.
+fcgo,Financial Comptroller General Office,महालेखा नियन्त्रक कार्यालय,government_agency,nepal,https://www.fcgo.gov.np,A,gov-open,active,Actual government revenue and expenditure. Distinct from MoF budget allocations.
+ecn,Election Commission Nepal,निर्वाचन आयोग नेपाल,constitutional_body,nepal,https://election.gov.np,A,gov-open,active,"Election results and candidate data. The voter-list application (voterlist.election.gov.np) is Disallow: / and holds personal data; not a source."
+cehrd,Center for Education and Human Resource Development,शिक्षा तथा मानव स्रोत विकास केन्द्र,government_agency,nepal,https://cehrd.gov.np,A,gov-open,active,School education statistics via IEMIS.
+dohs,Department of Health Services,स्वास्थ्य सेवा विभाग,government_agency,nepal,https://dohs.gov.np,A,gov-open,active,Health service statistics via HMIS/DHIS2.
+moald,Ministry of Agriculture and Livestock Development,कृषि तथा पशुपन्छी विकास मन्त्रालय,ministry,nepal,https://moald.gov.np,A,gov-open,active,Agricultural production statistics.
+dor,Department of Roads,सडक विभाग,government_agency,nepal,https://dor.gov.np,A,gov-open,active,Road network and condition data.
+nea,Nepal Electricity Authority,नेपाल विद्युत प्राधिकरण,state_enterprise,nepal,https://nea.org.np,A,gov-open,active,"Generation, transmission and distribution statistics."
+dhm,Department of Hydrology and Meteorology,जल तथा मौसम विज्ञान विभाग,government_agency,nepal,https://dhm.gov.np,A,gov-open,active,Climate and hydrological observations.
+ntb,Nepal Tourism Board,नेपाल पर्यटन बोर्ड,state_enterprise,nepal,https://ntb.gov.np,A,gov-open,active,Tourist arrival statistics.
+dofe,Department of Foreign Employment,वैदेशिक रोजगार विभाग,government_agency,nepal,https://dofe.gov.np,A,gov-open,active,Labour migration permits and destinations.
+worldbank,World Bank,,international_organisation,global,https://www.worldbank.org,B,cc-by-4.0,active,"Aggregator for Nepal macro data compiled largely from NRB and NSO. Authoritative as a publisher of the compiled series, not the primary collector."
+imf,International Monetary Fund,,international_organisation,global,https://www.imf.org,B,unknown,active,Macro and fiscal series. Reuse terms are more restrictive than the World Bank's; verify before publishing.
+unfpa,United Nations Population Fund,,international_organisation,global,https://www.unfpa.org,B,cc-by-igo-3.0,active,Produces the COD-PS subnational population estimates for Nepal.
+ocha,UN Office for the Coordination of Humanitarian Affairs,,international_organisation,global,https://www.unocha.org,B,cc-by-igo-3.0,active,Produces the COD administrative boundaries. P-codes are OCHA identifiers.
+who,World Health Organization,,international_organisation,global,https://www.who.int,B,cc-by-igo-3.0,active,Health indicators.
+fao,Food and Agriculture Organization,,international_organisation,global,https://www.fao.org,B,cc-by-igo-3.0,active,Agriculture and food security indicators.
+unesco,UNESCO Institute for Statistics,,international_organisation,global,https://uis.unesco.org,B,cc-by-igo-3.0,active,Education indicators.
+opendatanepal,Open Data Nepal,,civil_society,nepal,https://opendatanepal.com,C,unknown,active,"CKAN aggregator, 383 datasets via api.opendatanepal.com. An acquisition source, almost never the publisher. Per-dataset licences vary (cc-by, cc-by-sa, notspecified) despite a site-wide CC BY claim."
+hdx,Humanitarian Data Exchange,,platform,global,https://data.humdata.org,C,unknown,active,"CKAN platform operated by OCHA. An acquisition source; the publisher is whoever deposited the dataset."
+wikidata,Wikidata,,open_knowledge_base,global,https://www.wikidata.org,D,cc0-1.0,active,Community-maintained. Useful for bilingual names and identifier crosswalks; not authoritative.
+datanepal,DataNepal,तथ्याङ्क नेपाल,platform,nepal,https://datanepal.org,A,cc0-1.0,active,This platform. Publisher of derived reference tables such as crosswalks and canonical geography.

@@ -12,6 +12,7 @@
 import { describe, expect, it } from "vitest";
 import {
   AGE_BANDS,
+  asPercentValue,
   country,
   dimensionKey,
   formatCompact,
@@ -30,6 +31,11 @@ import {
   statusLabel,
   tablesFor,
   units,
+  topics,
+  liveTopics,
+  indicatorSlug,
+  indicatorBySlug,
+  comparisonFor,
 } from "./data";
 
 const LOCAL_TYPES = new Set([
@@ -354,10 +360,43 @@ describe("manifest — provenance and licensing", () => {
     expect(shareAlike.map((t) => t.table)).toEqual([]);
   });
 
-  it("names the publishers a reuser must attribute", () => {
+  it("attributes the publisher, never the acquisition platform", () => {
     const obs = manifest().tables.find((t) => t.table === "observations")!;
-    expect(obs.attribution).toContain("UNFPA");
+    // Full institutional names, resolved through the source registry, because
+    // that is what a citation needs.
+    expect(obs.attribution).toContain("United Nations Population Fund");
     expect(obs.attribution).toContain("World Bank");
+    // HDX is where the copy came from, not who produced it. Crediting the
+    // platform would misattribute the work.
+    expect(obs.attribution).not.toContain("Humanitarian Data Exchange");
+  });
+
+  it("records publisher and acquisition source separately", () => {
+    const cod = manifest().sources.find((s) => s.dataset_id === "cod-ps-npl")!;
+    expect(cod.publisher).toBe("United Nations Population Fund");
+    expect(cod.acquired_from).toBe("Humanitarian Data Exchange");
+    expect(cod.acquired_indirectly).toBe(true);
+    expect(cod.acquisition_method).toBe("aggregator_download");
+
+    // Where they coincide, the flag says so rather than pretending otherwise.
+    const wb = manifest().sources.find((s) => s.dataset_id === "worldbank-npl")!;
+    expect(wb.acquired_indirectly).toBe(false);
+    expect(wb.acquisition_method).toBe("official_api");
+  });
+
+  it("assigns every source a provenance tier", () => {
+    for (const s of manifest().sources) {
+      expect(["A", "B", "C", "D"], `${s.dataset_id} tier`).toContain(s.source_tier);
+    }
+  });
+
+  it("has reviewed reuse rights for every published source", () => {
+    // "Publicly accessible" is not "commercially reusable". An unreviewed
+    // source must not reach published tables.
+    for (const s of manifest().sources) {
+      expect(s.rights_review_status, `${s.dataset_id}`).not.toBe("not_reviewed");
+      expect(s.commercial_reuse, `${s.dataset_id}`).not.toBe("unclear");
+    }
   });
 
   it("publishes revision history", () => {
@@ -398,10 +437,98 @@ describe("formatting", () => {
     expect(statusLabel("suppressed")).toBe("withheld");
   });
 
+  it("converts shares for percent units without ambiguity", () => {
+    // A female share of 0.495 once rendered as "0.5%" on a live topic page,
+    // beside a correctly-multiplied "67.5%". Both looked plausible. The percent
+    // unit takes 0-100; formatPercent takes 0-1. Route shares through
+    // asPercentValue rather than remembering which is which.
+    expect(asPercentValue(0.495)).toBeCloseTo(49.5);
+    expect(asPercentValue(null)).toBe(0);
+    expect(asPercentValue(undefined)).toBe(0);
+    // formatPercent keeps the 0-1 convention.
+    expect(formatPercent(0.495)).toBe("49.5%");
+  });
+
+  it("renders a plausible female share for Nepal", async () => {
+    const np = await country();
+    const pop = await populationOf(np!);
+    const shown = asPercentValue(pop!.femaleShare);
+    // Any national sex ratio lands between 45 and 55 percent. A value near 0.5
+    // means the conversion was skipped.
+    expect(shown).toBeGreaterThan(45);
+    expect(shown).toBeLessThan(55);
+  });
+
   it("builds canonical dimension keys with members sorted", () => {
     expect(dimensionKey({ sex: "female", age_band: "0-4" })).toBe(
       "age_band=0-4|sex=female",
     );
     expect(dimensionKey({})).toBe("none");
+  });
+});
+
+describe("topics — the browse dimension", () => {
+  it("gives every indicator a topic", async () => {
+    const [inds, ts] = await Promise.all([indicators(), topics()]);
+    const known = new Set(ts.map((t) => t.topic_id));
+    const orphans = inds.filter((i) => !known.has(i.topic_id));
+    expect(orphans.map((i) => i.indicator_id)).toEqual([]);
+  });
+
+  it("only marks a topic live when it actually holds observations", async () => {
+    const live = await liveTopics();
+    expect(live.length).toBeGreaterThan(0);
+    for (const t of live) {
+      expect(t.observation_count, `${t.topic_id}`).toBeGreaterThan(0);
+      expect(t.indicator_count, `${t.topic_id}`).toBeGreaterThan(0);
+    }
+  });
+
+  it("counts planned topics without pretending they have data", async () => {
+    const all = await topics();
+    const planned = all.filter((t) => t.status === "planned");
+    expect(planned.length).toBeGreaterThan(0);
+    for (const t of planned) {
+      expect(t.observation_count, `${t.topic_id}`).toBe(0);
+    }
+  });
+
+  it("derives indicator slugs reversibly", async () => {
+    for (const i of await indicators()) {
+      const slug = indicatorSlug(i.indicator_id);
+      expect(slug).not.toContain("_");
+      const back = await indicatorBySlug(slug);
+      expect(back?.indicator_id).toBe(i.indicator_id);
+    }
+  });
+});
+
+describe("geographic comparison", () => {
+  it("ranks provinces by population and sums to the national total", async () => {
+    const cmp = await comparisonFor("population", "province");
+    expect(cmp.rows).toHaveLength(7);
+    // Descending, so a ranked chart needs no further sorting.
+    const values = cmp.rows.map((r) => r.value);
+    expect([...values].sort((a, b) => b - a)).toEqual(values);
+
+    const np = await country();
+    const pop = await populationOf(np!);
+    const summed = values.reduce((a, b) => a + b, 0);
+    expect(summed).toBe(pop!.total);
+  });
+
+  it("returns nothing for an indicator with no subnational breakdown", async () => {
+    // National inflation has no province values. Returning an empty result lets
+    // the page omit the section rather than render an empty heading.
+    const cmp = await comparisonFor("cpi_inflation_annual", "province");
+    expect(cmp.rows).toEqual([]);
+  });
+
+  it("excludes dimension components so a comparison cannot double count", async () => {
+    const cmp = await comparisonFor("population", "district");
+    expect(cmp.rows).toHaveLength(77);
+    const np = await country();
+    const pop = await populationOf(np!);
+    expect(cmp.rows.reduce((a, r) => a + r.value, 0)).toBe(pop!.total);
   });
 });

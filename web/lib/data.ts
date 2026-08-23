@@ -56,13 +56,27 @@ export type Observation = {
 export type Indicator = {
   indicator_id: string;
   dataset_id: string;
+  topic_id: string;
   name_en: string;
   name_ne: string | null;
+  short_name_en: string | null;
   definition: string | null;
   default_unit_id: string;
   value_type: string;
   is_additive: boolean;
   notes: string | null;
+};
+
+export type Topic = {
+  topic_id: string;
+  name_en: string;
+  name_ne: string | null;
+  slug: string;
+  description: string | null;
+  sort_order: number;
+  status: "live" | "planned";
+  indicator_count: number;
+  observation_count: number;
 };
 
 export type Unit = {
@@ -95,12 +109,31 @@ export type PublishedTable = {
 export type SourceDataset = {
   dataset_id: string;
   title: string;
+
+  // Who produced the data. Attribution follows this, never the acquisition path.
   publisher: string;
+  publisher_org_id: string;
+  publisher_name_ne: string | null;
+  publisher_homepage: string | null;
+  source_tier: "A" | "B" | "C" | "D" | null;
+
+  // Where DataNepal obtained this copy. Drives freshness and fragility, not
+  // attribution.
+  acquired_from: string;
+  acquired_from_org_id: string;
+  acquisition_method: string | null;
+  acquisition_url: string | null;
+  acquired_indirectly: boolean;
+
   url: string;
   licence: string;
   licence_statement_url: string | null;
+  commercial_reuse: string | null;
+  rights_review_status: string | null;
   retrieved: string;
   vintage: string;
+  time_coverage: string | null;
+  geographic_granularity: string | null;
   methodology_url: string | null;
   update_frequency: string | null;
   revises_published_values: boolean;
@@ -170,6 +203,82 @@ export const places = () => table<Place>("places.parquet");
 export const observations = () => table<Observation>("observations.parquet");
 export const indicators = () => table<Indicator>("indicators.parquet");
 export const units = () => table<Unit>("units.parquet");
+export const topics = () => table<Topic>("topics.parquet");
+
+/** Topics that actually hold data. A planned topic must not render as populated. */
+export async function liveTopics(): Promise<Topic[]> {
+  return (await topics()).filter((t) => t.status === "live" && t.observation_count > 0);
+}
+
+export async function topicBySlug(slug: string): Promise<Topic | undefined> {
+  return (await topics()).find((t) => t.slug === slug);
+}
+
+export async function indicatorsOfTopic(topicId: string): Promise<Indicator[]> {
+  return (await indicators())
+    .filter((i) => i.topic_id === topicId)
+    .sort((a, b) => a.name_en.localeCompare(b.name_en));
+}
+
+/** Slug for an indicator page. Derived, not stored, so it cannot drift. */
+export function indicatorSlug(indicatorId: string): string {
+  return indicatorId.replace(/_/g, "-");
+}
+
+export async function indicatorBySlug(slug: string): Promise<Indicator | undefined> {
+  return (await indicators()).find((i) => indicatorSlug(i.indicator_id) === slug);
+}
+
+/**
+ * One indicator across every place that reports it, for the latest period.
+ *
+ * This is the shape a geographic comparison needs: ranked values with names
+ * attached. Returns the period so the caller can label it rather than guess.
+ */
+export async function comparisonFor(
+  indicatorId: string,
+  placeType: string,
+): Promise<{
+  period: number;
+  unit: Unit | undefined;
+  rows: { place: Place; value: number }[];
+}> {
+  const [obs, all, us, inds] = await Promise.all([
+    observations(),
+    places(),
+    units(),
+    indicators(),
+  ]);
+  const byId = new Map(all.map((p) => [p.place_id, p]));
+  const indicator = inds.find((i) => i.indicator_id === indicatorId);
+
+  const relevant = obs.filter(
+    (o) =>
+      o.indicator_id === indicatorId &&
+      o.value_numeric !== null &&
+      o.place_id !== null &&
+      byId.get(o.place_id)?.place_type === placeType &&
+      // Totals only. Summing across dimension members would double count.
+      (o.dimension_key === "none" ||
+        o.dimension_key === dimensionKey({ sex: "all", age_band: "all" })),
+  );
+  if (!relevant.length) {
+    return { period: 0, unit: undefined, rows: [] };
+  }
+
+  const period = Math.max(...relevant.map((o) => Number(o.period_start.slice(0, 4))));
+  const rows = relevant
+    .filter((o) => o.period_start.startsWith(String(period)))
+    .map((o) => ({ place: byId.get(o.place_id!)!, value: o.value_numeric! }))
+    .filter((r) => r.place)
+    .sort((a, b) => b.value - a.value);
+
+  return {
+    period,
+    unit: us.find((u) => u.unit_id === indicator?.default_unit_id),
+    rows,
+  };
+}
 
 let _manifest: Manifest | null = null;
 export function manifest(): Manifest {
@@ -373,15 +482,68 @@ export function formatNumber(n: number | null | undefined): string {
   return nf.format(Math.round(n));
 }
 
+/**
+ * Convert a 0-1 share into the 0-100 value a `percent` unit expects.
+ *
+ * This exists because the two conventions coexist and mixing them is silent:
+ * a female share of 0.495 rendered through a percent unit came out as "0.5%"
+ * on a live page, next to a correctly-multiplied "67.5%". Both looked
+ * plausible. Always route a share through here rather than remembering to
+ * multiply.
+ */
+export function asPercentValue(share: number | null | undefined): number {
+  if (share === null || share === undefined || Number.isNaN(share)) return 0;
+  return share * 100;
+}
+
 export function formatPercent(x: number | null | undefined, dp = 1): string {
   if (x === null || x === undefined || Number.isNaN(x)) return "—";
   return `${(x * 100).toFixed(dp)}%`;
 }
 
+/**
+ * Short form for axis labels and tiles.
+ *
+ * The `String(n)` fallback this replaces rendered raw floats onto chart axes --
+ * an inflation tick came out as "2.7159265358979" and got clipped to garbage.
+ * Axis labels need a bounded number of characters, always.
+ */
 export function formatCompact(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n % 1_000_000 ? 1 : 0)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(n % 1_000 && n < 10_000 ? 1 : 0)}k`;
-  return String(n);
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000) return `${(n / 1_000_000).toFixed(abs % 1_000_000 ? 1 : 0)}M`;
+  if (abs >= 1_000)
+    return `${(n / 1_000).toFixed(abs % 1_000 && abs < 10_000 ? 1 : 0)}k`;
+  if (abs >= 100) return n.toFixed(0);
+  if (abs >= 10) return n.toFixed(abs % 1 ? 1 : 0);
+  if (abs === 0) return "0";
+  return n.toFixed(1);
+}
+
+/**
+ * Change between the first and last point of a series, as a signed string.
+ *
+ * Rendered next to a headline figure because "what is it" and "which way is it
+ * going" are the same question for a reader. Percentage-point change for rates,
+ * percent change for levels -- conflating those is a classic statistical error.
+ */
+export function formatChange(
+  from: number,
+  to: number,
+  unit?: Unit,
+): { text: string; direction: "up" | "down" | "flat" } | null {
+  if (!Number.isFinite(from) || !Number.isFinite(to) || from === 0) return null;
+  const direction = to > from ? "up" : to < from ? "down" : "flat";
+
+  if (unit?.unit_kind === "ratio") {
+    // A rate moving from 5% to 7% rose by 2 percentage points, not by 40%.
+    const pp = to - from;
+    return { text: `${pp >= 0 ? "+" : ""}${pp.toFixed(1)} pp`, direction };
+  }
+  const pct = ((to - from) / Math.abs(from)) * 100;
+  return {
+    text: `${pct >= 0 ? "+" : ""}${pct.toFixed(pct >= 10 ? 0 : 1)}%`,
+    direction,
+  };
 }
 
 /** Render a value with its unit, respecting currency and percentage forms. */

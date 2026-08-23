@@ -2,29 +2,43 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
+  comparisonFor,
+  country,
   districtsOf,
+  formatCompact,
   formatNumber,
   formatPercent,
+  indicatorSlug,
+  localUnitsOf,
   placeBySlug,
   populationOf,
   provinces,
   sourcesFor,
+  statusLabel,
   tablesFor,
 } from "@/lib/data";
 import { AgePyramid } from "@/components/AgePyramid";
+import { RankedBars } from "@/components/charts";
 import {
-  Callout,
-  Cell,
+  AnchoredSection,
   Crumbs,
-  DataTable,
+  FactStrip,
   PageHeader,
-  Pcode,
-  Row,
-  Section,
+  SectionNav,
   Sources,
-  Tile,
-  TileRow,
 } from "@/components/ui";
+
+/*
+  Province page: a concise cross-topic overview, not a population report.
+
+  Sections are driven by what data exists. Economy, government, elections,
+  education and health are all architecturally ready and none has provincial
+  data yet, so none of their headings appear. An empty section reads as a broken
+  page; a missing section reads as scope.
+
+  The one honest statement we do make about absence is at the bottom, where we
+  name what is not yet covered rather than leaving a reader guessing.
+*/
 
 type Params = { province: string };
 
@@ -45,7 +59,7 @@ export async function generateMetadata({
   return {
     title: `${place.name_en} Province`,
     description: pop
-      ? `${place.name_en} Province, Nepal: population ${formatNumber(pop.total)} (${pop.period}), ${districts.length} districts, ${formatNumber(place.area_sqkm)} km².`
+      ? `${place.name_en} Province, Nepal: population ${formatNumber(pop.total)} (${pop.period} projection), ${districts.length} districts, ${formatNumber(place.area_sqkm)} km².`
       : `${place.name_en} Province, Nepal.`,
   };
 }
@@ -55,18 +69,42 @@ export default async function ProvincePage({ params }: { params: Promise<Params>
   const place = await placeBySlug("province", province);
   if (!place) notFound();
 
-  const pop = await populationOf(place);
-  const districts = await Promise.all(
-    (await districtsOf(place.place_id)).map(async (d) => ({
-      place: d,
-      pop: await populationOf(d),
-    })),
-  );
-  districts.sort((a, b) => (b.pop?.total ?? 0) - (a.pop?.total ?? 0));
+  const [pop, districtList, np] = await Promise.all([
+    populationOf(place),
+    districtsOf(place.place_id),
+    country(),
+  ]);
+  const national = np ? await populationOf(np) : null;
+  const share =
+    pop && national && national.total > 0 ? pop.total / national.total : null;
+
+  // District comparison within this province only.
+  const allDistricts = await comparisonFor("population", "district");
+  const own = new Set(districtList.map((d) => d.place_id));
+  const districtRows = allDistricts.rows.filter((r) => own.has(r.place.place_id));
+
+  const localUnits = (
+    await Promise.all(districtList.map((d) => localUnitsOf(d.place_id)))
+  ).flat();
+
+  const sections = [
+    { id: "population", label: "Population" },
+    ...(pop && pop.bands.length ? [{ id: "age-sex", label: "Age & sex" }] : []),
+    ...(districtRows.length ? [{ id: "districts", label: "Districts" }] : []),
+    { id: "sources", label: "Sources" },
+  ];
+
+  const tables = tablesFor(["observations", "places"]);
 
   return (
     <>
-      <Crumbs trail={[{ href: "/", label: "Nepal" }, { label: place.name_en }]} />
+      <Crumbs
+        trail={[
+          { href: "/", label: "Nepal" },
+          { href: "/places/", label: "Places" },
+          { label: place.name_en },
+        ]}
+      />
 
       <PageHeader
         eyebrow="Province"
@@ -74,94 +112,136 @@ export default async function ProvincePage({ params }: { params: Promise<Params>
         native={place.name_ne}
         meta={
           <>
-            <Pcode code={place.ocha_pcode ?? place.place_id} /> · {districts.length}{" "}
-            districts
+            {districtList.length} districts · {localUnits.length} local governments ·
+            P-code <code className="font-mono">{place.ocha_pcode}</code>
           </>
         }
       />
 
-      {pop && (
-        <TileRow>
-          <Tile
-            label="Population"
-            value={formatNumber(pop.total)}
-            sub={`${pop.period} projection`}
-          />
-          <Tile
-            label="Female"
-            value={formatNumber(pop.female)}
-            sub={formatPercent(pop.femaleShare)}
-            accent="series-1"
-          />
-          <Tile
-            label="Male"
-            value={formatNumber(pop.male)}
-            sub={formatPercent(1 - (pop.femaleShare ?? 0))}
-            accent="series-2"
-          />
-          <Tile label="Area" value={formatNumber(place.area_sqkm)} sub="km²" />
-          {pop.density !== null && (
-            <Tile label="Density" value={formatNumber(pop.density)} sub="per km²" />
-          )}
-          {pop.workingAgeShare !== null && (
-            <Tile
-              label="Working age"
-              value={formatPercent(pop.workingAgeShare, 0)}
-              sub="aged 15–64"
-            />
-          )}
-        </TileRow>
-      )}
+      <FactStrip
+        facts={[
+          {
+            label: "Population",
+            value: pop ? formatCompact(pop.total) : "—",
+            sub: pop ? `${pop.period} ${statusLabel(pop.status) ?? ""} · UNFPA` : null,
+          },
+          {
+            label: "Area",
+            value: `${formatNumber(place.area_sqkm)}`,
+            sub: "km²",
+          },
+          {
+            label: "Density",
+            value: pop?.density ? formatNumber(pop.density) : "—",
+            sub: "people per km²",
+          },
+          {
+            label: "Share of Nepal",
+            value: share ? formatPercent(share) : "—",
+            sub: "by population",
+          },
+          {
+            label: "Working age",
+            value: pop?.workingAgeShare ? formatPercent(pop.workingAgeShare, 0) : "—",
+            sub: "aged 15–64",
+          },
+        ]}
+      />
+
+      <SectionNav sections={sections} />
 
       {pop && (
-        <Callout>
-          Population is a {pop.period}{" "}
-          {pop.status === "projection" ? "projection" : pop.status}, not a census count.
-          Nepal&rsquo;s most recent census was 2021.
-        </Callout>
+        <AnchoredSection
+          id="population"
+          title="Population"
+          note={`${pop.period} projection from UNFPA. Nepal's most recent census was 2021.`}
+        >
+          <div className="grid gap-8 sm:grid-cols-3">
+            <div>
+              <div className="text-label text-ink-faint uppercase">Total</div>
+              <div className="text-ink tabular mt-1 text-[1.75rem] leading-none font-semibold">
+                {formatNumber(pop.total)}
+              </div>
+            </div>
+            <div>
+              <div className="text-label text-ink-faint flex items-center gap-1.5 uppercase">
+                <span aria-hidden className="bg-series-1 size-2 rounded-[2px]" />
+                Female
+              </div>
+              <div className="text-ink tabular mt-1 text-[1.75rem] leading-none font-semibold">
+                {formatNumber(pop.female)}
+              </div>
+              <div className="text-ink-faint mt-1 text-[12px]">
+                {formatPercent(pop.femaleShare)}
+              </div>
+            </div>
+            <div>
+              <div className="text-label text-ink-faint flex items-center gap-1.5 uppercase">
+                <span aria-hidden className="bg-series-2 size-2 rounded-[2px]" />
+                Male
+              </div>
+              <div className="text-ink tabular mt-1 text-[1.75rem] leading-none font-semibold">
+                {formatNumber(pop.male)}
+              </div>
+              <div className="text-ink-faint mt-1 text-[12px]">
+                {formatPercent(1 - (pop.femaleShare ?? 0))}
+              </div>
+            </div>
+          </div>
+          <p className="mt-6 text-[13px]">
+            <Link href={`/indicators/${indicatorSlug("population")}/`}>
+              Population indicator, all places →
+            </Link>
+          </p>
+        </AnchoredSection>
       )}
 
       {pop && pop.bands.length > 0 && (
-        <Section
-          title="Population by age and sex"
+        <AnchoredSection
+          id="age-sex"
+          title="Age and sex structure"
           note="Five-year age bands. Both sides share one scale, so bar lengths are directly comparable."
         >
           <AgePyramid bands={pop.bands} period={pop.period} />
-        </Section>
+        </AnchoredSection>
       )}
 
-      <Section title="Districts" note="Ordered by population.">
-        <DataTable
-          columns={[
-            { label: "District" },
-            { label: "Population", numeric: true },
-            { label: "Female", numeric: true },
-            { label: "Male", numeric: true },
-            { label: "Area km²", numeric: true },
-            { label: "Density", numeric: true },
-          ]}
+      {districtRows.length > 0 && (
+        <AnchoredSection
+          id="districts"
+          title="Districts by population"
+          note={`${districtRows.length} districts, ${allDistricts.period}.`}
         >
-          {districts.map(({ place: d, pop: p }) => (
-            <Row key={d.place_id}>
-              <Cell strong>
-                <Link href={`/np/${place.slug}/${d.slug}/`}>{d.name_en}</Link>
-              </Cell>
-              <Cell numeric strong>
-                {formatNumber(p?.total)}
-              </Cell>
-              <Cell numeric>{formatNumber(p?.female)}</Cell>
-              <Cell numeric>{formatNumber(p?.male)}</Cell>
-              <Cell numeric>{formatNumber(d.area_sqkm)}</Cell>
-              <Cell numeric>{formatNumber(p?.density)}</Cell>
-            </Row>
-          ))}
-        </DataTable>
-      </Section>
+          <RankedBars
+            label={`Districts of ${place.name_en} by population, ${allDistricts.period}`}
+            valueLabel="Population"
+            unit={allDistricts.unit}
+            rows={districtRows.map((r) => ({
+              name: r.place.name_en,
+              nameNe: r.place.name_ne,
+              href: `/np/${place.slug}/${r.place.slug}/`,
+              value: r.value,
+            }))}
+          />
+        </AnchoredSection>
+      )}
 
-      <Sources
-        tables={tablesFor(["observations", "places"])}
-        sources={sourcesFor(tablesFor(["observations", "places"]))}
-      />
+      {/* Naming what is absent, rather than leaving a reader to wonder. */}
+      <AnchoredSection
+        id="coverage"
+        title="Not yet covered"
+        note="Architecturally supported, no provincial data published yet."
+      >
+        <p className="text-ink-soft max-w-2xl text-[13px]">
+          Economy · Government &amp; budgets · Elections · Education · Health ·
+          Agriculture · Infrastructure. See <Link href="/topics/">topics</Link> for what
+          is available now.
+        </p>
+      </AnchoredSection>
+
+      <div id="sources" className="scroll-mt-20">
+        <Sources tables={tables} sources={sourcesFor(tables)} />
+      </div>
     </>
   );
 }
