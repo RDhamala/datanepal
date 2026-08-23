@@ -149,12 +149,9 @@ export function Choropleth({
   const width = Math.round((height - PAD * 2) * (spanX / spanY)) + PAD * 2;
   // Pixels per Mercator unit. Named for what it is rather than "scale", which
   // now belongs to the colour-classing prop.
-  const pxPerUnit = Math.min(
-    (width - PAD * 2) / spanX,
-    (height - PAD * 2) / spanY,
-  );
-  const offsetX = PAD + ((width - PAD * 2) - spanX * pxPerUnit) / 2;
-  const offsetY = PAD + ((height - PAD * 2) - spanY * pxPerUnit) / 2;
+  const pxPerUnit = Math.min((width - PAD * 2) / spanX, (height - PAD * 2) / spanY);
+  const offsetX = PAD + (width - PAD * 2 - spanX * pxPerUnit) / 2;
+  const offsetY = PAD + (height - PAD * 2 - spanY * pxPerUnit) / 2;
 
   const project = (lon: number, lat: number): [number, number] => [
     offsetX + (mercatorX(lon) - minX) * pxPerUnit,
@@ -166,13 +163,14 @@ export function Choropleth({
     polygons
       .map((poly) =>
         poly
-          .map((ring) =>
-            ring
-              .map(([lon, lat], i) => {
-                const [x, y] = project(lon, lat);
-                return `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`;
-              })
-              .join(" ") + "Z",
+          .map(
+            (ring) =>
+              ring
+                .map(([lon, lat], i) => {
+                  const [x, y] = project(lon, lat);
+                  return `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`;
+                })
+                .join(" ") + "Z",
           )
           .join(" "),
       )
@@ -195,9 +193,7 @@ export function Choropleth({
   const sortedValues = [...values].sort((a, b) => a - b);
   const breaks: number[] =
     scale === "quantile" && sortedValues.length >= 5
-      ? [1, 2, 3, 4].map(
-          (k) => sortedValues[Math.floor((k / 5) * sortedValues.length)],
-        )
+      ? [1, 2, 3, 4].map((k) => sortedValues[Math.floor((k / 5) * sortedValues.length)])
       : [1, 2, 3, 4].map((k) => lo + ((hi - lo) * k) / 5);
 
   const bin = (v: number | null): number => {
@@ -362,10 +358,16 @@ export function Choropleth({
             <caption className="sr-only">{label}</caption>
             <thead className="bg-surface-raised sticky top-0">
               <tr className="border-line border-b">
-                <th scope="col" className="text-label text-ink-faint px-3 py-2 text-left uppercase">
+                <th
+                  scope="col"
+                  className="text-label text-ink-faint px-3 py-2 text-left uppercase"
+                >
                   Area
                 </th>
-                <th scope="col" className="text-label text-ink-faint px-3 py-2 text-right uppercase">
+                <th
+                  scope="col"
+                  className="text-label text-ink-faint px-3 py-2 text-right uppercase"
+                >
                   {valueLabel}
                 </th>
               </tr>
@@ -375,7 +377,9 @@ export function Choropleth({
                 <tr key={f.placeId} className="border-line border-b last:border-0">
                   <td className="px-3 py-1.5">
                     <Link href={f.href}>{f.name}</Link>
-                    {f.nameNe && <span className="text-ink-faint ne"> · {f.nameNe}</span>}
+                    {f.nameNe && (
+                      <span className="text-ink-faint ne"> · {f.nameNe}</span>
+                    )}
                   </td>
                   <td className="text-ink tabular px-3 py-1.5 text-right">
                     {f.value === null ? "—" : formatNumber(f.value)}

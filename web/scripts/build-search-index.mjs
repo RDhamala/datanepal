@@ -60,7 +60,9 @@ const [places, topics, indicators, manifest] = await Promise.all([
   read("places.parquet"),
   read("topics.parquet"),
   read("indicators.parquet"),
-  Promise.resolve(JSON.parse(fs.readFileSync(path.join(DIST, "manifest.json"), "utf8"))),
+  Promise.resolve(
+    JSON.parse(fs.readFileSync(path.join(DIST, "manifest.json"), "utf8")),
+  ),
 ]);
 
 const byId = new Map(places.map((p) => [p.place_id, p]));

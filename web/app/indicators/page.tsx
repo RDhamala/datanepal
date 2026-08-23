@@ -18,7 +18,8 @@ import { Crumbs, PageHeader } from "@/components/ui";
 
 export const metadata: Metadata = {
   title: "Indicators",
-  description: "Every statistic published by DataNepal, with its latest value and source.",
+  description:
+    "Every statistic published by DataNepal, with its latest value and source.",
 };
 
 /*
@@ -120,13 +121,18 @@ export default async function IndicatorsIndex() {
 
             <ul className="divide-line border-line mt-4 divide-y border-t">
               {byTopic.get(t.topic_id)!.map((i) => {
-                const s = series.find((x) => x.indicator.indicator_id === i.indicator_id);
+                const s = series.find(
+                  (x) => x.indicator.indicator_id === i.indicator_id,
+                );
                 const unit = unitOf(i.default_unit_id);
                 // Population is the one indicator whose national figure comes
                 // from the age/sex cube rather than a plain series.
                 const value =
                   i.indicator_id === "population" && pop
-                    ? { text: formatWithUnit(pop.total, unit), period: String(pop.period) }
+                    ? {
+                        text: formatWithUnit(pop.total, unit),
+                        period: String(pop.period),
+                      }
                     : s?.latest
                       ? {
                           text: formatWithUnit(s.latest.value, s.unit),
@@ -134,7 +140,9 @@ export default async function IndicatorsIndex() {
                         }
                       : null;
                 const status =
-                  i.indicator_id === "population" && pop ? statusLabel(pop.status) : null;
+                  i.indicator_id === "population" && pop
+                    ? statusLabel(pop.status)
+                    : null;
 
                 return (
                   <li

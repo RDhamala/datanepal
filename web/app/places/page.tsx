@@ -79,12 +79,7 @@ export default async function PlacesIndex() {
   // observations is in the list because this page shows population figures.
   // Citing the boundary publisher but not the population publisher would be an
   // attribution gap, not a shorter citation.
-  const tables = tablesFor([
-    "places",
-    "geography",
-    "place_boundaries",
-    "observations",
-  ]);
+  const tables = tablesFor(["places", "geography", "place_boundaries", "observations"]);
 
   return (
     <>
@@ -206,15 +201,14 @@ export default async function PlacesIndex() {
 
       <Section title="How places are identified">
         <p className="text-ink-soft max-w-prose text-[14px] leading-relaxed">
-          Every place carries its OCHA P-code, which is hierarchical — a
-          child&rsquo;s code is prefixed by its parent&rsquo;s. Twenty-two
-          local-unit names are shared
+          Every place carries its OCHA P-code, which is hierarchical — a child&rsquo;s
+          code is prefixed by its parent&rsquo;s. Twenty-two local-unit names are shared
           across districts, so URLs are hierarchical too:{" "}
           <code className="bg-surface-sunken rounded px-1.5 py-0.5 font-mono text-[12px]">
             /np/bagmati/kathmandu/
           </code>
-          . Local units are the 753 municipalities and rural municipalities;
-          protected areas are federally administered and excluded from that count.
+          . Local units are the 753 municipalities and rural municipalities; protected
+          areas are federally administered and excluded from that count.
         </p>
       </Section>
 

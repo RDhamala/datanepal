@@ -13,7 +13,8 @@
     "test": "vitest run",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run typecheck && npm run lint && npm run test"
+    "check": "npm run typecheck && npm run lint && npm run format:ci && npm run test",
+    "format:ci": "prettier --check \"app/**/*.tsx\" \"components/**/*.tsx\" \"lib/**/*.ts\""
   },
   "dependencies": {
     "hyparquet": "^1.29.1",

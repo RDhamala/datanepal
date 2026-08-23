@@ -248,7 +248,9 @@ export async function mapFor(
     .filter((g) => g.place_type === placeType)
     .map((g) => {
       const place = byId.get(g.place_id);
-      const parent = place?.parent_place_id ? byId.get(place.parent_place_id) : undefined;
+      const parent = place?.parent_place_id
+        ? byId.get(place.parent_place_id)
+        : undefined;
       // Province pages live at /np/<slug>/, districts at /np/<province>/<slug>/.
       const href =
         placeType === "province"

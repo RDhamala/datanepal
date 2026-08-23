@@ -129,14 +129,14 @@ export default async function Home() {
             reference period, and when we retrieved it.
           </p>
           <div className="mt-8 max-w-2xl">
-          <Search
-            size="large"
-            placeholder="Search places, indicators, datasets…"
-            examples={["Kathmandu", "inflation", "Dhanusa", "population"]}
-          />
-        </div>
+            <Search
+              size="large"
+              placeholder="Search places, indicators, datasets…"
+              examples={["Kathmandu", "inflation", "Dhanusa", "population"]}
+            />
+          </div>
 
-        <p className="mt-7 flex flex-wrap gap-x-5 gap-y-2 text-[14px]">
+          <p className="mt-7 flex flex-wrap gap-x-5 gap-y-2 text-[14px]">
             <Link href="/places/">Explore places</Link>
             <Link href="/topics/">Browse topics</Link>
             <Link href="/datasets/">Dataset catalogue</Link>
@@ -287,9 +287,7 @@ export default async function Home() {
                 )}
                 {h && (
                   <div className="mt-3">
-                    <div className="text-label text-ink-faint uppercase">
-                      {h.label}
-                    </div>
+                    <div className="text-label text-ink-faint uppercase">{h.label}</div>
                     <div className="text-ink tabular mt-1 text-[1.5rem] leading-none font-semibold tracking-[-0.025em]">
                       {h.value}
                     </div>
@@ -393,10 +391,10 @@ export default async function Home() {
           {updates.totalRevised === 0
             ? "none revised since first publication"
             : `${formatNumber(updates.totalRevised)} revised since first publication`}
-          . Superseded values are kept with the date they were replaced, so a
-          figure cited from this site can always be reconstructed. Reference
-          datasets — administrative boundaries and place names — hold no
-          observations and so do not appear above; they are listed in full in the{" "}
+          . Superseded values are kept with the date they were replaced, so a figure
+          cited from this site can always be reconstructed. Reference datasets —
+          administrative boundaries and place names — hold no observations and so do not
+          appear above; they are listed in full in the{" "}
           <Link href="/datasets/">dataset catalogue</Link>.
         </p>
       </Section>

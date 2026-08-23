@@ -258,7 +258,10 @@ export function SourceNote({
   // ordering is handled upstream; here we just need the set.
   const licences = [...new Set(sources.map((s) => s.licence))];
   const shareAlike = tables.some((t) => t.share_alike);
-  const retrieved = sources.map((s) => s.retrieved).sort().at(-1);
+  const retrieved = sources
+    .map((s) => s.retrieved)
+    .sort()
+    .at(-1);
 
   return (
     <section aria-labelledby="sources-note" className="border-line mt-16 border-t pt-8">
@@ -266,7 +269,7 @@ export function SourceNote({
         Sources &amp; methodology
       </h2>
 
-      <p className="max-w-prose text-ink-soft text-[13px] leading-relaxed">
+      <p className="text-ink-soft max-w-prose text-[13px] leading-relaxed">
         {sources.map((s, i) => (
           <span key={s.dataset_id}>
             {i > 0 && " · "}
@@ -278,13 +281,11 @@ export function SourceNote({
         ))}
       </p>
 
-      <p className="max-w-prose text-ink-faint mt-2 text-[13px] leading-relaxed">
+      <p className="text-ink-faint mt-2 max-w-prose text-[13px] leading-relaxed">
         Reusable under {licences.map(licenceLabel).join(" and ")} with attribution
         {shareAlike && ", and share-alike terms apply"}.
         {retrieved && ` Retrieved ${retrieved}.`}{" "}
-        <Link href="/datasets/">
-          Full metadata, caveats and revision history →
-        </Link>
+        <Link href="/datasets/">Full metadata, caveats and revision history →</Link>
       </p>
 
       <div className="mt-5 flex flex-wrap items-center gap-2">

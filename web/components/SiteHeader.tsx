@@ -41,7 +41,10 @@ export function SiteHeader() {
           </span>
         </Link>
 
-        <nav aria-label="Main" className="order-3 w-full lg:order-none lg:ml-auto lg:w-auto">
+        <nav
+          aria-label="Main"
+          className="order-3 w-full lg:order-none lg:ml-auto lg:w-auto"
+        >
           <ul className="flex flex-wrap items-center gap-x-6 gap-y-1 text-[13px]">
             {NAV.map((item) => (
               <li key={item.href}>

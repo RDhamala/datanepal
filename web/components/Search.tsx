@@ -69,11 +69,7 @@ const MAX_RESULTS = 10;
   Latin or guess at romanisation — a wrong guess is worse than a visible gap.
 */
 function fold(s: string): string {
-  return s
-    .normalize("NFC")
-    .toLowerCase()
-    .replace(/ँ/g, "ं")
-    .replace(/[‌‍]/g, "");
+  return s.normalize("NFC").toLowerCase().replace(/ँ/g, "ं").replace(/[‌‍]/g, "");
 }
 
 /** An index entry with its folded search fields precomputed once at load. */
@@ -129,14 +125,15 @@ export function Search({
   };
 
   const q = fold(query.trim());
-  const results: Indexed[] = !q || !index
-    ? []
-    : index
-        .map((e) => ({ e, s: score(e, q) }))
-        .filter((r): r is { e: Indexed; s: number } => r.s !== null)
-        .sort((a, b) => a.s - b.s || a.e.t.length - b.e.t.length)
-        .slice(0, MAX_RESULTS)
-        .map((r) => r.e);
+  const results: Indexed[] =
+    !q || !index
+      ? []
+      : index
+          .map((e) => ({ e, s: score(e, q) }))
+          .filter((r): r is { e: Indexed; s: number } => r.s !== null)
+          .sort((a, b) => a.s - b.s || a.e.t.length - b.e.t.length)
+          .slice(0, MAX_RESULTS)
+          .map((r) => r.e);
 
   useEffect(() => setActive(0), [query]);
 
