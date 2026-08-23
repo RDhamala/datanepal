@@ -1,17 +1,12 @@
 /**
  * Build-time data access.
  *
- * Reads the published **Parquet** from publish/dist/. This runs only during
+ * Reads the published Parquet from publish/dist/. Runs only during
  * `next build` -- nothing here reaches the browser.
  *
- * Parquet rather than JSON on purpose. JSON was fine at 4,590 observations and
- * breaks at ward scale: 6,743 wards x indicators x years is comfortably over a
- * million rows, where observations.json becomes hundreds of megabytes and the
- * build dies parsing it. Parquet is columnar and roughly 40x smaller here.
- *
+ * Parquet rather than JSON: JSON was fine at 4,590 observations and breaks at
+ * ward scale, where a million-plus rows becomes hundreds of megabytes to parse.
  * hyparquet is pure JavaScript, so there is no native binding to fail in CI.
- * If query pushdown ever matters -- filtering a large table without reading it
- * all -- swap to DuckDB; the interface below would not change.
  */
 
 import fs from "node:fs";
@@ -20,74 +15,132 @@ import { asyncBufferFromFile, parquetReadObjects } from "hyparquet";
 
 const DIST = path.join(process.cwd(), "..", "publish", "dist");
 
+/* ------------------------------------------------------------------- types */
+
 export type Place = {
-  place_pcode: string;
-  admin_level: number;
+  place_id: string;
   place_type: string;
+  admin_level: number | null;
   name_en: string;
   name_ne: string | null;
-  parent_pcode: string | null;
+  slug: string;
+  parent_place_id: string | null;
+  parent_name_en: string | null;
+  parent_slug: string | null;
+  ocha_pcode: string | null;
   area_sqkm: number | null;
   center_lat: number | null;
   center_lon: number | null;
-  slug: string;
-  parent_name_en: string | null;
-  parent_slug: string | null;
 };
 
 export type Observation = {
-  place_pcode: string;
-  place_name_en: string;
-  place_name_ne: string | null;
-  place_type: string;
-  admin_level: number;
-  indicator_code: string;
-  period: number;
-  sex: "all" | "female" | "male";
-  age_band: string;
-  value: number;
-  unit: string;
-  source_id: string;
+  observation_id: string;
+  dataset_id: string;
+  indicator_id: string;
+  place_id: string | null;
+  period_start: string;
+  period_end: string;
+  period_type: string;
+  value_numeric: number | null;
+  value_text: string | null;
+  unit_id: string;
+  status: string;
+  /**
+   * Canonical fingerprint of the dimension set, e.g. `age_band=all|sex=female`,
+   * or `none`. Members are sorted, so the key is stable and can be matched
+   * directly -- which is why a page never has to join observation_dimensions.
+   */
+  dimension_key: string;
 };
 
-export type Dataset = {
+export type Indicator = {
+  indicator_id: string;
+  dataset_id: string;
+  name_en: string;
+  name_ne: string | null;
+  definition: string | null;
+  default_unit_id: string;
+  value_type: string;
+  is_additive: boolean;
+  notes: string | null;
+};
+
+export type Unit = {
+  unit_id: string;
+  unit_kind: string;
+  symbol: string | null;
+  name_en: string;
+  currency_code: string | null;
+  price_basis: string | null;
+};
+
+export type PublishedTable = {
   table: string;
   title: string;
+  title_ne: string | null;
   description: string | null;
-  source: { name: string; url: string; accessed?: string } | null;
-  licence: string | null;
-  vintage: string | null;
+  grain: string | null;
+  sources: string[];
+  effective_licence: string;
+  share_alike: boolean;
+  contributing_licences: string[];
+  attribution: string[];
+  caveats: string[];
   row_count: number;
   parquet: string | null;
   json: string | null;
   bytes: number;
 };
 
-export type Manifest = {
-  generated_at: string;
-  dataset_count: number;
-  datasets: Dataset[];
+export type SourceDataset = {
+  dataset_id: string;
+  title: string;
+  publisher: string;
+  url: string;
+  licence: string;
+  licence_statement_url: string | null;
+  retrieved: string;
+  vintage: string;
+  methodology_url: string | null;
+  update_frequency: string | null;
+  revises_published_values: boolean;
+  caveats: string[];
 };
 
+export type Manifest = {
+  generated_at: string;
+  table_count: number;
+  tables: PublishedTable[];
+  history: { table: string; row_count: number; parquet: string } | null;
+  sources: SourceDataset[];
+};
+
+/* -------------------------------------------------------------- parquet io */
+
 /**
- * Parquet BIGINT columns arrive as JavaScript BigInt, which throws the moment
- * it meets a plain number ("Cannot mix BigInt and other types"). Coerce once
- * here rather than at every arithmetic site downstream.
+ * Normalise values coming out of Parquet.
  *
- * Safe for this data: the largest value is Nepal's population, ~31 million,
- * five orders of magnitude below Number.MAX_SAFE_INTEGER. Guard anyway, so a
- * future counter in the quadrillions fails loudly instead of silently losing
- * precision.
+ * Two traps, both silent:
+ *
+ * BIGINT arrives as JavaScript BigInt, which throws on contact with a plain
+ * number ("Cannot mix BigInt and other types"). At least that one is loud.
+ *
+ * DATE arrives as a JavaScript Date at UTC midnight, which in any negative-UTC
+ * offset renders as the *previous day* in local time. `1965-01-01` becomes
+ * `Thu Dec 31 1964 18:00:00 GMT-0600`, so `.getFullYear()` returns 1964. Every
+ * year in every time series would be off by one, only for developers west of
+ * Greenwich, and nothing would error. Convert to an ISO date string using UTC
+ * components so the value means what the warehouse said it meant.
  */
-function coerceBigInts(row: Record<string, unknown>): Record<string, unknown> {
+function normaliseRow(row: Record<string, unknown>): Record<string, unknown> {
   for (const [key, value] of Object.entries(row)) {
     if (typeof value === "bigint") {
       if (value > BigInt(Number.MAX_SAFE_INTEGER)) {
-        throw new Error(
-          `${key} exceeds Number.MAX_SAFE_INTEGER (${value}); handle it as BigInt`,
-        );
+        throw new Error(`${key} exceeds Number.MAX_SAFE_INTEGER (${value})`);
       }
       row[key] = Number(value);
+    } else if (value instanceof Date) {
+      row[key] = value.toISOString().slice(0, 10);
     }
   }
   return row;
@@ -101,74 +154,82 @@ async function readParquet<T>(file: string): Promise<T[]> {
     );
   }
   const rows = await parquetReadObjects({ file: await asyncBufferFromFile(full) });
-  return rows.map((r) => coerceBigInts(r as Record<string, unknown>)) as T[];
+  return rows.map((r) => normaliseRow(r as Record<string, unknown>)) as T[];
 }
 
-// Read once per build. 838 places x 84 pages is a lot of redundant parsing
-// otherwise, and Next renders pages concurrently -- so cache the promise, not
-// the value, or concurrent callers each start their own read.
-let _places: Promise<Place[]> | null = null;
-let _observations: Promise<Observation[]> | null = null;
+// Cache the promise, not the value: Next renders pages concurrently, so caching
+// the value lets several callers each start their own read.
+const cache = new Map<string, Promise<unknown[]>>();
+
+function table<T>(file: string): Promise<T[]> {
+  if (!cache.has(file)) cache.set(file, readParquet<T>(file));
+  return cache.get(file) as Promise<T[]>;
+}
+
+export const places = () => table<Place>("places.parquet");
+export const observations = () => table<Observation>("observations.parquet");
+export const indicators = () => table<Indicator>("indicators.parquet");
+export const units = () => table<Unit>("units.parquet");
+
 let _manifest: Manifest | null = null;
-
-export function places(): Promise<Place[]> {
-  return (_places ??= readParquet<Place>("places.parquet"));
-}
-
-export function observations(): Promise<Observation[]> {
-  return (_observations ??= readParquet<Observation>("observations.parquet"));
-}
-
 export function manifest(): Manifest {
   if (_manifest) return _manifest;
   const full = path.join(DIST, "manifest.json");
-  if (!fs.existsSync(full)) {
-    throw new Error("Missing manifest.json in publish/dist.");
-  }
+  if (!fs.existsSync(full)) throw new Error("Missing manifest.json in publish/dist.");
   return (_manifest = JSON.parse(fs.readFileSync(full, "utf8")) as Manifest);
 }
 
 /* ------------------------------------------------------------------ places */
 
+export async function country(): Promise<Place | undefined> {
+  return (await places()).find((p) => p.place_type === "country");
+}
+
 export async function provinces(): Promise<Place[]> {
   return (await places())
-    .filter((p) => p.admin_level === 1)
+    .filter((p) => p.place_type === "province")
     .sort((a, b) => a.name_en.localeCompare(b.name_en));
 }
 
-export async function districtsOf(provincePcode: string): Promise<Place[]> {
+export async function childrenOf(placeId: string, type?: string): Promise<Place[]> {
   return (await places())
-    .filter((p) => p.admin_level === 2 && p.parent_pcode === provincePcode)
+    .filter((p) => p.parent_place_id === placeId && (!type || p.place_type === type))
     .sort((a, b) => a.name_en.localeCompare(b.name_en));
 }
 
-export async function localUnitsOf(districtPcode: string): Promise<Place[]> {
+export async function districtsOf(provinceId: string): Promise<Place[]> {
+  return childrenOf(provinceId, "district");
+}
+
+/** Local units under a district: the four municipality types, not protected areas. */
+export async function localUnitsOf(districtId: string): Promise<Place[]> {
+  const LOCAL = new Set([
+    "metropolitan",
+    "sub_metropolitan",
+    "municipality",
+    "rural_municipality",
+  ]);
   return (await places())
-    .filter((p) => p.admin_level === 3 && p.parent_pcode === districtPcode)
+    .filter((p) => p.parent_place_id === districtId && LOCAL.has(p.place_type))
     .sort((a, b) => a.name_en.localeCompare(b.name_en));
 }
 
 export async function placeBySlug(
-  level: number,
+  type: string | string[],
   slug: string,
-  parentPcode?: string,
+  parentPlaceId?: string,
 ): Promise<Place | undefined> {
+  const types = new Set(Array.isArray(type) ? type : [type]);
   return (await places()).find(
     (p) =>
-      p.admin_level === level &&
+      types.has(p.place_type) &&
       p.slug === slug &&
-      (parentPcode === undefined || p.parent_pcode === parentPcode),
+      (parentPlaceId === undefined || p.parent_place_id === parentPlaceId),
   );
-}
-
-export async function country(): Promise<Place | undefined> {
-  return (await places()).find((p) => p.admin_level === 0);
 }
 
 /* ------------------------------------------------------------ observations */
 
-// Explicit order: '80+' sorts before '5-9' lexically, and a pyramid with its
-// bands out of sequence is not merely ugly, it is wrong.
 export const AGE_BANDS = [
   "0-4",
   "5-9",
@@ -189,50 +250,58 @@ export const AGE_BANDS = [
   "80+",
 ];
 
+/** Build a canonical dimension key. Members must be sorted, as the pipeline does. */
+export function dimensionKey(members: Record<string, string>): string {
+  const parts = Object.entries(members).map(([d, m]) => `${d}=${m}`);
+  if (!parts.length) return "none";
+  return parts.sort().join("|");
+}
+
 export type PopulationSummary = {
   period: number;
+  status: string;
   total: number;
   female: number;
   male: number;
-  /** Female share of the total, 0-1. Null when the total is zero. */
   femaleShare: number | null;
-  /** Persons per square kilometre. Null when area is unknown. */
   density: number | null;
-  /** Share of the working-age population, 15-64. Null when the total is zero. */
   workingAgeShare: number | null;
   bands: { band: string; female: number; male: number }[];
 };
 
 export async function populationOf(place: Place): Promise<PopulationSummary | null> {
   const rows = (await observations()).filter(
-    (o) => o.place_pcode === place.place_pcode && o.indicator_code === "population",
+    (o) => o.place_id === place.place_id && o.indicator_id === "population",
   );
   if (!rows.length) return null;
 
-  const period = Math.max(...rows.map((r) => r.period));
-  const current = rows.filter((r) => r.period === period);
-  const pick = (sex: Observation["sex"], band: string) =>
-    current.find((r) => r.sex === sex && r.age_band === band)?.value ?? 0;
+  const period = Math.max(...rows.map((r) => Number(r.period_start.slice(0, 4))));
+  const current = rows.filter((r) => r.period_start.startsWith(String(period)));
 
-  const total = pick("all", "all");
-  const female = pick("female", "all");
-  const male = pick("male", "all");
+  const at = (sex: string, band: string) =>
+    current.find((r) => r.dimension_key === dimensionKey({ sex, age_band: band }))
+      ?.value_numeric ?? 0;
+
+  const total = at("all", "all");
+  const female = at("female", "all");
+  const male = at("male", "all");
 
   const bands = AGE_BANDS.map((band) => ({
     band,
-    female: pick("female", band),
-    male: pick("male", band),
+    female: at("female", band),
+    male: at("male", band),
   })).filter((b) => b.female > 0 || b.male > 0);
 
-  // 15-64 is the conventional working-age definition. Summed from the bands
-  // rather than taken from a total, because no such total is published.
-  const WORKING = AGE_BANDS.slice(3, 13); // 15-19 .. 60-64
+  const WORKING = new Set(AGE_BANDS.slice(3, 13)); // 15-19 .. 60-64
   const workingAge = bands
-    .filter((b) => WORKING.includes(b.band))
+    .filter((b) => WORKING.has(b.band))
     .reduce((sum, b) => sum + b.female + b.male, 0);
 
   return {
     period,
+    // Surfacing this is not cosmetic: presenting a projection as a census count
+    // is the error that destroys trust in a statistics site.
+    status: current[0]?.status ?? "actual",
     total,
     female,
     male,
@@ -241,6 +310,58 @@ export async function populationOf(place: Place): Promise<PopulationSummary | nu
     workingAgeShare: total > 0 ? workingAge / total : null,
     bands,
   };
+}
+
+export type SeriesPoint = { year: number; value: number; status: string };
+
+export type IndicatorSeries = {
+  indicator: Indicator;
+  unit: Unit | undefined;
+  points: SeriesPoint[];
+  latest: SeriesPoint | undefined;
+};
+
+/**
+ * Annual time series for a place, for indicators with no dimensional breakdown.
+ *
+ * This path exists because of the World Bank data: a national series with no
+ * geography below country, no dimensions, and units that include currency. The
+ * previous schema could not express it, and the fact that it needs no special
+ * handling here is the point of the redesign.
+ */
+export async function seriesFor(place: Place): Promise<IndicatorSeries[]> {
+  const [obs, inds, us] = await Promise.all([observations(), indicators(), units()]);
+  const byId = new Map(inds.map((i) => [i.indicator_id, i]));
+  const unitById = new Map(us.map((u) => [u.unit_id, u]));
+
+  const scalar = obs.filter(
+    (o) =>
+      o.place_id === place.place_id &&
+      o.dimension_key === "none" &&
+      o.value_numeric !== null,
+  );
+
+  const grouped = new Map<string, SeriesPoint[]>();
+  for (const o of scalar) {
+    const year = Number(o.period_start.slice(0, 4));
+    const list = grouped.get(o.indicator_id) ?? [];
+    list.push({ year, value: o.value_numeric!, status: o.status });
+    grouped.set(o.indicator_id, list);
+  }
+
+  return [...grouped.entries()]
+    .map(([indicatorId, points]) => {
+      points.sort((a, b) => a.year - b.year);
+      const indicator = byId.get(indicatorId)!;
+      return {
+        indicator,
+        unit: unitById.get(indicator?.default_unit_id),
+        points,
+        latest: points[points.length - 1],
+      };
+    })
+    .filter((s) => s.indicator)
+    .sort((a, b) => a.indicator.name_en.localeCompare(b.indicator.name_en));
 }
 
 /* --------------------------------------------------------------- formatting */
@@ -263,8 +384,47 @@ export function formatCompact(n: number): string {
   return String(n);
 }
 
-/** Datasets backing a page, for the provenance block. */
-export function datasetsFor(tables: string[]): Dataset[] {
-  const wanted = new Set(tables);
-  return manifest().datasets.filter((d) => wanted.has(d.table));
+/** Render a value with its unit, respecting currency and percentage forms. */
+export function formatWithUnit(value: number, unit: Unit | undefined): string {
+  if (!unit) return formatNumber(value);
+  switch (unit.unit_kind) {
+    case "ratio":
+      return `${value.toFixed(1)}${unit.symbol ?? "%"}`;
+    case "currency":
+      return `${unit.symbol ?? ""}${value >= 1000 ? formatCompact(value) : value.toFixed(2)}`;
+    default:
+      return formatNumber(value);
+  }
+}
+
+/** Human label for an observation status, or null when it needs no comment. */
+export function statusLabel(status: string): string | null {
+  switch (status) {
+    case "actual":
+      return null;
+    case "projection":
+      return "projection";
+    case "estimate":
+      return "estimate";
+    case "provisional":
+      return "provisional";
+    case "forecast":
+      return "forecast";
+    case "suppressed":
+      return "withheld";
+    case "not_collected":
+      return "not collected";
+    default:
+      return status;
+  }
+}
+
+export function tablesFor(names: string[]): PublishedTable[] {
+  const wanted = new Set(names);
+  return manifest().tables.filter((t) => wanted.has(t.table));
+}
+
+export function sourcesFor(tables: PublishedTable[]): SourceDataset[] {
+  const ids = new Set(tables.flatMap((t) => t.sources));
+  return manifest().sources.filter((s) => ids.has(s.dataset_id));
 }

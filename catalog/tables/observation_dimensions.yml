@@ -1,0 +1,12 @@
+table: observation_dimensions
+title: Observation dimension members
+description: >
+  Long-format dimension assignments for each observation. Joining this to
+  observations reconstructs the full key of a measurement.
+sources: [cod-ps-npl, worldbank-npl]
+grain: One row per (observation, dimension, member).
+geography_level: none
+caveats:
+  - >
+    An observation with no dimensions has no rows here. That is normal for
+    scalar indicators like national inflation.

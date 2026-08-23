@@ -25,8 +25,10 @@ jobs:
       - name: Lint
         run: .venv/bin/ruff check .
 
-      - name: Validate dataset catalog
-        run: .venv/bin/python -m tests.check_catalog
+      - name: Validate catalog and project it into seeds
+        run: |
+          .venv/bin/python -m tests.check_catalog
+          .venv/bin/python -m catalog.sync_seeds
 
       - name: Install dbt packages
         working-directory: transform
@@ -48,7 +50,16 @@ jobs:
         working-directory: transform
         run: ../.venv/bin/dbt build --profiles-dir .
 
-      - name: Export published datasets
+      - name: Fold into revision history
+        # Append-only. Runs before export so the published history includes this
+        # build. In CI the file is not committed back, so this exercises the fold
+        # rather than persisting it -- the scheduled refresh job is what commits.
+        run: .venv/bin/python -m publish.revisions
+
+      - name: Python tests
+        run: .venv/bin/python -m pytest -q
+
+      - name: Export published tables
         run: .venv/bin/python -m publish.export
 
       - name: Check published output

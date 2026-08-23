@@ -1,0 +1,10 @@
+table: indicators
+title: Indicators
+description: >
+  What each measured concept means, its default unit, and crucially whether it
+  is additive. Aggregating a non-additive indicator is the most common way to
+  produce a confidently wrong number, so the policy is data rather than
+  documentation.
+sources: [datanepal-internal]
+grain: One row per indicator.
+geography_level: none

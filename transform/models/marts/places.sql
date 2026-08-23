@@ -1,34 +1,49 @@
 {{ config(materialized = 'table') }}
 
 /*
-  Published place dimension: every addressable place in Nepal, all levels.
+  Published place dimension. Every place DataNepal can attach an observation to.
 
-  This is what generates the site's URLs, so it carries the slug. Slugs are
-  derived from the English name and are unique within a parent, which is what
-  makes the hierarchical URL scheme safe: 22 local-unit names are shared
-  nationally, but none collide inside the same district.
+  Carries the OCHA P-code as a convenience column because it is what most
+  consumers of Nepali data already hold -- but `place_id` is the key, and the
+  full identifier set lives in place_identifiers.
 */
 
-with base as (
+with places as (
+    select * from {{ ref('int_places') }}
+),
+
+slugs as (
     select
-        place_pcode,
-        admin_level,
-        place_type,
-        name_en,
-        name_ne,
-        parent_pcode,
-        area_sqkm,
-        center_lat,
-        center_lon,
-        -- Lowercase, non-alphanumerics to single hyphens, trimmed.
+        place_id,
         trim(both '-' from regexp_replace(lower(name_en), '[^a-z0-9]+', '-', 'g')) as slug
-    from {{ ref('int_places') }}
+    from places
 )
 
 select
-    b.*,
-    par.name_en as parent_name_en,
-    par.slug    as parent_slug
-from base b
-left join base par on b.parent_pcode = par.place_pcode
-order by b.admin_level, b.place_pcode
+    p.place_id,
+    p.place_type,
+    p.admin_level,
+    p.name_en,
+    p.name_ne,
+    s.slug,
+
+    p.parent_place_id,
+    par.name_en                as parent_name_en,
+    pslug.slug                 as parent_slug,
+
+    p.source_pcode             as ocha_pcode,
+
+    p.area_sqkm,
+    p.center_lat,
+    p.center_lon,
+
+    p.valid_from,
+    p.valid_to,
+    p.superseded_by_place_id,
+    p.dataset_id
+
+from places p
+join slugs s          on p.place_id = s.place_id
+left join places par  on p.parent_place_id = par.place_id
+left join slugs pslug on p.parent_place_id = pslug.place_id
+order by coalesce(p.admin_level, 9), p.source_pcode

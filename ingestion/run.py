@@ -19,6 +19,7 @@ import dlt
 from ingestion.sources.hdx_admin import hdx_admin_source
 from ingestion.sources.hdx_population import hdx_population_source
 from ingestion.sources.wikidata_names import wikidata_names_source
+from ingestion.sources.worldbank import worldbank_source
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -30,6 +31,7 @@ SOURCES = {
     "hdx_admin": hdx_admin_source,
     "hdx_population": hdx_population_source,
     "wikidata_names": wikidata_names_source,
+    "worldbank": worldbank_source,
 }
 
 

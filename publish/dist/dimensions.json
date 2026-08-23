@@ -1,0 +1,4 @@
+[
+	{"dimension_id":"sex","name_en":"Sex","name_ne":"लिङ्ग","description":"Sex as recorded by the source. 'all' is the total, not a third category.","is_hierarchical":false},
+	{"dimension_id":"age_band","name_en":"Age band","name_ne":"उमेर समूह","description":"Five-year age bands with an open-ended top band.","is_hierarchical":false}
+]

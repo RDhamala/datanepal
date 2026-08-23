@@ -1,0 +1,8 @@
+table: datasets
+title: Source datasets
+description: >
+  Every upstream dataset DataNepal draws on, with publisher, URL, licence,
+  retrieval date, and whether the publisher revises previously published values.
+sources: [datanepal-internal]
+grain: One row per source dataset.
+geography_level: none

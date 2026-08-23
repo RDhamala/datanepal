@@ -1,70 +1,424 @@
 {
-  "generated_at": "2026-08-23T05:20:52.361645+00:00",
-  "dataset_count": 4,
-  "datasets": [
+  "generated_at": "2026-08-23T15:46:54.411080+00:00",
+  "table_count": 13,
+  "tables": [
+    {
+      "table": "datasets",
+      "title": "Source datasets",
+      "title_ne": null,
+      "description": "Every upstream dataset DataNepal draws on, with publisher, URL, licence, retrieval date, and whether the publisher revises previously published values.",
+      "grain": "One row per source dataset.",
+      "geography_level": "none",
+      "sources": [
+        "datanepal-internal"
+      ],
+      "effective_licence": "cc0-1.0",
+      "share_alike": false,
+      "contributing_licences": [
+        "cc0-1.0"
+      ],
+      "attribution": [],
+      "caveats": [],
+      "row_count": 5,
+      "parquet": "datasets.parquet",
+      "json": "datasets.json",
+      "bytes": 3740
+    },
+    {
+      "table": "dimension_members",
+      "title": "Dimension members",
+      "title_ne": null,
+      "description": "The permitted values for each dimension, with bilingual labels and an optional parent for hierarchical dimensions such as budget categories. An observation may only use members declared here, which is what keeps extensible dimensions from becoming a free-text field.",
+      "grain": "One row per (dimension, member).",
+      "geography_level": "none",
+      "sources": [
+        "datanepal-internal"
+      ],
+      "effective_licence": "cc0-1.0",
+      "share_alike": false,
+      "contributing_licences": [
+        "cc0-1.0"
+      ],
+      "attribution": [],
+      "caveats": [],
+      "row_count": 21,
+      "parquet": "dimension_members.parquet",
+      "json": "dimension_members.json",
+      "bytes": 1554
+    },
+    {
+      "table": "dimensions",
+      "title": "Dimensions",
+      "title_ne": null,
+      "description": "The dimensions observations can be broken down by — sex and age band today, and whatever future datasets require. Adding a dataset adds rows here rather than columns to the fact table.",
+      "grain": "One row per dimension.",
+      "geography_level": "none",
+      "sources": [
+        "datanepal-internal"
+      ],
+      "effective_licence": "cc0-1.0",
+      "share_alike": false,
+      "contributing_licences": [
+        "cc0-1.0"
+      ],
+      "attribution": [],
+      "caveats": [],
+      "row_count": 2,
+      "parquet": "dimensions.parquet",
+      "json": "dimensions.json",
+      "bytes": 1160
+    },
     {
       "table": "geography",
       "title": "Nepal administrative geography",
-      "description": "Canonical province, district, and local unit (palika) reference table with stable P-codes and names. 753 local units across 77 districts and 7 provinces. This is the join key for every other dataset on the platform, and is published standalone because other projects need a canonical Nepal geography table and there is not a good public one.\n",
-      "source": {
-        "name": "OCHA Field Information Services Section (via Humanitarian Data Exchange)",
-        "url": "https://data.humdata.org/dataset/cod-ab-npl",
-        "accessed": "2026-08-23"
-      },
-      "licence": "CC BY-IGO",
-      "vintage": "2024",
+      "title_ne": "नेपालको प्रशासनिक भूगोल",
+      "description": "Convenience view of the 753 local units with their district and province lineage denormalised onto each row, for consumers who want one flat file rather than walking the parent chain in places.",
+      "grain": "One row per local unit.",
+      "geography_level": "municipality",
+      "sources": [
+        "cod-ab-npl",
+        "wikidata-np-places"
+      ],
+      "effective_licence": "cc-by-igo-3.0",
+      "share_alike": false,
+      "contributing_licences": [
+        "cc-by-igo-3.0",
+        "cc0-1.0"
+      ],
+      "attribution": [
+        "OCHA Field Information Services Section",
+        "Wikidata contributors"
+      ],
+      "caveats": [
+        "Excludes protected areas, which are not local units.",
+        "Derived from places; places is the canonical table."
+      ],
       "row_count": 753,
       "parquet": "geography.parquet",
       "json": "geography.json",
-      "bytes": 45893
+      "bytes": 53286
+    },
+    {
+      "table": "indicators",
+      "title": "Indicators",
+      "title_ne": null,
+      "description": "What each measured concept means, its default unit, and crucially whether it is additive. Aggregating a non-additive indicator is the most common way to produce a confidently wrong number, so the policy is data rather than documentation.",
+      "grain": "One row per indicator.",
+      "geography_level": "none",
+      "sources": [
+        "datanepal-internal"
+      ],
+      "effective_licence": "cc0-1.0",
+      "share_alike": false,
+      "contributing_licences": [
+        "cc0-1.0"
+      ],
+      "attribution": [],
+      "caveats": [],
+      "row_count": 5,
+      "parquet": "indicators.parquet",
+      "json": "indicators.json",
+      "bytes": 3307
+    },
+    {
+      "table": "licences",
+      "title": "Licences",
+      "title_ne": null,
+      "description": "Reuse terms, with share-alike and attribution flags recorded as booleans so licence compatibility can be tested mechanically rather than reasoned about.",
+      "grain": "One row per licence.",
+      "geography_level": "none",
+      "sources": [
+        "datanepal-internal"
+      ],
+      "effective_licence": "cc0-1.0",
+      "share_alike": false,
+      "contributing_licences": [
+        "cc0-1.0"
+      ],
+      "attribution": [],
+      "caveats": [],
+      "row_count": 7,
+      "parquet": "licences.parquet",
+      "json": "licences.json",
+      "bytes": 2596
+    },
+    {
+      "table": "observation_dimensions",
+      "title": "Observation dimension members",
+      "title_ne": null,
+      "description": "Long-format dimension assignments for each observation. Joining this to observations reconstructs the full key of a measurement.",
+      "grain": "One row per (observation, dimension, member).",
+      "geography_level": "none",
+      "sources": [
+        "cod-ps-npl",
+        "worldbank-npl"
+      ],
+      "effective_licence": "cc-by-igo-3.0",
+      "share_alike": false,
+      "contributing_licences": [
+        "cc-by-4.0",
+        "cc-by-igo-3.0"
+      ],
+      "attribution": [
+        "UNFPA",
+        "World Bank"
+      ],
+      "caveats": [
+        "An observation with no dimensions has no rows here. That is normal for scalar indicators like national inflation.\n"
+      ],
+      "row_count": 9180,
+      "parquet": "observation_dimensions.parquet",
+      "json": "observation_dimensions.json",
+      "bytes": 95882
     },
     {
       "table": "observations",
-      "title": "Nepal statistical observations",
-      "description": "The platform's canonical fact table. One row per measurement, keyed by place, indicator, period, and dimensions (sex, age band). Every dataset on the platform is published in this shape so that any indicator can be charted, compared, or downloaded without dataset-specific handling.\nCurrently contains population from COD-PS at country, province, and district level. Totals coexist with their components: rows with sex='all' or age_band='all' are totals, so filter rather than sum to avoid double counting.\n",
-      "source": {
-        "name": "UNFPA (via Humanitarian Data Exchange), OCHA Common Operational Dataset",
-        "url": "https://data.humdata.org/dataset/cod-ps-npl",
-        "accessed": "2026-08-23"
-      },
-      "licence": "CC BY-IGO",
-      "vintage": "2023",
-      "row_count": 4590,
+      "title": "Observations",
+      "title_ne": "अवलोकनहरू",
+      "description": "The canonical fact table. One row per measurement: an indicator, optionally a place, a period, a set of dimension members, and a value. Every dataset on the platform lands in this shape, which is what lets one component render any indicator without dataset-specific code.",
+      "grain": "One row per (dataset, indicator, place, period, dimension combination, revision). Only rows with is_current = true are the present truth.\n",
+      "geography_level": "mixed",
+      "sources": [
+        "cod-ps-npl",
+        "worldbank-npl"
+      ],
+      "effective_licence": "cc-by-igo-3.0",
+      "share_alike": false,
+      "contributing_licences": [
+        "cc-by-4.0",
+        "cc-by-igo-3.0"
+      ],
+      "attribution": [
+        "UNFPA",
+        "World Bank"
+      ],
+      "caveats": [
+        "Dimensions are not columns. They live in observation_dimensions, keyed by dimension_key, so a new dataset introduces dimension members rather than schema changes.\n",
+        "Totals coexist with their components -- population has sex='all' alongside 'female' and 'male'. Filter by dimension_key or dimension members; never sum blindly.\n",
+        "Check the indicator's is_additive flag before aggregating. Rates and ratios (inflation, GDP per capita, density) must not be summed or unweighted-averaged.\n",
+        "A NULL value with status 'suppressed' or 'not_collected' is meaningful and distinct from zero.\n"
+      ],
+      "row_count": 4781,
       "parquet": "observations.parquet",
       "json": "observations.json",
-      "bytes": 24891
+      "bytes": 110539
+    },
+    {
+      "table": "place_identifiers",
+      "title": "Place identifiers by source system",
+      "title_ne": null,
+      "description": "Maps external identifiers to DataNepal place_ids. This is the crosswalk layer that lets a source keyed on its own codes join the canonical geography without name matching.",
+      "grain": "One row per (place, identifier system, identifier value).",
+      "geography_level": "mixed",
+      "sources": [
+        "cod-ab-npl",
+        "wikidata-np-places"
+      ],
+      "effective_licence": "cc-by-igo-3.0",
+      "share_alike": false,
+      "contributing_licences": [
+        "cc-by-igo-3.0",
+        "cc0-1.0"
+      ],
+      "attribution": [
+        "OCHA Field Information Services Section",
+        "Wikidata contributors"
+      ],
+      "caveats": [
+        "Identifier values are unique within their system, not globally. Always qualify a lookup by id_system.\n"
+      ],
+      "row_count": 1351,
+      "parquet": "place_identifiers.parquet",
+      "json": "place_identifiers.json",
+      "bytes": 21355
     },
     {
       "table": "places",
       "title": "Nepal places",
-      "description": "Every addressable place in Nepal across all administrative levels: the country, 7 provinces, 77 districts, and 753 local units. Keyed by OCHA P-code, with URL slugs and parent references for hierarchical navigation.\nThis is the place dimension that the observations table joins against, and the table that generates the site's URLs.\n",
-      "source": {
-        "name": "OCHA Field Information Services Section (via Humanitarian Data Exchange)",
-        "url": "https://data.humdata.org/dataset/cod-ab-npl",
-        "accessed": "2026-08-23"
-      },
-      "licence": "CC BY-IGO",
-      "vintage": "2024",
-      "row_count": 838,
+      "title_ne": "नेपालका स्थानहरू",
+      "description": "Every place DataNepal can attach an observation to, across all types: country, provinces, districts, local units, and later wards, electoral constituencies, and protected areas. Keyed by a stable internal place_id with explicit parent relationships.",
+      "grain": "One row per place.",
+      "geography_level": "mixed",
+      "sources": [
+        "cod-ab-npl",
+        "wikidata-np-places"
+      ],
+      "effective_licence": "cc-by-igo-3.0",
+      "share_alike": false,
+      "contributing_licences": [
+        "cc-by-igo-3.0",
+        "cc0-1.0"
+      ],
+      "attribution": [
+        "OCHA Field Information Services Section",
+        "Wikidata contributors"
+      ],
+      "caveats": [
+        "place_id is a DataNepal surrogate, not a source code. Source identifiers (OCHA P-codes, Wikidata QIDs) live in place_identifiers so a place survives a source renumbering its codes.\n",
+        "Parent relationships are explicit foreign keys, not derived from P-code substrings. Substring nesting works for the administrative hierarchy and breaks for constituencies and protected areas.\n",
+        "Nepali names cover provinces (hand-verified) and ~66% of local units (Wikidata). Districts have none yet. NULL means no verified name exists; names are never transliterated.\n"
+      ],
+      "row_count": 860,
       "parquet": "places.parquet",
       "json": "places.json",
-      "bytes": 51469
+      "bytes": 65160
     },
     {
       "table": "protected_areas",
       "title": "Nepal protected areas",
-      "description": "National parks, wildlife reserves, hunting reserves, and conservation areas, as mapped in the OCHA Common Operational Dataset. One row per area-district intersection: several protected areas span multiple districts and are represented once per district.\nThese are deliberately excluded from the administrative geography dataset. They are federally administered and lie outside local-unit jurisdiction, so treating them as palikas would inflate per-unit denominators.\n",
-      "source": {
-        "name": "OCHA Field Information Services Section (via Humanitarian Data Exchange)",
-        "url": "https://data.humdata.org/dataset/cod-ab-npl",
-        "accessed": "2026-08-23"
-      },
-      "licence": "CC BY-IGO",
-      "vintage": "2024",
+      "title_ne": "नेपालका संरक्षित क्षेत्रहरू",
+      "description": "National parks, wildlife reserves, hunting reserves, and conservation areas. Federally administered and outside local-unit jurisdiction, so kept out of the administrative hierarchy.",
+      "grain": "One row per protected area and district it intersects.",
+      "geography_level": "mixed",
+      "sources": [
+        "cod-ab-npl"
+      ],
+      "effective_licence": "cc-by-igo-3.0",
+      "share_alike": false,
+      "contributing_licences": [
+        "cc-by-igo-3.0"
+      ],
+      "attribution": [
+        "OCHA Field Information Services Section"
+      ],
+      "caveats": [
+        "Several protected areas span districts and therefore appear more than once.\n",
+        "Identified by P-code type digit 5, which depends on OCHA's coding convention."
+      ],
       "row_count": 22,
       "parquet": "protected_areas.parquet",
       "json": "protected_areas.json",
-      "bytes": 1996
+      "bytes": 2873
+    },
+    {
+      "table": "table_sources",
+      "title": "Table-to-source links",
+      "title_ne": null,
+      "description": "Which source datasets each published table draws on. This is what makes the effective licence of a table computable rather than asserted.",
+      "grain": "One row per (published table, source dataset).",
+      "geography_level": "none",
+      "sources": [
+        "datanepal-internal"
+      ],
+      "effective_licence": "cc0-1.0",
+      "share_alike": false,
+      "contributing_licences": [
+        "cc0-1.0"
+      ],
+      "attribution": [],
+      "caveats": [],
+      "row_count": 18,
+      "parquet": "table_sources.parquet",
+      "json": "table_sources.json",
+      "bytes": 654
+    },
+    {
+      "table": "units",
+      "title": "Units of measure",
+      "title_ne": null,
+      "description": "Units, including currency and price basis. Currency and price basis are part of the unit rather than separate columns, so 'US dollars, current prices' and 'US dollars, constant 2015 prices' are distinct and never silently compared.",
+      "grain": "One row per unit.",
+      "geography_level": "none",
+      "sources": [
+        "datanepal-internal"
+      ],
+      "effective_licence": "cc0-1.0",
+      "share_alike": false,
+      "contributing_licences": [
+        "cc0-1.0"
+      ],
+      "attribution": [],
+      "caveats": [],
+      "row_count": 13,
+      "parquet": "units.parquet",
+      "json": "units.json",
+      "bytes": 1972
     }
-  ]
+  ],
+  "history": {
+    "table": "observation_history",
+    "title": "Observation revision history",
+    "description": "Append-only history of every published observation. One row per revision; is_current marks the present value. A superseded row keeps its original value and records when it was replaced.",
+    "row_count": 4781,
+    "parquet": "observation_history.parquet",
+    "bytes": 111505
+  },
+  "sources": [
+    {
+      "dataset_id": "cod-ab-npl",
+      "title": "Nepal — Subnational Administrative Boundaries",
+      "publisher": "OCHA Field Information Services Section",
+      "url": "https://data.humdata.org/dataset/cod-ab-npl",
+      "licence": "cc-by-igo-3.0",
+      "licence_statement_url": "https://data.humdata.org/dataset/cod-ab-npl",
+      "retrieved": "2026-08-23",
+      "vintage": "2024",
+      "methodology_url": null,
+      "update_frequency": "irregular",
+      "revises_published_values": true,
+      "caveats": [
+        "P-codes are OCHA identifiers, not a Nepali government standard. They are recorded as source identifiers against canonical places rather than used as canonical identity.\n",
+        "Models 775 units at admin level 3, of which 22 are protected areas rather than local units. Excluding them gives Nepal's official 753.\n",
+        "English names only; the source publishes no Nepali names."
+      ]
+    },
+    {
+      "dataset_id": "cod-ps-npl",
+      "title": "Nepal — Subnational Population Statistics",
+      "publisher": "UNFPA",
+      "url": "https://data.humdata.org/dataset/cod-ps-npl",
+      "licence": "cc-by-igo-3.0",
+      "licence_statement_url": "https://data.humdata.org/dataset/cod-ps-npl",
+      "retrieved": "2026-08-23",
+      "vintage": "2023",
+      "methodology_url": null,
+      "update_frequency": "annual",
+      "revises_published_values": true,
+      "caveats": [
+        "Figures for 2023 are projections, not census counts. Nepal's most recent census was 2021 (29,164,578). Never present projections as census results.\n",
+        "Coverage stops at district level; there is no local-unit breakdown.",
+        "The open-ended top age band is spelled '80Plus' in current files and '80PL' in others. Ingestion accepts both and asserts the measure count per place.\n"
+      ]
+    },
+    {
+      "dataset_id": "wikidata-np-places",
+      "title": "Wikidata — Nepal local units",
+      "publisher": "Wikidata contributors",
+      "url": "https://query.wikidata.org",
+      "licence": "cc0-1.0",
+      "licence_statement_url": "https://www.wikidata.org/wiki/Wikidata:Licensing",
+      "retrieved": "2026-08-23",
+      "vintage": "2026",
+      "methodology_url": null,
+      "update_frequency": "irregular",
+      "revises_published_values": false,
+      "caveats": [
+        "Chosen over OpenStreetMap on licensing grounds, not coverage. OSM carries Nepali names for ~55% of units but is ODbL, whose share-alike terms would propagate to every table this fed.\n",
+        "Covers ~66% of local units. Typing is inconsistent: metropolitan cities are often modelled as the city rather than the administrative unit.\n",
+        "Community-maintained, so names are not authoritative."
+      ]
+    },
+    {
+      "dataset_id": "worldbank-npl",
+      "title": "World Bank World Development Indicators — Nepal",
+      "publisher": "World Bank",
+      "url": "https://data.worldbank.org/country/nepal",
+      "licence": "cc-by-4.0",
+      "licence_statement_url": "https://datacatalog.worldbank.org/public-licenses",
+      "retrieved": "2026-08-23",
+      "vintage": "1960-2024",
+      "methodology_url": "https://datahelpdesk.worldbank.org/knowledgebase/articles/889392",
+      "update_frequency": "quarterly",
+      "revises_published_values": true,
+      "caveats": [
+        "The World Bank restates figures as national accounts are revised. The API exposes a lastupdated date per indicator, which is recorded as the publication date of each observation so revisions are traceable.\n",
+        "National level only. These are compiled from Nepali official statistics (largely NRB and the National Statistics Office); the World Bank is the aggregator, not the primary collector.\n",
+        "Inflation and per-capita figures are rates and ratios. They must never be summed or averaged across places or periods without weighting.\n"
+      ]
+    }
+  ],
+  "notes": {
+    "licensing": "Each table's effective_licence is computed from the sources it draws on, taking the most restrictive. DataNepal does not relicense upstream data; attribution requirements travel with it.",
+    "additivity": "Check the indicators table before aggregating. Rates, ratios, and per-capita measures are marked is_additive = false."
+  }
 }

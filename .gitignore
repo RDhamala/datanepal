@@ -52,3 +52,6 @@ web/.next/
 web/out/
 web/next-env.d.ts
 web/public/data/
+
+# Revision history IS committed -- it is the persistent state that makes value
+# changes traceable. Only the working copy of the warehouse is ignored.

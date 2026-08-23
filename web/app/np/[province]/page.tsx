@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
-  datasetsFor,
   districtsOf,
   formatNumber,
   formatPercent,
   placeBySlug,
   populationOf,
   provinces,
+  sourcesFor,
+  tablesFor,
 } from "@/lib/data";
 import { AgePyramid } from "@/components/AgePyramid";
 import {
@@ -37,10 +38,10 @@ export async function generateMetadata({
   params: Promise<Params>;
 }): Promise<Metadata> {
   const { province } = await params;
-  const place = await placeBySlug(1, province);
+  const place = await placeBySlug("province", province);
   if (!place) return {};
   const pop = await populationOf(place);
-  const districts = await districtsOf(place.place_pcode);
+  const districts = await districtsOf(place.place_id);
   return {
     title: `${place.name_en} Province`,
     description: pop
@@ -51,12 +52,12 @@ export async function generateMetadata({
 
 export default async function ProvincePage({ params }: { params: Promise<Params> }) {
   const { province } = await params;
-  const place = await placeBySlug(1, province);
+  const place = await placeBySlug("province", province);
   if (!place) notFound();
 
   const pop = await populationOf(place);
   const districts = await Promise.all(
-    (await districtsOf(place.place_pcode)).map(async (d) => ({
+    (await districtsOf(place.place_id)).map(async (d) => ({
       place: d,
       pop: await populationOf(d),
     })),
@@ -73,7 +74,8 @@ export default async function ProvincePage({ params }: { params: Promise<Params>
         native={place.name_ne}
         meta={
           <>
-            <Pcode code={place.place_pcode} /> · {districts.length} districts
+            <Pcode code={place.ocha_pcode ?? place.place_id} /> · {districts.length}{" "}
+            districts
           </>
         }
       />
@@ -113,7 +115,8 @@ export default async function ProvincePage({ params }: { params: Promise<Params>
 
       {pop && (
         <Callout>
-          Population figures are {pop.period} projections, not census counts.
+          Population is a {pop.period}{" "}
+          {pop.status === "projection" ? "projection" : pop.status}, not a census count.
           Nepal&rsquo;s most recent census was 2021.
         </Callout>
       )}
@@ -139,7 +142,7 @@ export default async function ProvincePage({ params }: { params: Promise<Params>
           ]}
         >
           {districts.map(({ place: d, pop: p }) => (
-            <Row key={d.place_pcode}>
+            <Row key={d.place_id}>
               <Cell strong>
                 <Link href={`/np/${place.slug}/${d.slug}/`}>{d.name_en}</Link>
               </Cell>
@@ -155,7 +158,10 @@ export default async function ProvincePage({ params }: { params: Promise<Params>
         </DataTable>
       </Section>
 
-      <Sources datasets={datasetsFor(["observations", "places"])} />
+      <Sources
+        tables={tablesFor(["observations", "places"])}
+        sources={sourcesFor(tablesFor(["observations", "places"]))}
+      />
     </>
   );
 }

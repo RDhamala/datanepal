@@ -35,10 +35,61 @@ models:
 seeds:
   datanepal:
     +schema: seeds
+
     np_provinces:
       +column_types:
         province_code: VARCHAR
         province_id: INTEGER
+
+    # Columns that are entirely empty get inferred as INTEGER, which then
+    # collides with VARCHAR in joins and COALESCE. Declare anything nullable.
+    place_id_overrides:
+      +column_types:
+        id_system: VARCHAR
+        id_value: VARCHAR
+        place_id: VARCHAR
+        reason: VARCHAR
+
+    dimension_members:
+      +column_types:
+        dimension_id: VARCHAR
+        member_id: VARCHAR
+        name_en: VARCHAR
+        name_ne: VARCHAR
+        sort_order: INTEGER
+        parent_member_id: VARCHAR
+
+    dimensions:
+      +column_types:
+        is_hierarchical: BOOLEAN
+
+    licences:
+      +column_types:
+        share_alike: BOOLEAN
+        attribution_required: BOOLEAN
+        commercial_ok: BOOLEAN
+        redistribution_ok: BOOLEAN
+        spdx_id: VARCHAR
+        url: VARCHAR
+
+    units:
+      +column_types:
+        currency_code: VARCHAR
+        price_basis: VARCHAR
+
+    indicators:
+      +column_types:
+        is_additive: BOOLEAN
+        name_ne: VARCHAR
+
+    datasets:
+      +column_types:
+        artifact_url: VARCHAR
+        licence_statement_url: VARCHAR
+        methodology_url: VARCHAR
+        retrieved: VARCHAR
+        vintage: VARCHAR
+        revises_published_values: BOOLEAN
 
 vars:
   # Nepal's federal restructuring took effect in 2017; geography before and

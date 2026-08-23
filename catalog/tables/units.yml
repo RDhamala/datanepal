@@ -1,0 +1,9 @@
+table: units
+title: Units of measure
+description: >
+  Units, including currency and price basis. Currency and price basis are part
+  of the unit rather than separate columns, so 'US dollars, current prices' and
+  'US dollars, constant 2015 prices' are distinct and never silently compared.
+sources: [datanepal-internal]
+grain: One row per unit.
+geography_level: none

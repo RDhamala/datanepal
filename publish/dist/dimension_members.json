@@ -1,0 +1,23 @@
+[
+	{"dimension_id":"sex","member_id":"all","name_en":"All","name_ne":"सबै","sort_order":0,"parent_member_id":null},
+	{"dimension_id":"sex","member_id":"female","name_en":"Female","name_ne":"महिला","sort_order":1,"parent_member_id":null},
+	{"dimension_id":"sex","member_id":"male","name_en":"Male","name_ne":"पुरुष","sort_order":2,"parent_member_id":null},
+	{"dimension_id":"age_band","member_id":"all","name_en":"All ages","name_ne":"सबै उमेर","sort_order":0,"parent_member_id":null},
+	{"dimension_id":"age_band","member_id":"0-4","name_en":"0–4","name_ne":"०–४","sort_order":1,"parent_member_id":null},
+	{"dimension_id":"age_band","member_id":"5-9","name_en":"5–9","name_ne":"५–९","sort_order":2,"parent_member_id":null},
+	{"dimension_id":"age_band","member_id":"10-14","name_en":"10–14","name_ne":"१०–१४","sort_order":3,"parent_member_id":null},
+	{"dimension_id":"age_band","member_id":"15-19","name_en":"15–19","name_ne":"१५–१९","sort_order":4,"parent_member_id":null},
+	{"dimension_id":"age_band","member_id":"20-24","name_en":"20–24","name_ne":"२०–२४","sort_order":5,"parent_member_id":null},
+	{"dimension_id":"age_band","member_id":"25-29","name_en":"25–29","name_ne":"२५–२९","sort_order":6,"parent_member_id":null},
+	{"dimension_id":"age_band","member_id":"30-34","name_en":"30–34","name_ne":"३०–३४","sort_order":7,"parent_member_id":null},
+	{"dimension_id":"age_band","member_id":"35-39","name_en":"35–39","name_ne":"३५–३९","sort_order":8,"parent_member_id":null},
+	{"dimension_id":"age_band","member_id":"40-44","name_en":"40–44","name_ne":"४०–४४","sort_order":9,"parent_member_id":null},
+	{"dimension_id":"age_band","member_id":"45-49","name_en":"45–49","name_ne":"४५–४९","sort_order":10,"parent_member_id":null},
+	{"dimension_id":"age_band","member_id":"50-54","name_en":"50–54","name_ne":"५०–५४","sort_order":11,"parent_member_id":null},
+	{"dimension_id":"age_band","member_id":"55-59","name_en":"55–59","name_ne":"५५–५९","sort_order":12,"parent_member_id":null},
+	{"dimension_id":"age_band","member_id":"60-64","name_en":"60–64","name_ne":"६०–६४","sort_order":13,"parent_member_id":null},
+	{"dimension_id":"age_band","member_id":"65-69","name_en":"65–69","name_ne":"६५–६९","sort_order":14,"parent_member_id":null},
+	{"dimension_id":"age_band","member_id":"70-74","name_en":"70–74","name_ne":"७०–७४","sort_order":15,"parent_member_id":null},
+	{"dimension_id":"age_band","member_id":"75-79","name_en":"75–79","name_ne":"७५–७९","sort_order":16,"parent_member_id":null},
+	{"dimension_id":"age_band","member_id":"80+","name_en":"80 and over","name_ne":"८० र माथि","sort_order":17,"parent_member_id":null}
+]

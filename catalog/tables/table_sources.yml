@@ -1,0 +1,8 @@
+table: table_sources
+title: Table-to-source links
+description: >
+  Which source datasets each published table draws on. This is what makes the
+  effective licence of a table computable rather than asserted.
+sources: [datanepal-internal]
+grain: One row per (published table, source dataset).
+geography_level: none

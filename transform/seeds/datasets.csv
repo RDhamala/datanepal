@@ -1,0 +1,6 @@
+dataset_id,title,publisher,url,artifact_url,licence_id,licence_statement_url,retrieved,vintage,methodology_url,update_frequency,revises_published_values
+datanepal-internal,DataNepal internal reference data,DataNepal,https://github.com/RDhamala/datanepal,,cc0-1.0,,,,,irregular,false
+cod-ab-npl,Nepal — Subnational Administrative Boundaries,OCHA Field Information Services Section,https://data.humdata.org/dataset/cod-ab-npl,,cc-by-igo-3.0,https://data.humdata.org/dataset/cod-ab-npl,2026-08-23,2024,,irregular,true
+cod-ps-npl,Nepal — Subnational Population Statistics,UNFPA,https://data.humdata.org/dataset/cod-ps-npl,,cc-by-igo-3.0,https://data.humdata.org/dataset/cod-ps-npl,2026-08-23,2023,,annual,true
+wikidata-np-places,Wikidata — Nepal local units,Wikidata contributors,https://query.wikidata.org,,cc0-1.0,https://www.wikidata.org/wiki/Wikidata:Licensing,2026-08-23,2026,,irregular,false
+worldbank-npl,World Bank World Development Indicators — Nepal,World Bank,https://data.worldbank.org/country/nepal,https://api.worldbank.org/v2/country/NPL/indicator/FP.CPI.TOTL.ZG?format=json,cc-by-4.0,https://datacatalog.worldbank.org/public-licenses,2026-08-23,1960-2024,https://datahelpdesk.worldbank.org/knowledgebase/articles/889392,quarterly,true

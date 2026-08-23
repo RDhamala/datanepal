@@ -1,0 +1,28 @@
+table: observations
+title: Observations
+title_ne: अवलोकनहरू
+description: >
+  The canonical fact table. One row per measurement: an indicator, optionally a
+  place, a period, a set of dimension members, and a value. Every dataset on the
+  platform lands in this shape, which is what lets one component render any
+  indicator without dataset-specific code.
+sources: [cod-ps-npl, worldbank-npl]
+grain: >
+  One row per (dataset, indicator, place, period, dimension combination,
+  revision). Only rows with is_current = true are the present truth.
+geography_level: mixed
+caveats:
+  - >
+    Dimensions are not columns. They live in observation_dimensions, keyed by
+    dimension_key, so a new dataset introduces dimension members rather than
+    schema changes.
+  - >
+    Totals coexist with their components -- population has sex='all' alongside
+    'female' and 'male'. Filter by dimension_key or dimension members; never sum
+    blindly.
+  - >
+    Check the indicator's is_additive flag before aggregating. Rates and ratios
+    (inflation, GDP per capita, density) must not be summed or unweighted-averaged.
+  - >
+    A NULL value with status 'suppressed' or 'not_collected' is meaningful and
+    distinct from zero.

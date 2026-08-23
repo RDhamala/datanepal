@@ -1,0 +1,14 @@
+table: protected_areas
+title: Nepal protected areas
+title_ne: नेपालका संरक्षित क्षेत्रहरू
+description: >
+  National parks, wildlife reserves, hunting reserves, and conservation areas.
+  Federally administered and outside local-unit jurisdiction, so kept out of the
+  administrative hierarchy.
+sources: [cod-ab-npl]
+grain: One row per protected area and district it intersects.
+geography_level: mixed
+caveats:
+  - >
+    Several protected areas span districts and therefore appear more than once.
+  - Identified by P-code type digit 5, which depends on OCHA's coding convention.

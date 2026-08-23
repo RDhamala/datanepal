@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import {
   country,
-  datasetsFor,
   districtsOf,
   formatNumber,
   formatPercent,
@@ -10,6 +9,8 @@ import {
   placeBySlug,
   populationOf,
   provinces,
+  sourcesFor,
+  tablesFor,
 } from "@/lib/data";
 import { AgePyramid } from "@/components/AgePyramid";
 import {
@@ -30,7 +31,7 @@ export async function generateStaticParams(): Promise<Params[]> {
   // names are shared nationally, so slugs are unique only within a parent.
   const out: Params[] = [];
   for (const p of await provinces()) {
-    for (const d of await districtsOf(p.place_pcode)) {
+    for (const d of await districtsOf(p.place_id)) {
       out.push({ province: p.slug, district: d.slug });
     }
   }
@@ -43,8 +44,8 @@ export async function generateMetadata({
   params: Promise<Params>;
 }): Promise<Metadata> {
   const { province, district } = await params;
-  const prov = await placeBySlug(1, province);
-  const place = prov && (await placeBySlug(2, district, prov.place_pcode));
+  const prov = await placeBySlug("province", province);
+  const place = prov && (await placeBySlug("district", district, prov.place_id));
   if (!place || !prov) return {};
   const pop = await populationOf(place);
   return {
@@ -64,13 +65,13 @@ const TYPE_LABELS: Record<string, string> = {
 
 export default async function DistrictPage({ params }: { params: Promise<Params> }) {
   const { province, district } = await params;
-  const prov = await placeBySlug(1, province);
+  const prov = await placeBySlug("province", province);
   if (!prov) notFound();
-  const place = await placeBySlug(2, district, prov.place_pcode);
+  const place = await placeBySlug("district", district, prov.place_id);
   if (!place) notFound();
 
   const pop = await populationOf(place);
-  const units = await localUnitsOf(place.place_pcode);
+  const units = await localUnitsOf(place.place_id);
 
   const np = await country();
   const national = np ? await populationOf(np) : null;
@@ -106,7 +107,8 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
         native={place.name_ne}
         meta={
           <>
-            <Pcode code={place.place_pcode} /> · {units.length} local units
+            <Pcode code={place.ocha_pcode ?? place.place_id} /> · {units.length} local
+            units
           </>
         }
       />
@@ -146,7 +148,8 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
 
       {pop && (
         <Callout>
-          Population figures are {pop.period} projections, not census counts.
+          Population is a {pop.period}{" "}
+          {pop.status === "projection" ? "projection" : pop.status}, not a census count.
           Nepal&rsquo;s most recent census was 2021.
         </Callout>
       )}
@@ -172,7 +175,7 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
               </h3>
               <ul className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
                 {byType.get(type)!.map((u) => (
-                  <li key={u.place_pcode} className="text-[13px]">
+                  <li key={u.place_id} className="text-[13px]">
                     <span className="text-ink">{u.name_en}</span>
                     {u.name_ne && (
                       <span className="text-ink-faint"> · {u.name_ne}</span>
@@ -185,7 +188,10 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
         </div>
       </Section>
 
-      <Sources datasets={datasetsFor(["observations", "places", "geography"])} />
+      <Sources
+        tables={tablesFor(["observations", "places", "geography"])}
+        sources={sourcesFor(tablesFor(["observations", "places", "geography"]))}
+      />
     </>
   );
 }

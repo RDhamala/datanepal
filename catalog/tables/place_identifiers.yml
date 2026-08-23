@@ -1,0 +1,13 @@
+table: place_identifiers
+title: Place identifiers by source system
+description: >
+  Maps external identifiers to DataNepal place_ids. This is the crosswalk layer
+  that lets a source keyed on its own codes join the canonical geography without
+  name matching.
+sources: [cod-ab-npl, wikidata-np-places]
+grain: One row per (place, identifier system, identifier value).
+geography_level: mixed
+caveats:
+  - >
+    Identifier values are unique within their system, not globally. Always
+    qualify a lookup by id_system.

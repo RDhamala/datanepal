@@ -1,34 +1,256 @@
 version: 2
 
 models:
-  - name: geography
+  # ------------------------------------------------------------------ facts
+
+  - name: observations
     description: >
-      Published administrative geography: 753 local units keyed by P-code, with
-      district and province lineage in English and Nepali.
+      The canonical fact table. One row per measurement: indicator, optional
+      place, period, dimension set, value.
     columns:
+      - name: observation_id
+        description: Deterministic hash of the natural key. Stable across builds.
+        tests: [unique, not_null]
+
+      # Every observation must resolve to a documented dataset, a defined
+      # indicator, and a known unit. These three relationships are what make
+      # "every published value is traceable" an enforced property rather than an
+      # aspiration.
+      - name: dataset_id
+        tests:
+          - not_null
+          - relationships: {to: ref('datasets'), field: dataset_id}
+      - name: indicator_id
+        tests:
+          - not_null
+          - relationships: {to: ref('indicators'), field: indicator_id}
+      - name: unit_id
+        tests:
+          - not_null
+          - relationships: {to: ref('units'), field: unit_id}
+
+      - name: place_id
+        description: >
+          Nullable by design. Not every measurement is geographic; a
+          non-spatial indicator should not have to invent a place to exist.
+        tests:
+          - relationships: {to: ref('places'), field: place_id}
+
+      - name: period_start
+        tests: [not_null]
+      - name: period_end
+        tests: [not_null]
+      - name: period_type
+        tests:
+          - not_null
+          - accepted_values:
+              values: [year, fiscal_year, quarter, month, week, day, instant, multi_year]
+
+      - name: status
+        description: >
+          Distinguishes a suppressed value from a zero from an unobserved one.
+        tests:
+          - not_null
+          - accepted_values:
+              values: [actual, provisional, estimate, projection, forecast, suppressed, not_collected]
+
+      - name: dimension_key
+        description: >
+          Fingerprint of the dimension set, so duplicate detection needs no join.
+        tests: [not_null]
+
+    tests:
+      # The real uniqueness constraint. observation_id is derived from exactly
+      # these columns, so this and the unique test on the id are belt and
+      # braces -- if they ever disagree, the hash is wrong.
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - dataset_id
+            - indicator_id
+            - place_id
+            - period_start
+            - period_end
+            - dimension_key
+
+  - name: observation_dimensions
+    description: Long-format dimension members per observation.
+    columns:
+      - name: observation_id
+        tests:
+          - not_null
+          - relationships: {to: ref('observations'), field: observation_id}
+      - name: dimension_id
+        tests:
+          - not_null
+          - relationships: {to: ref('dimensions'), field: dimension_id}
+      - name: member_id
+        tests: [not_null]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [observation_id, dimension_id, member_id]
+
+  # ------------------------------------------------------------- geography
+
+  - name: places
+    description: Every place an observation can attach to, across all types.
+    columns:
+      - name: place_id
+        description: >
+          DataNepal surrogate, deliberately not a source code. See
+          macros/place_id.sql for why.
+        tests: [unique, not_null]
+      - name: place_type
+        tests:
+          - not_null
+          - accepted_values:
+              values:
+                - country
+                - province
+                - district
+                - metropolitan
+                - sub_metropolitan
+                - municipality
+                - rural_municipality
+                - ward
+                - protected_area
+                - electoral_constituency
+      - name: name_en
+        tests: [not_null]
+      - name: slug
+        tests: [not_null]
+      - name: parent_place_id
+        description: >
+          Explicit key, not a P-code substring. Null only for the country.
+        tests:
+          - relationships: {to: ref('places'), field: place_id}
+      - name: dataset_id
+        tests:
+          - relationships: {to: ref('datasets'), field: dataset_id}
+
+  - name: place_identifiers
+    description: External identifiers mapped to canonical place_ids.
+    columns:
+      - name: place_id
+        tests:
+          - not_null
+          - relationships: {to: ref('places'), field: place_id}
+      - name: id_system
+        tests:
+          - not_null
+          - accepted_values:
+              values: [ocha_pcode, wikidata_qid, iso_3166_2, iso_3166_1_alpha2, nso_code, ec_id]
+      - name: id_value
+        tests: [not_null]
+    tests:
+      # Identifiers are unique within their system, never globally. Two systems
+      # may both use the string '3'; the same system must not use it twice.
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [id_system, id_value]
+
+  # ------------------------------------------------------------- reference
+
+  - name: indicators
+    description: What each measured concept means, its unit, and its additivity.
+    columns:
+      - name: indicator_id
+        tests: [unique, not_null]
+      - name: name_en
+        tests: [not_null]
+      - name: default_unit_id
+        description: The unit policy. An indicator without one is unusable.
+        tests:
+          - not_null
+          - relationships: {to: ref('units'), field: unit_id}
+      - name: dataset_id
+        tests:
+          - not_null
+          - relationships: {to: ref('datasets'), field: dataset_id}
+      - name: value_type
+        tests:
+          - not_null
+          - accepted_values: {values: [numeric, text, boolean]}
+      - name: is_additive
+        description: >
+          Whether summing across places is meaningful. Aggregating a rate is the
+          most common way to produce a confidently wrong number, so the policy
+          is data rather than documentation.
+        tests: [not_null]
+
+  - name: units
+    columns:
+      - name: unit_id
+        tests: [unique, not_null]
+      - name: unit_kind
+        tests:
+          - not_null
+          - accepted_values: {values: [count, ratio, currency, area, mass, index, duration]}
+      - name: name_en
+        tests: [not_null]
+
+  - name: dimensions
+    columns:
+      - name: dimension_id
+        tests: [unique, not_null]
+      - name: name_en
+        tests: [not_null]
+
+  - name: dimension_members
+    columns:
+      - name: dimension_id
+        tests:
+          - not_null
+          - relationships: {to: ref('dimensions'), field: dimension_id}
+      - name: member_id
+        tests: [not_null]
+      - name: parent_member_id
+        description: Set for hierarchical dimensions such as budget categories.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [dimension_id, member_id]
+
+  - name: datasets
+    description: Every upstream dataset, with publisher, licence, and retrieval date.
+    columns:
+      - name: dataset_id
+        tests: [unique, not_null]
+      - name: title
+        tests: [not_null]
+      - name: publisher
+        tests: [not_null]
+      - name: licence_id
+        description: >
+          Never guessed. 'unknown' is a valid and meaningful value; a blank is not.
+        tests:
+          - not_null
+          - relationships: {to: ref('licences'), field: licence_id}
+
+  - name: licences
+    columns:
+      - name: licence_id
+        tests: [unique, not_null]
+      - name: share_alike
+        description: >
+          Recorded as a boolean so licence compatibility is testable rather than
+          argued about. See tests/assert_no_licence_contamination.sql.
+        tests: [not_null]
+      - name: attribution_required
+        tests: [not_null]
+
+  # ----------------------------------------------------------- convenience
+
+  - name: geography
+    description: The 753 local units with district and province lineage flattened on.
+    columns:
+      - name: place_id
+        tests: [unique, not_null]
       - name: palika_pcode
         tests: [unique, not_null]
       - name: palika_name_en
         tests: [not_null]
-      - name: palika_type
-        tests: [not_null]
-      - name: name_match_method
-        description: How the Nepali name was resolved, or 'unmatched'.
-        tests:
-          - accepted_values:
-              values: [district+name, unique-name, unmatched]
-      - name: province_id
-        tests:
-          - relationships:
-              to: ref('np_provinces')
-              field: province_id
 
   - name: protected_areas
-    description: >
-      National parks, wildlife reserves, and conservation areas. One row per
-      (area, district) intersection, so multi-district parks appear more than once.
     columns:
-      - name: area_pcode
+      - name: place_id
         tests: [unique, not_null]
       - name: area_name_en
         tests: [not_null]

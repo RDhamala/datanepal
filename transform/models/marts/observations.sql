@@ -1,28 +1,26 @@
 {{ config(materialized = 'table') }}
 
 /*
-  Published observations. Every measurement the platform holds, in one shape.
+  Published observations, current revisions only.
 
-  Joined to place names so a consumer can use this file alone without also
-  fetching the place dimension -- the whole table is small enough that
-  denormalising costs little and saves every client a join.
+  Revision history is maintained outside dbt, in a committed Parquet file --
+  see publish/revisions.py. The warehouse is rebuilt from scratch each run, so
+  it cannot itself hold history; the history file is the persistent state, and
+  git gives it an audit trail for free.
 */
 
 select
-    o.place_pcode,
-    p.name_en        as place_name_en,
-    p.name_ne        as place_name_ne,
-    p.place_type,
-    o.admin_level,
-
-    o.indicator_code,
-    o.period,
-    o.sex,
-    o.age_band,
-    o.value,
-    o.unit,
-    o.source_id
-
+    o.observation_id,
+    o.dataset_id,
+    o.indicator_id,
+    o.place_id,
+    o.period_start,
+    o.period_end,
+    o.period_type,
+    o.value_numeric,
+    o.value_text,
+    o.unit_id,
+    o.status,
+    o.dimension_key
 from {{ ref('int_observations') }} o
-inner join {{ ref('int_places') }} p on o.place_pcode = p.place_pcode
-order by o.indicator_code, o.admin_level, o.place_pcode, o.period, o.sex, o.age_band
+order by o.indicator_id, o.place_id, o.period_start, o.dimension_key

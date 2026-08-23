@@ -15,22 +15,25 @@ import yaml
 from jsonschema import Draft202012Validator
 
 ROOT = Path(__file__).resolve().parent.parent
-SCHEMA_PATH = ROOT / "catalog" / "dataset.schema.json"
-DATASETS_DIR = ROOT / "catalog" / "datasets"
+SOURCE_SCHEMA = ROOT / "catalog" / "source.schema.json"
+TABLE_SCHEMA = ROOT / "catalog" / "table.schema.json"
+SOURCES_DIR = ROOT / "catalog" / "sources"
+TABLES_DIR = ROOT / "catalog" / "tables"
 
 
-def validate_all() -> list[str]:
-    """Return a list of human-readable errors; empty means everything passed."""
-    schema = json.loads(SCHEMA_PATH.read_text())
-    validator = Draft202012Validator(schema)
+def _validate_dir(
+    directory: Path, schema_path: Path, key: str
+) -> tuple[list[str], set[str]]:
+    """Validate every YAML file in a directory. Returns (errors, seen keys)."""
+    validator = Draft202012Validator(json.loads(schema_path.read_text()))
     errors: list[str] = []
+    seen: dict[str, str] = {}
 
-    entries = sorted(DATASETS_DIR.glob("*.yml"))
-    if not entries:
-        return ["No catalog entries found in catalog/datasets/"]
+    paths = sorted(directory.glob("*.yml"))
+    if not paths:
+        return [f"No entries found in {directory.name}/"], set()
 
-    seen_tables: dict[str, str] = {}
-    for path in entries:
+    for path in paths:
         try:
             entry = yaml.safe_load(path.read_text())
         except yaml.YAMLError as exc:
@@ -41,20 +44,44 @@ def validate_all() -> list[str]:
             location = ".".join(str(p) for p in error.path) or "(root)"
             errors.append(f"{path.name}: {location}: {error.message}")
 
-        table = (entry or {}).get("table")
-        if table:
-            if table in seen_tables:
-                errors.append(
-                    f"{path.name}: duplicate table '{table}', already declared "
-                    f"in {seen_tables[table]}"
-                )
-            seen_tables[table] = path.name
+        value = (entry or {}).get(key)
+        if not value:
+            errors.append(f"{path.name}: missing '{key}'")
+            continue
+        if value in seen:
+            errors.append(
+                f"{path.name}: duplicate {key} '{value}', already in {seen[value]}"
+            )
+        seen[value] = path.name
 
-            # The filename should match the table so the mapping stays obvious.
-            if path.stem != table:
+        # Filename must match the key, so the mapping stays obvious on disk.
+        if path.stem != value:
+            errors.append(
+                f"{path.name}: filename does not match {key} '{value}'; "
+                f"rename to {value}.yml"
+            )
+
+    return errors, set(seen)
+
+
+def validate_all() -> list[str]:
+    """Return a list of human-readable errors; empty means everything passed."""
+    source_errors, source_ids = _validate_dir(SOURCES_DIR, SOURCE_SCHEMA, "dataset_id")
+    table_errors, _ = _validate_dir(TABLES_DIR, TABLE_SCHEMA, "table")
+    errors = source_errors + table_errors
+
+    # Every source a table claims must exist. A table citing a source that was
+    # never documented would publish with an unresolvable licence.
+    known = source_ids | {"datanepal-internal"}
+    for path in sorted(TABLES_DIR.glob("*.yml")):
+        try:
+            entry = yaml.safe_load(path.read_text()) or {}
+        except yaml.YAMLError:
+            continue
+        for sid in entry.get("sources", []):
+            if sid not in known:
                 errors.append(
-                    f"{path.name}: filename does not match table '{table}'; "
-                    f"rename to {table}.yml"
+                    f"{path.name}: source '{sid}' has no entry in catalog/sources/"
                 )
 
     return errors

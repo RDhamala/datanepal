@@ -1,0 +1,9 @@
+table: dimensions
+title: Dimensions
+description: >
+  The dimensions observations can be broken down by — sex and age band today,
+  and whatever future datasets require. Adding a dataset adds rows here rather
+  than columns to the fact table.
+sources: [datanepal-internal]
+grain: One row per dimension.
+geography_level: none

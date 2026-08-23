@@ -1,0 +1,3 @@
+dimension_id,name_en,name_ne,description,is_hierarchical
+sex,Sex,लिङ्ग,"Sex as recorded by the source. 'all' is the total, not a third category.",false
+age_band,Age band,उमेर समूह,Five-year age bands with an open-ended top band.,false

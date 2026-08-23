@@ -22,11 +22,11 @@
 
 with actual as (
     select
-        province_id,
-        count(*)                    as actual_palikas,
-        count(distinct district_pcode) as actual_districts
-    from {{ ref('int_geography') }}
-    group by province_id
+        cast(substr(province_pcode, 3, 2) as integer) as province_id,
+        count(*)                                     as actual_palikas,
+        count(distinct district_pcode)               as actual_districts
+    from {{ ref('geography') }}
+    group by 1
 ),
 
 expected as (

@@ -1,0 +1,8 @@
+licence_id,name,spdx_id,url,share_alike,attribution_required,commercial_ok,redistribution_ok,notes
+cc0-1.0,CC0 1.0 Universal,CC0-1.0,https://creativecommons.org/publicdomain/zero/1.0/,false,false,true,true,Public domain dedication. Composes with everything.
+cc-by-4.0,Creative Commons Attribution 4.0,CC-BY-4.0,https://creativecommons.org/licenses/by/4.0/,false,true,true,true,Attribution required; no share-alike obligation.
+cc-by-igo-3.0,Creative Commons Attribution 3.0 IGO,CC-BY-3.0-IGO,https://creativecommons.org/licenses/by/3.0/igo/,false,true,true,true,Used by UN agencies. Attribution required; disputes go to arbitration rather than national courts.
+cc-by-sa-4.0,Creative Commons Attribution-ShareAlike 4.0,CC-BY-SA-4.0,https://creativecommons.org/licenses/by-sa/4.0/,true,true,true,true,SHARE-ALIKE. Derivatives must carry the same licence.
+odbl-1.0,Open Database License 1.0,ODbL-1.0,https://opendatacommons.org/licenses/odbl/1-0/,true,true,true,true,SHARE-ALIKE for derived databases. Mixing into another dataset propagates ODbL. OpenStreetMap uses this.
+gov-open,Government open data (terms unspecified),,,false,true,true,true,Published by a government body without an explicit licence. Treated as reusable with attribution but NOT verified. Flag to users.
+unknown,Reuse terms unknown,,,true,true,false,false,No licence statement found. Treated as maximally restrictive: do not publish derived work without review.

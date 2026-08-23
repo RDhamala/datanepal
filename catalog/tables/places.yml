@@ -1,0 +1,24 @@
+table: places
+title: Nepal places
+title_ne: नेपालका स्थानहरू
+description: >
+  Every place DataNepal can attach an observation to, across all types:
+  country, provinces, districts, local units, and later wards, electoral
+  constituencies, and protected areas. Keyed by a stable internal place_id with
+  explicit parent relationships.
+sources: [cod-ab-npl, wikidata-np-places]
+grain: One row per place.
+geography_level: mixed
+caveats:
+  - >
+    place_id is a DataNepal surrogate, not a source code. Source identifiers
+    (OCHA P-codes, Wikidata QIDs) live in place_identifiers so a place survives
+    a source renumbering its codes.
+  - >
+    Parent relationships are explicit foreign keys, not derived from P-code
+    substrings. Substring nesting works for the administrative hierarchy and
+    breaks for constituencies and protected areas.
+  - >
+    Nepali names cover provinces (hand-verified) and ~66% of local units
+    (Wikidata). Districts have none yet. NULL means no verified name exists;
+    names are never transliterated.

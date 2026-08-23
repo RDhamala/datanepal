@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Dataset } from "@/lib/data";
+import type { PublishedTable, SourceDataset } from "@/lib/data";
 
 /* -------------------------------------------------------------- breadcrumb */
 
@@ -198,74 +198,100 @@ export function Cell({
 /**
  * Provenance block. Present on every page that shows a figure.
  *
- * Not decorative. An aggregate with no stated source, licence, or vintage is
- * not citable, and citability is most of what separates a data platform from
- * a collection of charts.
+ * Not decorative, and not marketing. A reader should be able to see who
+ * produced the data, what period it covers, when we retrieved it, and under
+ * what terms they may reuse it -- without leaving the page.
+ *
+ * The licence shown is the table's *effective* licence, computed from its
+ * sources by taking the most restrictive. DataNepal does not relicense upstream
+ * data, and attribution obligations travel with it.
  */
-export function Sources({ datasets }: { datasets: Dataset[] }) {
-  if (!datasets.length) return null;
+export function Sources({
+  tables,
+  sources,
+}: {
+  tables: PublishedTable[];
+  sources: SourceDataset[];
+}) {
+  if (!sources.length) return null;
   return (
     <Section
-      title="Sources and downloads"
-      note="Every figure on this page comes from one of these datasets."
+      title="Sources"
+      note="Who produced the data on this page, what it covers, and how to reuse it."
     >
       <ul className="border-line divide-line divide-y rounded-lg border">
-        {datasets.map((d) => (
-          <li key={d.table} className="px-4 py-4">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <span className="text-ink text-[14px] font-medium">{d.title}</span>
-              {d.vintage && (
-                <span className="text-ink-faint text-[12px]">
-                  reference period {d.vintage}
-                </span>
-              )}
+        {sources.map((s) => (
+          <li key={s.dataset_id} className="px-4 py-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <span className="text-ink text-[14px] font-medium">{s.title}</span>
+              <span className="text-ink-faint text-[12px]">
+                Reference period {s.vintage}
+              </span>
             </div>
-            {d.source && (
-              <p className="text-ink-soft mt-1 text-[13px]">
-                {d.source.name} ·{" "}
-                <a href={d.source.url} rel="noopener noreferrer" target="_blank">
-                  source
-                </a>
-                {d.source.accessed && (
-                  <span className="text-ink-faint">
-                    {" "}
-                    · retrieved {d.source.accessed}
-                  </span>
+            <p className="text-ink-soft mt-1 text-[13px]">{s.publisher}</p>
+            <dl className="text-ink-faint mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[12px]">
+              <dt>Retrieved</dt>
+              <dd className="text-ink-soft tabular">{s.retrieved}</dd>
+              <dt>Licence</dt>
+              <dd className="text-ink-soft">
+                {s.licence_statement_url ? (
+                  <a
+                    href={s.licence_statement_url}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    {s.licence}
+                  </a>
+                ) : (
+                  s.licence
                 )}
-              </p>
-            )}
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="text-ink-faint font-mono text-[11px]">
-                {d.licence ?? "licence unknown"}
-              </span>
-              <span aria-hidden className="text-line-strong">
-                ·
-              </span>
-              <span className="text-ink-faint tabular text-[11px]">
-                {d.row_count.toLocaleString()} rows
-              </span>
-              {d.parquet && (
-                <a
-                  href={`/data/${d.parquet}`}
-                  download
-                  className="border-line-strong text-ink-soft hover:bg-surface-sunken ml-auto rounded border px-2.5 py-1 font-mono text-[11px] no-underline"
-                >
-                  ↓ parquet
-                </a>
+              </dd>
+              {s.revises_published_values && (
+                <>
+                  <dt>Revisions</dt>
+                  <dd className="text-ink-soft">
+                    This publisher restates previously published figures
+                  </dd>
+                </>
               )}
-              {d.json && (
-                <a
-                  href={`/data/${d.json}`}
-                  download
-                  className="border-line-strong text-ink-soft hover:bg-surface-sunken rounded border px-2.5 py-1 font-mono text-[11px] no-underline"
-                >
-                  ↓ json
-                </a>
+            </dl>
+            <p className="mt-3 text-[12px]">
+              <a href={s.url} rel="noopener noreferrer" target="_blank">
+                View at source
+              </a>
+              {s.methodology_url && (
+                <>
+                  {" · "}
+                  <a href={s.methodology_url} rel="noopener noreferrer" target="_blank">
+                    Methodology
+                  </a>
+                </>
               )}
-            </div>
+            </p>
           </li>
         ))}
       </ul>
+
+      <h3 className="text-label text-ink-faint mt-8 mb-3 uppercase">Download</h3>
+      <div className="flex flex-wrap gap-2">
+        {tables.map((t) => (
+          <a
+            key={t.table}
+            href={`/data/${t.parquet}`}
+            download
+            className="border-line-strong text-ink-soft hover:bg-surface-sunken rounded border px-2.5 py-1 font-mono text-[11px] no-underline"
+          >
+            ↓ {t.table}.parquet
+          </a>
+        ))}
+      </div>
+      <p className="text-ink-faint mt-3 text-[12px]">
+        Full dataset catalogue and revision history in{" "}
+        <a href="/data/manifest.json" download>
+          manifest.json
+        </a>
+        .
+      </p>
     </Section>
   );
 }

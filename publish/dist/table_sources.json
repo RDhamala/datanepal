@@ -1,0 +1,20 @@
+[
+	{"table_name":"datasets","dataset_id":"datanepal-internal"},
+	{"table_name":"dimension_members","dataset_id":"datanepal-internal"},
+	{"table_name":"dimensions","dataset_id":"datanepal-internal"},
+	{"table_name":"geography","dataset_id":"cod-ab-npl"},
+	{"table_name":"geography","dataset_id":"wikidata-np-places"},
+	{"table_name":"indicators","dataset_id":"datanepal-internal"},
+	{"table_name":"licences","dataset_id":"datanepal-internal"},
+	{"table_name":"observation_dimensions","dataset_id":"cod-ps-npl"},
+	{"table_name":"observation_dimensions","dataset_id":"worldbank-npl"},
+	{"table_name":"observations","dataset_id":"cod-ps-npl"},
+	{"table_name":"observations","dataset_id":"worldbank-npl"},
+	{"table_name":"place_identifiers","dataset_id":"cod-ab-npl"},
+	{"table_name":"place_identifiers","dataset_id":"wikidata-np-places"},
+	{"table_name":"places","dataset_id":"cod-ab-npl"},
+	{"table_name":"places","dataset_id":"wikidata-np-places"},
+	{"table_name":"protected_areas","dataset_id":"cod-ab-npl"},
+	{"table_name":"table_sources","dataset_id":"datanepal-internal"},
+	{"table_name":"units","dataset_id":"datanepal-internal"}
+]

@@ -34,6 +34,17 @@ sources:
       - name: place_names
         description: Candidate local units with English and Nepali labels and coordinates.
 
+  - name: raw_worldbank
+    schema: raw_worldbank
+    description: >
+      World Bank World Development Indicators for Nepal, CC BY 4.0. National
+      annual series. Structurally unlike the demographic sources: no
+      subnational geography, no dimensions, mixed units including currency,
+      and revised in place by the publisher.
+    tables:
+      - name: indicators
+        description: One row per indicator-year.
+
   - name: raw_census
     schema: raw_census
     description: National Population and Housing Census, National Statistics Office.

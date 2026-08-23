@@ -1,0 +1,23 @@
+dataset_id: cod-ps-npl
+title: Nepal — Subnational Population Statistics
+description: >
+  UNFPA population estimates and projections by administrative unit, sex, and
+  five-year age band. Already keyed by OCHA P-code.
+publisher: UNFPA
+publisher_url: https://www.unfpa.org
+url: https://data.humdata.org/dataset/cod-ps-npl
+licence_id: cc-by-igo-3.0
+licence_statement_url: https://data.humdata.org/dataset/cod-ps-npl
+retrieved: "2026-08-23"
+vintage: "2023"
+update_frequency: annual
+revises_published_values: true
+contains_personal_data: false
+caveats:
+  - >
+    Figures for 2023 are projections, not census counts. Nepal's most recent
+    census was 2021 (29,164,578). Never present projections as census results.
+  - Coverage stops at district level; there is no local-unit breakdown.
+  - >
+    The open-ended top age band is spelled '80Plus' in current files and '80PL'
+    in others. Ingestion accepts both and asserts the measure count per place.

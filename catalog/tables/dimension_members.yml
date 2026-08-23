@@ -1,0 +1,10 @@
+table: dimension_members
+title: Dimension members
+description: >
+  The permitted values for each dimension, with bilingual labels and an optional
+  parent for hierarchical dimensions such as budget categories. An observation
+  may only use members declared here, which is what keeps extensible dimensions
+  from becoming a free-text field.
+sources: [datanepal-internal]
+grain: One row per (dimension, member).
+geography_level: none

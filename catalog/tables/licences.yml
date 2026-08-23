@@ -1,0 +1,8 @@
+table: licences
+title: Licences
+description: >
+  Reuse terms, with share-alike and attribution flags recorded as booleans so
+  licence compatibility can be tested mechanically rather than reasoned about.
+sources: [datanepal-internal]
+grain: One row per licence.
+geography_level: none

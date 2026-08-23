@@ -1,24 +1,22 @@
 {{ config(materialized = 'table') }}
 
 /*
-  Nepal's national parks, wildlife reserves, and conservation areas as mapped
-  by the OCHA COD (P-code type digit 5).
+  Protected areas: national parks, reserves, conservation areas.
 
-  Kept out of the geography spine deliberately: these are federally
-  administered and sit outside local-unit jurisdiction, so counting them as
-  palikas would inflate every per-unit denominator. Several span multiple
-  districts, which is why a park can appear more than once here -- one row per
-  (area, district) intersection.
+  Kept out of the administrative hierarchy because they are federally
+  administered and sit outside local-unit jurisdiction. Several span districts,
+  so one appears once per district it intersects.
 */
 
 select
-    pcode                as area_pcode,
-    name_en              as area_name_en,
-    district_pcode,
-    province_pcode,
+    place_id,
+    ocha_pcode          as area_pcode,
+    name_en             as area_name_en,
+    parent_place_id     as district_place_id,
+    parent_name_en      as district_name_en,
     area_sqkm,
     center_lat,
     center_lon
-from {{ ref('stg_hdx__admin_units') }}
-where is_protected_area
-order by pcode
+from {{ ref('places') }}
+where place_type = 'protected_area'
+order by ocha_pcode

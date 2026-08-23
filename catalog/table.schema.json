@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DataNepal published table",
+  "description": "One table in publish/dist. Declares which source datasets it draws on; the effective licence is computed from them rather than restated here, so a table can never claim terms its inputs do not permit.",
+  "type": "object",
+  "required": ["table", "title", "description", "sources"],
+  "additionalProperties": false,
+  "properties": {
+    "table": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+    "title": { "type": "string" },
+    "title_ne": { "type": "string" },
+    "description": { "type": "string" },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" },
+      "description": "dataset_ids from catalog/sources/. Reference tables that carry no upstream data use the sentinel 'datanepal-internal'."
+    },
+    "grain": { "type": "string", "description": "What one row represents." },
+    "geography_level": { "type": "string", "enum": ["none", "country", "province", "district", "municipality", "ward", "mixed"] },
+    "caveats": { "type": "array", "items": { "type": "string" } }
+  }
+}

@@ -1,0 +1,14 @@
+unit_id,unit_kind,symbol,name_en,currency_code,price_basis,notes
+persons,count,,Persons,,,Headcount of people.
+count,count,,Count,,,Generic countable things.
+percent,ratio,%,Percent,,,A share expressed 0-100. Not additive across places.
+percent_gdp,ratio,% of GDP,Percent of GDP,,,Not additive across places or periods.
+ratio,ratio,,Ratio,,,Dimensionless ratio.
+index,index,,Index,,,Index value; base period recorded in the indicator definition.
+sq_km,area,km²,Square kilometres,,,
+persons_per_sq_km,ratio,/km²,Persons per square kilometre,,,Not additive.
+usd_current,currency,US$,US dollars (current prices),USD,current,Nominal US dollars of the reference period.
+usd_constant_2015,currency,US$,US dollars (constant 2015 prices),USD,constant_2015,Real terms; comparable across periods.
+npr_current,currency,रू,Nepalese rupees (current prices),NPR,current,
+npr_constant,currency,रू,Nepalese rupees (constant prices),NPR,constant,Base year recorded in the indicator definition.
+years,duration,yr,Years,,,

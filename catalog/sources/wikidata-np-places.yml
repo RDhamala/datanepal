@@ -1,0 +1,24 @@
+dataset_id: wikidata-np-places
+title: Wikidata — Nepal local units
+description: >
+  Nepali-language names for Nepal's local units, with coordinates, retrieved by
+  SPARQL through the district relation.
+publisher: Wikidata contributors
+publisher_url: https://www.wikidata.org
+url: https://query.wikidata.org
+licence_id: cc0-1.0
+licence_statement_url: https://www.wikidata.org/wiki/Wikidata:Licensing
+retrieved: "2026-08-23"
+vintage: "2026"
+update_frequency: irregular
+revises_published_values: false
+contains_personal_data: false
+caveats:
+  - >
+    Chosen over OpenStreetMap on licensing grounds, not coverage. OSM carries
+    Nepali names for ~55% of units but is ODbL, whose share-alike terms would
+    propagate to every table this fed.
+  - >
+    Covers ~66% of local units. Typing is inconsistent: metropolitan cities are
+    often modelled as the city rather than the administrative unit.
+  - Community-maintained, so names are not authoritative.

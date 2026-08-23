@@ -1,0 +1,6 @@
+indicator_id,dataset_id,name_en,name_ne,definition,default_unit_id,value_type,is_additive,notes
+population,cod-ps-npl,Population,जनसंख्या,"Resident population. Figures for years after the last census are projections, not counts.",persons,numeric,true,"Additive across places within a level and across disjoint dimension members, but totals (sex=all, age_band=all) coexist with components -- filter, never sum blindly."
+cpi_inflation_annual,worldbank-npl,"Inflation, consumer prices",उपभोक्ता मुद्रास्फीति,"Annual percentage change in the consumer price index.",percent,numeric,false,"A rate. Never sum or average across places without population weighting."
+gdp_per_capita_usd,worldbank-npl,GDP per capita,प्रति व्यक्ति कुल गार्हस्थ उत्पादन,"Gross domestic product divided by midyear population, in current US dollars.",usd_current,numeric,false,A per-capita ratio. Not additive.
+remittances_received_usd,worldbank-npl,Personal remittances received,प्राप्त विप्रेषण,"Personal transfers and compensation of employees received, in current US dollars.",usd_current,numeric,true,Additive across places in principle; published nationally only.
+remittances_percent_gdp,worldbank-npl,Personal remittances received,प्राप्त विप्रेषण,"Personal remittances received as a share of GDP.",percent_gdp,numeric,false,A share. Not additive.

@@ -1,0 +1,13 @@
+table: geography
+title: Nepal administrative geography
+title_ne: नेपालको प्रशासनिक भूगोल
+description: >
+  Convenience view of the 753 local units with their district and province
+  lineage denormalised onto each row, for consumers who want one flat file
+  rather than walking the parent chain in places.
+sources: [cod-ab-npl, wikidata-np-places]
+grain: One row per local unit.
+geography_level: municipality
+caveats:
+  - Excludes protected areas, which are not local units.
+  - Derived from places; places is the canonical table.

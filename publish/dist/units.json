@@ -1,0 +1,15 @@
+[
+	{"unit_id":"persons","unit_kind":"count","symbol":null,"name_en":"Persons","currency_code":null,"price_basis":null,"notes":"Headcount of people."},
+	{"unit_id":"count","unit_kind":"count","symbol":null,"name_en":"Count","currency_code":null,"price_basis":null,"notes":"Generic countable things."},
+	{"unit_id":"percent","unit_kind":"ratio","symbol":"%","name_en":"Percent","currency_code":null,"price_basis":null,"notes":"A share expressed 0-100. Not additive across places."},
+	{"unit_id":"percent_gdp","unit_kind":"ratio","symbol":"% of GDP","name_en":"Percent of GDP","currency_code":null,"price_basis":null,"notes":"Not additive across places or periods."},
+	{"unit_id":"ratio","unit_kind":"ratio","symbol":null,"name_en":"Ratio","currency_code":null,"price_basis":null,"notes":"Dimensionless ratio."},
+	{"unit_id":"index","unit_kind":"index","symbol":null,"name_en":"Index","currency_code":null,"price_basis":null,"notes":"Index value; base period recorded in the indicator definition."},
+	{"unit_id":"sq_km","unit_kind":"area","symbol":"km²","name_en":"Square kilometres","currency_code":null,"price_basis":null,"notes":null},
+	{"unit_id":"persons_per_sq_km","unit_kind":"ratio","symbol":"/km²","name_en":"Persons per square kilometre","currency_code":null,"price_basis":null,"notes":"Not additive."},
+	{"unit_id":"usd_current","unit_kind":"currency","symbol":"US$","name_en":"US dollars (current prices)","currency_code":"USD","price_basis":"current","notes":"Nominal US dollars of the reference period."},
+	{"unit_id":"usd_constant_2015","unit_kind":"currency","symbol":"US$","name_en":"US dollars (constant 2015 prices)","currency_code":"USD","price_basis":"constant_2015","notes":"Real terms; comparable across periods."},
+	{"unit_id":"npr_current","unit_kind":"currency","symbol":"रू","name_en":"Nepalese rupees (current prices)","currency_code":"NPR","price_basis":"current","notes":null},
+	{"unit_id":"npr_constant","unit_kind":"currency","symbol":"रू","name_en":"Nepalese rupees (constant prices)","currency_code":"NPR","price_basis":"constant","notes":"Base year recorded in the indicator definition."},
+	{"unit_id":"years","unit_kind":"duration","symbol":"yr","name_en":"Years","currency_code":null,"price_basis":null,"notes":null}
+]

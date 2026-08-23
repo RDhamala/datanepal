@@ -1,44 +1,53 @@
-.PHONY: help setup ingest build test publish catalog-check lint clean all
+.PHONY: help setup catalog ingest build revisions publish check lint clean all
 
 DBT := cd transform && ../.venv/bin/dbt
 PY  := .venv/bin/python
 
 help:
-	@echo "setup          Install dependencies and dbt packages"
-	@echo "ingest         Run all source connectors into the warehouse"
-	@echo "build          Run dbt: seeds, models, tests"
-	@echo "test           Run dbt tests and catalog validation"
-	@echo "publish        Export marts to static Parquet/JSON in publish/dist"
-	@echo "all            ingest -> build -> publish"
-	@echo "lint           Ruff check"
-	@echo "clean          Remove warehouse, dbt target, and published output"
+	@echo "setup      Install dependencies and dbt packages"
+	@echo "catalog    Project catalog YAML into dbt seeds"
+	@echo "ingest     Run all source connectors into the warehouse"
+	@echo "build      dbt seed + run + test"
+	@echo "revisions  Fold the current build into revision history"
+	@echo "publish    Export published tables to publish/dist"
+	@echo "all        catalog -> ingest -> build -> revisions -> publish"
+	@echo "check      Lint and test both sides"
+	@echo "clean      Remove the warehouse, dbt target, and published output"
 
 setup:
-	uv venv .venv
+	uv venv .venv --python 3.12
 	uv pip install -e ".[dev]"
 	$(DBT) deps
+
+# Provenance has one source of truth: catalog/. This projects it into seeds so
+# dbt can join against it. Must run before build.
+catalog:
+	$(PY) -m catalog.sync_seeds
 
 ingest:
 	$(PY) -m ingestion.run --all
 
-build:
+build: catalog
 	$(DBT) seed
 	$(DBT) run
 	$(DBT) test
 
-test: catalog-check
-	$(DBT) test
-
-catalog-check:
-	$(PY) -m tests.check_catalog
+# Append-only. Never overwrites a prior value; see docs/adr/0004.
+revisions:
+	$(PY) -m publish.revisions
 
 publish:
 	$(PY) -m publish.export
 
-all: ingest build publish
+all: catalog ingest build revisions publish
+
+check:
+	.venv/bin/ruff check .
+	$(PY) -m pytest -q
+	cd web && npm run check
 
 lint:
 	.venv/bin/ruff check .
 
 clean:
-	rm -rf warehouse transform/target transform/logs publish/dist
+	rm -rf warehouse transform/target transform/logs publish/dist web/out web/.next

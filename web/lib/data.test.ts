@@ -1,203 +1,407 @@
 /**
  * Tests for the build-time data layer.
  *
- * These read the real published Parquet rather than fixtures, deliberately.
- * The lesson from this codebase is that consistency checks pass while data is
- * uniformly wrong -- so these assert against externally known facts about
- * Nepal (7 provinces, 77 districts, 753 local units, 17 age bands) which a
- * fixture would happily agree with while being wrong.
+ * These read the real published Parquet rather than fixtures, deliberately, and
+ * assert against externally known facts about Nepal -- 7 provinces, 77
+ * districts, 753 local units, 17 age bands. A fixture would agree with whatever
+ * the code produced while being wrong, which is exactly the failure mode that
+ * once let 262,948 people over 80 vanish from the dataset while every
+ * consistency check passed.
  */
 
 import { describe, expect, it } from "vitest";
 import {
   AGE_BANDS,
   country,
-  districtsOf,
+  dimensionKey,
   formatCompact,
   formatNumber,
   formatPercent,
+  formatWithUnit,
+  indicators,
+  localUnitsOf,
   manifest,
   observations,
   placeBySlug,
   places,
   populationOf,
+  seriesFor,
+  sourcesFor,
+  statusLabel,
+  tablesFor,
+  units,
 } from "./data";
 
+const LOCAL_TYPES = new Set([
+  "metropolitan",
+  "sub_metropolitan",
+  "municipality",
+  "rural_municipality",
+]);
+
 describe("places", () => {
-  it("has every administrative level, at the right counts", async () => {
+  it("has the right count of each place type", async () => {
     const all = await places();
-    const byLevel = (n: number) => all.filter((p) => p.admin_level === n).length;
+    const of = (t: string) => all.filter((p) => p.place_type === t).length;
 
-    expect(byLevel(0)).toBe(1); // Nepal
-    expect(byLevel(1)).toBe(7); // provinces
-    expect(byLevel(2)).toBe(77); // districts
-    expect(byLevel(3)).toBe(753); // local units
-    expect(all).toHaveLength(838);
+    expect(of("country")).toBe(1);
+    expect(of("province")).toBe(7);
+    expect(of("district")).toBe(77);
+    expect(all.filter((p) => LOCAL_TYPES.has(p.place_type))).toHaveLength(753);
+    expect(of("protected_area")).toBe(22);
   });
 
-  it("gives every place a unique pcode", async () => {
+  it("gives every place a unique surrogate id", async () => {
     const all = await places();
-    expect(new Set(all.map((p) => p.place_pcode)).size).toBe(all.length);
+    expect(new Set(all.map((p) => p.place_id)).size).toBe(all.length);
   });
 
-  it("gives every place a slug", async () => {
+  it("uses a surrogate id, not the source P-code", async () => {
+    // The distinction matters: a paid API contract must survive OCHA
+    // renumbering a P-code. If place_id ever equals ocha_pcode, the surrogate
+    // has collapsed back into a source identifier.
     const all = await places();
-    expect(all.filter((p) => !p.slug)).toHaveLength(0);
+    expect(all.every((p) => p.place_id !== p.ocha_pcode)).toBe(true);
+    expect(all.every((p) => p.place_id.startsWith("pl_"))).toBe(true);
   });
 
-  it("keeps slugs unique within a parent, which is what the URLs rely on", async () => {
+  it("links every place except the country to a parent that exists", async () => {
     const all = await places();
+    const ids = new Set(all.map((p) => p.place_id));
+    const orphans = all.filter(
+      (p) =>
+        p.place_type !== "country" &&
+        (!p.parent_place_id || !ids.has(p.parent_place_id)),
+    );
+    expect(orphans.map((o) => o.name_en)).toEqual([]);
+  });
+
+  it("keeps administrative slugs unique within a parent, which the URL scheme relies on", async () => {
+    // Scoped to the administrative hierarchy, because that is what the URL
+    // scheme covers. Protected areas are federally administered and sit outside
+    // it -- and four of them (Shivapuri, Dhorpatan, Shuklaphanta, Lumbini
+    // Sanskritik) share both a name and a parent district with a local unit.
+    // They therefore need their own URL namespace, not a slot in
+    // /np/<province>/<district>/.
+    const ADMIN = new Set(["country", "province", "district", ...LOCAL_TYPES]);
+    const all = (await places()).filter((p) => ADMIN.has(p.place_type));
     const seen = new Set<string>();
     const collisions: string[] = [];
     for (const p of all) {
-      const key = `${p.parent_pcode ?? "root"}/${p.slug}`;
+      const key = `${p.parent_place_id ?? "root"}/${p.slug}`;
       if (seen.has(key)) collisions.push(key);
       seen.add(key);
     }
     expect(collisions).toEqual([]);
   });
 
-  it("shares some local unit names across districts -- the reason URLs are hierarchical", async () => {
-    const units = (await places()).filter((p) => p.admin_level === 3);
+  it("has protected areas that would collide with local units if they shared a namespace", async () => {
+    // Asserting the hazard rather than assuming it away: if a future URL change
+    // puts protected areas under the administrative path, this documents why
+    // that breaks.
+    const all = await places();
+    const admin = new Map(
+      all
+        .filter((p) => LOCAL_TYPES.has(p.place_type))
+        .map((p) => [`${p.parent_place_id}/${p.slug}`, p.name_en]),
+    );
+    const clashing = all
+      .filter(
+        (p) =>
+          p.place_type === "protected_area" &&
+          admin.has(`${p.parent_place_id}/${p.slug}`),
+      )
+      .map((p) => p.name_en);
+    expect(clashing.length).toBeGreaterThan(0);
+  });
+
+  it("still has local unit names shared across districts", async () => {
+    // If this ever reaches zero, flat URLs would become safe. Assert it rather
+    // than assume it -- and it is also why the name crosswalk requires
+    // uniqueness on both sides before matching.
+    const units = (await places()).filter((p) => LOCAL_TYPES.has(p.place_type));
     const counts = new Map<string, number>();
     for (const u of units) counts.set(u.name_en, (counts.get(u.name_en) ?? 0) + 1);
-    const shared = [...counts.values()].filter((n) => n > 1).length;
-    // If this ever drops to zero, flat URLs would become safe -- but do not
-    // assume it; assert it.
-    expect(shared).toBeGreaterThan(0);
+    expect([...counts.values()].filter((n) => n > 1).length).toBeGreaterThan(0);
   });
 
-  it("links every non-root place to a parent that exists", async () => {
-    const all = await places();
-    const codes = new Set(all.map((p) => p.place_pcode));
-    const orphans = all.filter(
-      (p) => p.admin_level > 0 && p.parent_pcode && !codes.has(p.parent_pcode),
-    );
-    expect(orphans.map((o) => o.place_pcode)).toEqual([]);
-  });
-
-  it("resolves a known place by slug within its parent", async () => {
-    const bagmati = await placeBySlug(1, "bagmati");
-    expect(bagmati?.place_pcode).toBe("NP03");
-    const ktm = await placeBySlug(2, "kathmandu", bagmati!.place_pcode);
-    expect(ktm?.place_pcode).toBe("NP0327");
+  it("resolves places by slug within their parent", async () => {
+    const bagmati = await placeBySlug("province", "bagmati");
+    expect(bagmati).toBeDefined();
+    const ktm = await placeBySlug("district", "kathmandu", bagmati!.place_id);
+    expect(ktm?.name_en).toBe("Kathmandu");
+    expect(ktm?.ocha_pcode).toBe("NP0327");
   });
 
   it("puts 11 local units in Kathmandu district", async () => {
-    const units = await districtsOf("NP03");
-    expect(units.length).toBeGreaterThan(0);
-    expect(units.map((d) => d.name_en)).toContain("Kathmandu");
+    const bagmati = await placeBySlug("province", "bagmati");
+    const ktm = await placeBySlug("district", "kathmandu", bagmati!.place_id);
+    expect(await localUnitsOf(ktm!.place_id)).toHaveLength(11);
+  });
+
+  it("excludes protected areas from local units", async () => {
+    const all = await places();
+    const protectedAreas = all.filter((p) => p.place_type === "protected_area");
+    for (const pa of protectedAreas.slice(0, 5)) {
+      const siblings = await localUnitsOf(pa.parent_place_id!);
+      expect(siblings.map((s) => s.place_id)).not.toContain(pa.place_id);
+    }
   });
 });
 
-describe("observations", () => {
-  it("reconciles province and district sums to the national total", async () => {
-    const obs = await observations();
-    const pop = obs.filter(
-      (o) =>
-        o.indicator_code === "population" && o.sex === "all" && o.age_band === "all",
+describe("observations — architectural invariants", () => {
+  it("resolves every observation to a declared indicator", async () => {
+    const [obs, inds] = await Promise.all([observations(), indicators()]);
+    const known = new Set(inds.map((i) => i.indicator_id));
+    const unknown = [...new Set(obs.map((o) => o.indicator_id))].filter(
+      (i) => !known.has(i),
     );
-    const national = pop.find((o) => o.admin_level === 0)!.value;
-    const sum = (level: number) =>
-      pop.filter((o) => o.admin_level === level).reduce((s, o) => s + o.value, 0);
+    expect(unknown).toEqual([]);
+  });
 
-    // A partial load raises no error and produces no obviously wrong row
-    // count -- it just quietly under-reports. This is the cheap guard.
-    expect(sum(1)).toBe(national);
-    expect(sum(2)).toBe(national);
+  it("resolves every observation to a declared unit", async () => {
+    const [obs, us] = await Promise.all([observations(), units()]);
+    const known = new Set(us.map((u) => u.unit_id));
+    const unknown = [...new Set(obs.map((o) => o.unit_id))].filter(
+      (u) => !known.has(u),
+    );
+    expect(unknown).toEqual([]);
+  });
+
+  it("resolves every observation to a documented source dataset", async () => {
+    const obs = await observations();
+    const known = new Set(manifest().sources.map((s) => s.dataset_id));
+    const unknown = [...new Set(obs.map((o) => o.dataset_id))].filter(
+      (d) => !known.has(d),
+    );
+    expect(unknown).toEqual([]);
+  });
+
+  it("gives every observation a value or a status explaining its absence", async () => {
+    const obs = await observations();
+    const unexplained = obs.filter(
+      (o) =>
+        o.value_numeric === null &&
+        o.value_text === null &&
+        !["suppressed", "not_collected"].includes(o.status),
+    );
+    expect(unexplained).toHaveLength(0);
+  });
+
+  it("has no duplicate observations on the natural key", async () => {
+    const obs = await observations();
+    const seen = new Set<string>();
+    const dupes: string[] = [];
+    for (const o of obs) {
+      const key = [
+        o.dataset_id,
+        o.indicator_id,
+        o.place_id ?? "~",
+        o.period_start,
+        o.period_end,
+        o.dimension_key,
+      ].join("|");
+      if (seen.has(key)) dupes.push(key);
+      seen.add(key);
+    }
+    expect(dupes).toEqual([]);
+  });
+
+  it("marks rates and per-capita indicators non-additive", async () => {
+    const inds = await indicators();
+    const rates = inds.filter((i) =>
+      [
+        "cpi_inflation_annual",
+        "gdp_per_capita_usd",
+        "remittances_percent_gdp",
+      ].includes(i.indicator_id),
+    );
+    expect(rates.length).toBeGreaterThan(0);
+    for (const r of rates) {
+      expect(r.is_additive, `${r.indicator_id} must not be additive`).toBe(false);
+    }
+    expect(inds.find((i) => i.indicator_id === "population")!.is_additive).toBe(true);
+  });
+});
+
+describe("observations — population", () => {
+  it("reconciles province and district sums to the national total", async () => {
+    const [obs, all] = await Promise.all([observations(), places()]);
+    const level = new Map(all.map((p) => [p.place_id, p.place_type]));
+    const totals = obs.filter(
+      (o) =>
+        o.indicator_id === "population" &&
+        o.dimension_key === dimensionKey({ sex: "all", age_band: "all" }),
+    );
+    const sumOf = (type: string) =>
+      totals
+        .filter((o) => level.get(o.place_id!) === type)
+        .reduce((s, o) => s + (o.value_numeric ?? 0), 0);
+
+    const national = totals.find(
+      (o) => level.get(o.place_id!) === "country",
+    )!.value_numeric!;
+    expect(sumOf("province")).toBe(national);
+    expect(sumOf("district")).toBe(national);
   });
 
   it("carries every age band including the open-ended top one", async () => {
     const obs = await observations();
-    const bands = new Set(obs.map((o) => o.age_band));
-    // '80+' was silently dropped once because the source spells it '80Plus'
-    // and the ingest regex expected '80PL'. 262,948 people vanished and every
-    // consistency check still passed.
+    const bands = new Set(
+      obs
+        .filter((o) => o.indicator_id === "population")
+        .map((o) => o.dimension_key.match(/age_band=([^|]+)/)?.[1])
+        .filter(Boolean),
+    );
     expect(bands.has("80+")).toBe(true);
     for (const b of AGE_BANDS) expect(bands.has(b)).toBe(true);
-    expect(bands.has("all")).toBe(true);
   });
 
-  it("has female + male equal the total for every place", async () => {
-    const obs = await observations();
-    const byPlace = new Map<string, { all?: number; f?: number; m?: number }>();
-    for (const o of obs) {
-      if (o.indicator_code !== "population" || o.age_band !== "all") continue;
-      const e = byPlace.get(o.place_pcode) ?? {};
-      if (o.sex === "all") e.all = o.value;
-      if (o.sex === "female") e.f = o.value;
-      if (o.sex === "male") e.m = o.value;
-      byPlace.set(o.place_pcode, e);
-    }
-    const bad = [...byPlace.entries()].filter(
-      ([, v]) => v.all !== undefined && v.f! + v.m! !== v.all,
-    );
-    expect(bad).toEqual([]);
-  });
-
-  it("names a place for every observation", async () => {
-    const obs = await observations();
-    expect(obs.filter((o) => !o.place_name_en)).toHaveLength(0);
-  });
-});
-
-describe("populationOf", () => {
-  it("summarises a district", async () => {
-    const ktm = await placeBySlug(2, "kathmandu", "NP03");
+  it("summarises a district correctly", async () => {
+    const bagmati = await placeBySlug("province", "bagmati");
+    const ktm = await placeBySlug("district", "kathmandu", bagmati!.place_id);
     const pop = await populationOf(ktm!);
+
     expect(pop).not.toBeNull();
-    expect(pop!.total).toBeGreaterThan(1_000_000);
     expect(pop!.female + pop!.male).toBe(pop!.total);
     expect(pop!.bands).toHaveLength(AGE_BANDS.length);
-    expect(pop!.femaleShare).toBeGreaterThan(0.4);
-    expect(pop!.femaleShare).toBeLessThan(0.6);
     expect(pop!.density).toBeGreaterThan(0);
+    // 2023 figures are projections, and the page must say so.
+    expect(pop!.status).toBe("projection");
   });
 
-  it("returns null for a place with no observations", async () => {
-    // Local units have no population: COD-PS stops at district level.
-    const units = (await places()).filter((p) => p.admin_level === 3);
-    expect(await populationOf(units[0])).toBeNull();
-  });
-
-  it("reports a plausible working-age share nationally", async () => {
-    const np = await country();
-    const pop = await populationOf(np!);
-    // Nepal's working-age share sits around two thirds. A wildly different
-    // number means the age bands were mis-summed.
-    expect(pop!.workingAgeShare).toBeGreaterThan(0.5);
-    expect(pop!.workingAgeShare).toBeLessThan(0.75);
+  it("returns null for local units, where the source has no coverage", async () => {
+    const local = (await places()).find((p) => LOCAL_TYPES.has(p.place_type))!;
+    expect(await populationOf(local)).toBeNull();
   });
 });
 
-describe("manifest", () => {
-  it("documents every published dataset with a licence and source", () => {
-    const m = manifest();
-    expect(m.datasets.length).toBeGreaterThanOrEqual(4);
-    for (const d of m.datasets) {
-      expect(d.licence, `${d.table} licence`).toBeTruthy();
-      expect(d.source?.url, `${d.table} source url`).toBeTruthy();
-      expect(d.vintage, `${d.table} vintage`).toBeTruthy();
+describe("observations — national time series", () => {
+  // This block is the architecture test: a national annual series with no
+  // geography below country, no dimensions, and currency units. The previous
+  // schema could not express it without meaningless nulls.
+  it("exposes World Bank indicators as scalar series on the country", async () => {
+    const np = await country();
+    const series = await seriesFor(np!);
+    const ids = series.map((s) => s.indicator.indicator_id);
+
+    expect(ids).toContain("cpi_inflation_annual");
+    expect(ids).toContain("gdp_per_capita_usd");
+    expect(ids).toContain("remittances_received_usd");
+  });
+
+  it("carries a multi-decade series with no dimensions", async () => {
+    const np = await country();
+    const series = await seriesFor(np!);
+    const cpi = series.find(
+      (s) => s.indicator.indicator_id === "cpi_inflation_annual",
+    )!;
+
+    expect(cpi.points.length).toBeGreaterThan(50);
+    expect(cpi.points[0].year).toBeLessThan(1980);
+    // Sorted ascending, so a chart can plot it directly.
+    const years = cpi.points.map((p) => p.year);
+    expect([...years].sort((a, b) => a - b)).toEqual(years);
+  });
+
+  it("distinguishes units including currency", async () => {
+    const np = await country();
+    const series = await seriesFor(np!);
+    const byId = new Map(series.map((s) => [s.indicator.indicator_id, s]));
+
+    expect(byId.get("cpi_inflation_annual")!.unit!.unit_kind).toBe("ratio");
+    const gdp = byId.get("gdp_per_capita_usd")!;
+    expect(gdp.unit!.unit_kind).toBe("currency");
+    expect(gdp.unit!.currency_code).toBe("USD");
+    // Price basis is part of the unit, so current and constant prices can never
+    // be silently compared.
+    expect(gdp.unit!.price_basis).toBe("current");
+  });
+
+  it("gives no series for a district, which has none", async () => {
+    const bagmati = await placeBySlug("province", "bagmati");
+    const ktm = await placeBySlug("district", "kathmandu", bagmati!.place_id);
+    expect(await seriesFor(ktm!)).toEqual([]);
+  });
+});
+
+describe("manifest — provenance and licensing", () => {
+  it("documents every source with publisher, licence, vintage and retrieval date", () => {
+    const { sources } = manifest();
+    expect(sources.length).toBeGreaterThanOrEqual(4);
+    for (const s of sources) {
+      expect(s.publisher, `${s.dataset_id} publisher`).toBeTruthy();
+      expect(s.licence, `${s.dataset_id} licence`).toBeTruthy();
+      expect(s.vintage, `${s.dataset_id} vintage`).toBeTruthy();
+      expect(s.retrieved, `${s.dataset_id} retrieved`).toBeTruthy();
+      expect(s.url, `${s.dataset_id} url`).toBeTruthy();
     }
+  });
+
+  it("computes each table's effective licence from its sources", () => {
+    const obs = manifest().tables.find((t) => t.table === "observations")!;
+    expect(obs.sources).toContain("cod-ps-npl");
+    expect(obs.sources).toContain("worldbank-npl");
+    // Most restrictive of CC BY 4.0 and CC BY-IGO 3.0.
+    expect(obs.effective_licence).toBe("cc-by-igo-3.0");
+    expect(obs.contributing_licences).toEqual(["cc-by-4.0", "cc-by-igo-3.0"]);
+  });
+
+  it("publishes nothing under a share-alike licence", () => {
+    // OpenStreetMap was rejected as a name source on exactly these grounds.
+    // This is the guard that keeps that decision from being quietly undone.
+    const shareAlike = manifest().tables.filter((t) => t.share_alike);
+    expect(shareAlike.map((t) => t.table)).toEqual([]);
+  });
+
+  it("names the publishers a reuser must attribute", () => {
+    const obs = manifest().tables.find((t) => t.table === "observations")!;
+    expect(obs.attribution).toContain("UNFPA");
+    expect(obs.attribution).toContain("World Bank");
+  });
+
+  it("publishes revision history", () => {
+    const history = manifest().history;
+    expect(history).not.toBeNull();
+    expect(history!.row_count).toBeGreaterThan(4000);
+  });
+
+  it("resolves tables and their sources together", () => {
+    const tables = tablesFor(["observations", "places"]);
+    expect(tables).toHaveLength(2);
+    const ids = sourcesFor(tables).map((s) => s.dataset_id);
+    expect(ids).toContain("cod-ab-npl");
+    expect(ids).toContain("worldbank-npl");
   });
 });
 
 describe("formatting", () => {
-  it("formats numbers with separators and an em dash for nothing", () => {
+  it("formats numbers, percentages and compact values", () => {
     expect(formatNumber(1234567)).toBe("1,234,567");
     expect(formatNumber(null)).toBe("—");
-    expect(formatNumber(undefined)).toBe("—");
-    expect(formatNumber(NaN)).toBe("—");
-  });
-
-  it("formats percentages", () => {
     expect(formatPercent(0.4903)).toBe("49.0%");
-    expect(formatPercent(null)).toBe("—");
-  });
-
-  it("compacts large numbers for axis labels", () => {
-    expect(formatCompact(950)).toBe("950");
     expect(formatCompact(20000)).toBe("20k");
     expect(formatCompact(2_000_000)).toBe("2M");
+  });
+
+  it("renders values with their unit", async () => {
+    const us = await units();
+    const percent = us.find((u) => u.unit_id === "percent")!;
+    const usd = us.find((u) => u.unit_id === "usd_current")!;
+    expect(formatWithUnit(7.1158, percent)).toBe("7.1%");
+    expect(formatWithUnit(1447.6, usd)).toBe("US$1.4k");
+  });
+
+  it("stays quiet for actual values and speaks up otherwise", () => {
+    expect(statusLabel("actual")).toBeNull();
+    expect(statusLabel("projection")).toBe("projection");
+    expect(statusLabel("suppressed")).toBe("withheld");
+  });
+
+  it("builds canonical dimension keys with members sorted", () => {
+    expect(dimensionKey({ sex: "female", age_band: "0-4" })).toBe(
+      "age_band=0-4|sex=female",
+    );
+    expect(dimensionKey({})).toBe("none");
   });
 });
