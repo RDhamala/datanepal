@@ -39,3 +39,10 @@ publish/dist/
 .DS_Store
 .vscode/
 .idea/
+
+# Next.js
+web/node_modules/
+web/.next/
+web/out/
+web/next-env.d.ts
+web/public/data/

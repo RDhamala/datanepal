@@ -1,0 +1,7 @@
+node_modules/
+.next/
+out/
+next-env.d.ts
+
+# Build-time copy of publish/dist -- generated, never edited by hand.
+public/data/

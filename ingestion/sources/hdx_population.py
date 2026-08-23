@@ -35,10 +35,21 @@ logger = logging.getLogger(__name__)
 
 HDX_PACKAGE_API = "https://data.humdata.org/api/3/action/package_show?id=cod-ps-npl"
 
-# Column names encoding a sex/age-band measure, e.g. F_TL, M_00_04, T_80PL.
-MEASURE = re.compile(r"^(?P<sex>[FMT])_(?P<age>TL|\d{2}_\d{2}|\d{2}PL)$", re.I)
+# Column names encoding a sex/age-band measure, e.g. F_TL, M_00_04, T_80Plus.
+#
+# The open-ended top band is spelled "80Plus" in the current files, but "80PL"
+# and "80+" both appear in COD-PS files for other countries and in older Nepal
+# vintages. Accept all three: an unmatched top band silently drops the entire
+# elderly population, and nothing downstream would flag it.
+MEASURE = re.compile(
+    r"^(?P<sex>[FMT])_(?P<age>TL|\d{2}_\d{2}|\d{2}(?:PL|PLUS|\+))$",
+    re.I,
+)
 
-EXPECTED_ROWS = {0: 1, 1: 7, 2: 77}
+EXPECTED_PLACES = {0: 1, 1: 7, 2: 77}
+
+# 3 sexes x 18 bands (16 five-year bands + 80+ + the TL total) = 54 measures.
+EXPECTED_MEASURES_PER_PLACE = 54
 
 
 def _verify() -> str | bool:
@@ -80,8 +91,9 @@ def _normalise_age(age: str) -> str:
     age = age.upper()
     if age == "TL":
         return "all"
-    if age.endswith("PL"):
-        return f"{int(age[:-2])}+"
+    match = re.match(r"^(\d{2})(?:PL|PLUS|\+)$", age)
+    if match:
+        return f"{int(match.group(1))}+"
     lo, hi = age.split("_")
     return f"{int(lo)}-{int(hi)}"
 
@@ -90,6 +102,7 @@ def _normalise_age(age: str) -> str:
 def population() -> Iterator[dict[str, Any]]:
     """Yield population counts in long form: one row per place/year/sex/age band."""
     emitted_by_level: dict[int, set[str]] = {}
+    measures_seen: dict[int, int] = {}
 
     for level, url in sorted(_resources().items()):
         logger.info("Fetching COD-PS admin level %d", level)
@@ -100,6 +113,7 @@ def population() -> Iterator[dict[str, Any]]:
         text = response.content.decode("utf-8-sig")
         reader = csv.DictReader(io.StringIO(text))
         places: set[str] = set()
+        measures = 0
 
         for row in reader:
             pcode = (
@@ -121,6 +135,7 @@ def population() -> Iterator[dict[str, Any]]:
                 except ValueError:
                     continue
 
+                measures += 1
                 yield {
                     "place_pcode": pcode,
                     "admin_level": level,
@@ -134,13 +149,33 @@ def population() -> Iterator[dict[str, Any]]:
                 }
 
         emitted_by_level[level] = places
-        logger.info("  admin level %d: %d places", level, len(places))
+        measures_seen[level] = measures
+        logger.info(
+            "  admin level %d: %d places, %d measures each",
+            level, len(places), measures // max(len(places), 1),
+        )
 
     problems = [
         f"level {lvl}: {len(emitted_by_level.get(lvl, ()))} places (expected {n})"
-        for lvl, n in EXPECTED_ROWS.items()
+        for lvl, n in EXPECTED_PLACES.items()
         if lvl in emitted_by_level and len(emitted_by_level[lvl]) != n
     ]
+
+    # Check measures per place as well as place counts. A renamed column -- the
+    # top age band is spelled "80Plus" here but "80PL" elsewhere -- would
+    # otherwise pass the place check while silently dropping a whole cohort.
+    for lvl, count in measures_seen.items():
+        n_places = len(emitted_by_level.get(lvl, ()))
+        if not n_places:
+            continue
+        per_place = count / n_places
+        if per_place != EXPECTED_MEASURES_PER_PLACE:
+            problems.append(
+                f"level {lvl}: {per_place:.1f} measures per place "
+                f"(expected {EXPECTED_MEASURES_PER_PLACE}) -- a source column "
+                "may have been renamed"
+            )
+
     if problems:
         raise ValueError("COD-PS coverage unexpected: " + "; ".join(problems))
 
