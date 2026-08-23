@@ -13,6 +13,17 @@ sources:
       - name: admin_units
         description: Admin levels 1-3 (province, district, local unit) plus protected areas.
 
+  - name: raw_hdx_population
+    schema: raw_hdx_population
+    description: >
+      Nepal subnational population statistics (COD-PS), UNFPA via HDX,
+      CC BY-IGO. Already P-coded, so it joins the geography spine with no
+      crosswalk. Unpivoted to long form during ingestion. Covers admin levels
+      0-2 only; palika-level population requires the NSO census portal.
+    tables:
+      - name: population
+        description: Population by place, year, sex, and 5-year age band.
+
   - name: raw_wikidata_names
     schema: raw_wikidata_names
     description: >

@@ -1,0 +1,48 @@
+version: 2
+
+models:
+  - name: places
+    description: >
+      Every addressable place in Nepal across all admin levels: 1 country,
+      7 provinces, 77 districts, 753 local units. Carries the URL slug.
+    columns:
+      - name: place_pcode
+        tests: [unique, not_null]
+      - name: name_en
+        tests: [not_null]
+      - name: slug
+        tests: [not_null]
+      - name: admin_level
+        tests:
+          - not_null
+          - accepted_values: {values: [0, 1, 2, 3], quote: false}
+
+  - name: observations
+    description: >
+      The canonical fact table: place x indicator x period x dimensions -> value.
+      Every dataset lands here in the same shape, which is what lets the
+      frontend render any indicator without dataset-specific code.
+    columns:
+      - name: place_pcode
+        tests:
+          - not_null
+          - relationships: {to: ref('places'), field: place_pcode}
+      - name: indicator_code
+        tests: [not_null]
+      - name: period
+        tests: [not_null]
+      - name: value
+        tests: [not_null]
+      - name: sex
+        tests:
+          - accepted_values: {values: [all, female, male]}
+      - name: unit
+        tests: [not_null]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - place_pcode
+            - indicator_code
+            - period
+            - sex
+            - age_band
