@@ -10,6 +10,7 @@ import {
   formatPercent,
   indicatorSlug,
   localUnitsOf,
+  mapFor,
   placeBySlug,
   populationOf,
   provinces,
@@ -17,6 +18,7 @@ import {
   statusLabel,
   tablesFor,
 } from "@/lib/data";
+import { Choropleth } from "@/components/Choropleth";
 import { AgePyramid } from "@/components/AgePyramid";
 import { RankedBars } from "@/components/charts";
 import {
@@ -25,7 +27,7 @@ import {
   FactStrip,
   PageHeader,
   SectionNav,
-  Sources,
+  SourceNote,
 } from "@/components/ui";
 
 /*
@@ -78,10 +80,14 @@ export default async function ProvincePage({ params }: { params: Promise<Params>
   const share =
     pop && national && national.total > 0 ? pop.total / national.total : null;
 
-  // District comparison within this province only.
-  const allDistricts = await comparisonFor("population", "district");
+  // District comparison and geometry, both narrowed to this province.
+  const [allDistricts, districtMap] = await Promise.all([
+    comparisonFor("population", "district"),
+    mapFor("population", "district"),
+  ]);
   const own = new Set(districtList.map((d) => d.place_id));
   const districtRows = allDistricts.rows.filter((r) => own.has(r.place.place_id));
+  const ownFeatures = districtMap.features.filter((f) => own.has(f.placeId));
 
   const localUnits = (
     await Promise.all(districtList.map((d) => localUnitsOf(d.place_id)))
@@ -210,19 +216,42 @@ export default async function ProvincePage({ params }: { params: Promise<Params>
         <AnchoredSection
           id="districts"
           title="Districts by population"
-          note={`${districtRows.length} districts, ${allDistricts.period}.`}
+          note={`${districtRows.length} districts, ${allDistricts.period}. The map answers where; the ranking answers how much.`}
         >
-          <RankedBars
-            label={`Districts of ${place.name_en} by population, ${allDistricts.period}`}
-            valueLabel="Population"
-            unit={allDistricts.unit}
-            rows={districtRows.map((r) => ({
-              name: r.place.name_en,
-              nameNe: r.place.name_ne,
-              href: `/np/${place.slug}/${r.place.slug}/`,
-              value: r.value,
-            }))}
-          />
+          {/* Map beside the ranking, same as the national view. The Choropleth
+              derives its own bounding box, so passing only this province's
+              districts frames the province rather than the country. */}
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:gap-12">
+            {ownFeatures.length > 0 && (
+              <Choropleth
+                features={ownFeatures}
+                unit={districtMap.unit}
+                label={`Population by district, ${place.name_en}`}
+                period={districtMap.period}
+                valueLabel="Population"
+                height={340}
+                // Labels only where they fit inside the shapes; a province of
+                // thirteen districts at this size is a thicket of overlapping
+                // text. The ranking beside it carries the names either way.
+                showLabels={ownFeatures.length <= 8}
+                // Same skew as the national map: one metropolitan district
+                // against a dozen rural ones flattens an equal-interval ramp.
+                scale="quantile"
+              />
+            )}
+            <RankedBars
+              label={`Districts of ${place.name_en} by population, ${allDistricts.period}`}
+              valueLabel="Population"
+              unit={allDistricts.unit}
+              compact
+              rows={districtRows.map((r) => ({
+                name: r.place.name_en,
+                nameNe: r.place.name_ne,
+                href: `/np/${place.slug}/${r.place.slug}/`,
+                value: r.value,
+              }))}
+            />
+          </div>
         </AnchoredSection>
       )}
 
@@ -240,7 +269,7 @@ export default async function ProvincePage({ params }: { params: Promise<Params>
       </AnchoredSection>
 
       <div id="sources" className="scroll-mt-20">
-        <Sources tables={tables} sources={sourcesFor(tables)} />
+        <SourceNote tables={tables} sources={sourcesFor(tables)} />
       </div>
     </>
   );

@@ -17,7 +17,7 @@ import {
   units,
 } from "@/lib/data";
 import { Headline, RankedBars, TrendChart } from "@/components/charts";
-import { Crumbs, PageHeader, Section, Sources } from "@/components/ui";
+import { Crumbs, PageHeader, Section, SourceNote } from "@/components/ui";
 
 /*
   Indicator page: "what exactly is this statistic, how has it changed, where
@@ -224,7 +224,7 @@ export default async function IndicatorPage({ params }: { params: Promise<Params
         </Section>
       )}
 
-      <Sources tables={tables} sources={sourcesFor(tables)} />
+      <SourceNote tables={tables} sources={sourcesFor(tables)} />
     </>
   );
 }

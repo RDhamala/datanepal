@@ -67,6 +67,19 @@ export type Indicator = {
   notes: string | null;
 };
 
+export type PlaceBoundary = {
+  place_id: string;
+  admin_level: number;
+  place_type: string;
+  name_en: string;
+  name_ne: string | null;
+  slug: string;
+  parent_place_id: string | null;
+  ocha_pcode: string;
+  /** GeoJSON MultiPolygon as a string, lon/lat. */
+  geometry_geojson: string;
+};
+
 export type Topic = {
   topic_id: string;
   name_en: string;
@@ -204,6 +217,59 @@ export const observations = () => table<Observation>("observations.parquet");
 export const indicators = () => table<Indicator>("indicators.parquet");
 export const units = () => table<Unit>("units.parquet");
 export const topics = () => table<Topic>("topics.parquet");
+export const boundaries = () => table<PlaceBoundary>("place_boundaries.parquet");
+
+/** Boundary geometry for one admin level, joined to values for an indicator. */
+export async function mapFor(
+  indicatorId: string,
+  placeType: string,
+): Promise<{
+  period: number;
+  unit: Unit | undefined;
+  features: {
+    placeId: string;
+    name: string;
+    nameNe: string | null;
+    slug: string;
+    href: string;
+    geometryGeoJson: string;
+    value: number | null;
+  }[];
+}> {
+  const [geo, cmp, all] = await Promise.all([
+    boundaries(),
+    comparisonFor(indicatorId, placeType),
+    places(),
+  ]);
+  const byId = new Map(all.map((p) => [p.place_id, p]));
+  const valueOf = new Map(cmp.rows.map((r) => [r.place.place_id, r.value]));
+
+  const features = geo
+    .filter((g) => g.place_type === placeType)
+    .map((g) => {
+      const place = byId.get(g.place_id);
+      const parent = place?.parent_place_id ? byId.get(place.parent_place_id) : undefined;
+      // Province pages live at /np/<slug>/, districts at /np/<province>/<slug>/.
+      const href =
+        placeType === "province"
+          ? `/np/${g.slug}/`
+          : parent
+            ? `/np/${parent.slug}/${g.slug}/`
+            : `/np/${g.slug}/`;
+      return {
+        placeId: g.place_id,
+        name: g.name_en,
+        nameNe: g.name_ne,
+        slug: g.slug,
+        href,
+        geometryGeoJson: g.geometry_geojson,
+        value: valueOf.get(g.place_id) ?? null,
+      };
+    })
+    .sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
+
+  return { period: cmp.period, unit: cmp.unit, features };
+}
 
 /** Topics that actually hold data. A planned topic must not render as populated. */
 export async function liveTopics(): Promise<Topic[]> {
@@ -510,6 +576,18 @@ export function formatPercent(x: number | null | undefined, dp = 1): string {
  */
 export function formatCompact(n: number): string {
   const abs = Math.abs(n);
+  /*
+    Tiers run to trillions, not to millions.
+
+    Stopping at M rendered Nepal's remittance inflow as "US$11254.5M" — a number
+    a reader has to parse digit by digit to discover it means eleven billion.
+    Nepal's GDP is around US$45B and its federal budget is around NPR 1.8
+    trillion, so every economic magnitude past this first slice of indicators
+    lands above the old ceiling. A missing tier does not error; it just prints
+    something nobody can read.
+  */
+  if (abs >= 1e12) return `${(n / 1e12).toFixed(abs % 1e12 ? 1 : 0)}T`;
+  if (abs >= 1e9) return `${(n / 1e9).toFixed(abs % 1e9 ? 1 : 0)}B`;
   if (abs >= 1_000_000) return `${(n / 1_000_000).toFixed(abs % 1_000_000 ? 1 : 0)}M`;
   if (abs >= 1_000)
     return `${(n / 1_000).toFixed(abs % 1_000 && abs < 10_000 ? 1 : 0)}k`;
@@ -589,4 +667,77 @@ export function tablesFor(names: string[]): PublishedTable[] {
 export function sourcesFor(tables: PublishedTable[]): SourceDataset[] {
   const ids = new Set(tables.flatMap((t) => t.sources));
   return manifest().sources.filter((s) => ids.has(s.dataset_id));
+}
+
+/* ------------------------------------------------------------ update log */
+
+export type HistoryRow = {
+  observation_id: string;
+  revision: number;
+  dataset_id: string;
+  indicator_id: string;
+  period_start: string;
+  first_seen_at: string;
+  superseded_at: string | null;
+  is_current: boolean;
+};
+
+export type DatasetUpdate = {
+  source: SourceDataset;
+  /** Observations currently published from this dataset. */
+  current: number;
+  /** Values this dataset has revised since first publication. */
+  revised: number;
+  /** When DataNepal last saw a new or changed value from it. */
+  lastChange: string;
+};
+
+/**
+ * What changed, when, per source dataset.
+ *
+ * Derived from the committed revision history rather than from a hand-kept
+ * changelog, so it cannot drift from the data. On a first publication run every
+ * dataset reports zero revisions — that is the true answer, and it becomes a
+ * real change log on the second run with no redesign needed.
+ *
+ * `lastChange` is the most recent date on which a value from this dataset was
+ * first seen or superseded. That is a stronger freshness signal than the
+ * retrieval date: re-fetching an unchanged file does not make the data newer.
+ */
+export async function updateLog(): Promise<{
+  generated: string;
+  datasets: DatasetUpdate[];
+  totalCurrent: number;
+  totalRevised: number;
+}> {
+  const m = manifest();
+  // Filename comes from the manifest so it cannot drift from the export.
+  const rows = m.history
+    ? await table<HistoryRow>(m.history.parquet)
+    : ([] as HistoryRow[]);
+
+  const datasets = m.sources
+    .map((source) => {
+      const mine = rows.filter((r) => r.dataset_id === source.dataset_id);
+      if (!mine.length) return null;
+      const dates = [
+        ...mine.map((r) => r.first_seen_at),
+        ...mine.map((r) => r.superseded_at).filter((d): d is string => !!d),
+      ].sort();
+      return {
+        source,
+        current: mine.filter((r) => r.is_current).length,
+        revised: mine.filter((r) => r.superseded_at !== null).length,
+        lastChange: dates.at(-1)!,
+      };
+    })
+    .filter((d): d is DatasetUpdate => d !== null)
+    .sort((a, b) => b.lastChange.localeCompare(a.lastChange) || b.current - a.current);
+
+  return {
+    generated: m.generated_at.slice(0, 10),
+    datasets,
+    totalCurrent: rows.filter((r) => r.is_current).length,
+    totalRevised: rows.filter((r) => r.superseded_at !== null).length,
+  };
 }

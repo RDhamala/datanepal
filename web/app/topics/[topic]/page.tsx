@@ -18,7 +18,7 @@ import {
 } from "@/lib/data";
 import { AgePyramid } from "@/components/AgePyramid";
 import { Headline, RankedBars, TrendChart } from "@/components/charts";
-import { Crumbs, PageHeader, Section, Sources } from "@/components/ui";
+import { Crumbs, PageHeader, Section, SourceNote } from "@/components/ui";
 
 /*
   Topic page: "what should I know about this subject across Nepal?"
@@ -237,7 +237,7 @@ export default async function TopicPage({ params }: { params: Promise<Params> })
         </ul>
       </Section>
 
-      <Sources tables={tables} sources={sourcesFor(tables)} />
+      <SourceNote tables={tables} sources={sourcesFor(tables)} />
     </>
   );
 }

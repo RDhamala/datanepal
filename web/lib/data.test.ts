@@ -423,6 +423,29 @@ describe("formatting", () => {
     expect(formatCompact(2_000_000)).toBe("2M");
   });
 
+  /*
+    Every tier, because a missing one does not throw -- it silently prints an
+    unreadable number. Remittances rendered as "US$11254.5M" before the billion
+    tier existed, and nothing in the build noticed.
+  */
+  it("scales compact values through billions and trillions", () => {
+    expect(formatCompact(30_899_443)).toBe("30.9M");
+    expect(formatCompact(11_254_500_000)).toBe("11.3B");
+    expect(formatCompact(45_000_000_000)).toBe("45B");
+    expect(formatCompact(1_800_000_000_000)).toBe("1.8T");
+    expect(formatCompact(-11_254_500_000)).toBe("-11.3B");
+  });
+
+  it("keeps the largest published figure inside four significant characters", async () => {
+    // Guards the ceiling rather than one hard-coded value: whatever the biggest
+    // number we publish happens to be, it must still render compactly.
+    const obs = await observations();
+    const max = Math.max(
+      ...obs.map((o) => Math.abs(o.value_numeric ?? 0)).filter(Number.isFinite),
+    );
+    expect(formatCompact(max).length).toBeLessThanOrEqual(6);
+  });
+
   it("renders values with their unit", async () => {
     const us = await units();
     const percent = us.find((u) => u.unit_id === "percent")!;

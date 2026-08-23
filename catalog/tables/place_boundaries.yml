@@ -1,0 +1,20 @@
+table: place_boundaries
+title: Nepal boundary geometry
+title_ne: नेपालको सीमा भूगोल
+description: >
+  Simplified administrative boundary geometry for Nepal's 7 provinces and 77
+  districts, as GeoJSON MultiPolygon strings in lon/lat, joined to canonical
+  place identifiers.
+sources: [cod-ab-npl]
+grain: One row per place with geometry.
+geography_level: mixed
+caveats:
+  - >
+    Simplified with Ramer-Douglas-Peucker at 0.004 degrees for provinces and
+    0.006 for districts, reducing 161,502 province vertices to about 3,000. Fine
+    for cartographic display at web sizes; not suitable for area calculation,
+    adjacency analysis, or any measurement. Use the source package for that.
+  - >
+    Rings under roughly 1 km² are dropped, so small river islands and slivers
+    are absent.
+  - Coordinates are lon/lat (EPSG:4326). No projection is applied.

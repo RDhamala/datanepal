@@ -1,16 +1,96 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { indicatorSlug, indicators, topics, units } from "@/lib/data";
-import { Crumbs, PageHeader, Section } from "@/components/ui";
+import {
+  country,
+  formatWithUnit,
+  indicatorSlug,
+  indicators,
+  observations,
+  places,
+  populationOf,
+  seriesFor,
+  statusLabel,
+  topics,
+  units,
+} from "@/lib/data";
+import { Sparkline } from "@/components/charts";
+import { Crumbs, PageHeader } from "@/components/ui";
 
 export const metadata: Metadata = {
   title: "Indicators",
-  description: "Every statistic published by DataNepal, with its unit and source.",
+  description: "Every statistic published by DataNepal, with its latest value and source.",
+};
+
+/*
+  Indicators index: what each statistic currently says, not what it is defined as.
+
+  The old version was a definition list — name, unit, definition text. That is
+  reference documentation, and it made the page useless for the actual question
+  a visitor arrives with: what is the number, for when, and where is it from.
+
+  So each row now carries the latest national value, its reference period, a
+  trend where a series exists, the geographic depth available, and the publisher.
+  The definition stays, below, because it still matters — it just is not the
+  headline.
+*/
+
+/** Attribution per indicator. Publisher, never the acquisition path. */
+const PUBLISHER: Record<string, string> = {
+  population: "UNFPA",
+  cpi_inflation_annual: "World Bank",
+  gdp_per_capita_usd: "World Bank",
+  remittances_percent_gdp: "World Bank",
+  remittances_received_usd: "World Bank",
+  population_density: "UNFPA / OCHA",
+};
+
+const LOCAL_TYPES = new Set([
+  "metropolitan",
+  "sub_metropolitan",
+  "municipality",
+  "rural_municipality",
+]);
+
+const GRAIN_LABEL: Record<string, string> = {
+  country: "National",
+  province: "To province",
+  district: "To district",
+  metropolitan: "To local unit",
+  sub_metropolitan: "To local unit",
+  municipality: "To local unit",
+  rural_municipality: "To local unit",
 };
 
 export default async function IndicatorsIndex() {
-  const [inds, allTopics, us] = await Promise.all([indicators(), topics(), units()]);
+  const [inds, allTopics, us, np, obs, all] = await Promise.all([
+    indicators(),
+    topics(),
+    units(),
+    country(),
+    observations(),
+    places(),
+  ]);
   const unitOf = (id: string) => us.find((u) => u.unit_id === id);
+  const series = np ? await seriesFor(np) : [];
+  const pop = np ? await populationOf(np) : null;
+
+  // Deepest place type each indicator reaches. A reader comparing districts
+  // needs to know which indicators actually go that far before clicking.
+  // Observations carry only place_id, so this joins through places.
+  const DEPTH = ["country", "province", "district", "local"];
+  const typeOf = new Map(all.map((p) => [p.place_id, p.place_type]));
+  const rank = (t: string) => {
+    const i = DEPTH.indexOf(LOCAL_TYPES.has(t) ? "local" : t);
+    return i === -1 ? 0 : i;
+  };
+  const depthOf = new Map<string, string>();
+  for (const o of obs) {
+    if (!o.place_id) continue;
+    const t = typeOf.get(o.place_id);
+    if (!t) continue;
+    const current = depthOf.get(o.indicator_id);
+    if (!current || rank(t) > rank(current)) depthOf.set(o.indicator_id, t);
+  }
 
   const byTopic = new Map<string, typeof inds>();
   for (const i of inds) {
@@ -24,37 +104,98 @@ export default async function IndicatorsIndex() {
         eyebrow="Browse"
         title="Indicators"
         native="सूचकहरू"
-        meta={`${inds.length} indicators across ${byTopic.size} topics`}
+        meta={`${inds.length} indicators across ${byTopic.size} topics. Values shown are national, latest available period.`}
       />
 
       {allTopics
         .filter((t) => byTopic.has(t.topic_id))
         .map((t) => (
-          <Section key={t.topic_id} title={t.name_en}>
-            <ul className="divide-line border-line divide-y rounded-lg border">
-              {byTopic.get(t.topic_id)!.map((i) => (
-                <li key={i.indicator_id} className="px-4 py-3">
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                    <Link
-                      href={`/indicators/${indicatorSlug(i.indicator_id)}/`}
-                      className="text-[14px] font-medium"
-                    >
-                      {i.name_en}
-                    </Link>
-                    <span className="text-ink-faint text-[12px]">
-                      {unitOf(i.default_unit_id)?.name_en}
-                      {!i.is_additive && " · not additive"}
-                    </span>
-                  </div>
-                  {i.definition && (
-                    <p className="text-ink-soft mt-1 max-w-2xl text-[13px]">
-                      {i.definition}
-                    </p>
-                  )}
-                </li>
-              ))}
+          <section key={t.topic_id} className="mb-14">
+            <h2 className="text-heading text-ink font-semibold">
+              <Link href={`/topics/${t.slug}/`}>{t.name_en}</Link>
+              {t.name_ne && (
+                <span className="text-ink-faint ne ml-2 font-normal">{t.name_ne}</span>
+              )}
+            </h2>
+
+            <ul className="divide-line border-line mt-4 divide-y border-t">
+              {byTopic.get(t.topic_id)!.map((i) => {
+                const s = series.find((x) => x.indicator.indicator_id === i.indicator_id);
+                const unit = unitOf(i.default_unit_id);
+                // Population is the one indicator whose national figure comes
+                // from the age/sex cube rather than a plain series.
+                const value =
+                  i.indicator_id === "population" && pop
+                    ? { text: formatWithUnit(pop.total, unit), period: String(pop.period) }
+                    : s?.latest
+                      ? {
+                          text: formatWithUnit(s.latest.value, s.unit),
+                          period: String(s.latest.year),
+                        }
+                      : null;
+                const status =
+                  i.indicator_id === "population" && pop ? statusLabel(pop.status) : null;
+
+                return (
+                  <li
+                    key={i.indicator_id}
+                    className="grid grid-cols-1 items-baseline gap-x-8 gap-y-3 py-5 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto]"
+                  >
+                    <div>
+                      <Link
+                        href={`/indicators/${indicatorSlug(i.indicator_id)}/`}
+                        className="text-[15px] font-medium"
+                      >
+                        {i.name_en}
+                      </Link>
+                      {i.name_ne && (
+                        <span className="text-ink-faint ne ml-2 text-[13px]">
+                          {i.name_ne}
+                        </span>
+                      )}
+                      {i.definition && (
+                        <p className="text-ink-faint mt-1 max-w-prose text-[12px] leading-relaxed">
+                          {i.definition}
+                        </p>
+                      )}
+                      <p className="text-ink-faint mt-1.5 text-[11px]">
+                        {unit?.name_en}
+                        {" · "}
+                        {GRAIN_LABEL[depthOf.get(i.indicator_id) ?? "country"] ??
+                          "National"}
+                        {!i.is_additive && " · not additive"}
+                        {PUBLISHER[i.indicator_id] && ` · ${PUBLISHER[i.indicator_id]}`}
+                      </p>
+                    </div>
+
+                    {/* Latest value, right-aligned so the column scans as a
+                        column of numbers rather than as prose. */}
+                    <div className="sm:text-right">
+                      {value ? (
+                        <>
+                          <div className="text-ink tabular text-[1.25rem] leading-none font-semibold tracking-[-0.025em]">
+                            {value.text}
+                          </div>
+                          <div className="text-ink-faint tabular mt-1 text-[11px]">
+                            {value.period}
+                            {status && ` ${status}`}
+                          </div>
+                        </>
+                      ) : (
+                        <span className="text-ink-faint text-[13px]">—</span>
+                      )}
+                    </div>
+
+                    <div className="sm:w-33">
+                      {s && s.points.length >= 3 && (
+                        <Sparkline points={s.points.slice(-30)} />
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
-          </Section>
+          </section>
         ))}
     </>
   );

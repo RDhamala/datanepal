@@ -1,98 +1,126 @@
 @import "tailwindcss";
 
 /*
-  Design tokens.
+  DataNepal design tokens.
 
-  Both modes are *selected* values, not an inversion: the dark series steps were
-  chosen for the dark surface and validated against it. Series colours are
-  categorical slots 1 and 2 from the validated reference palette.
+  Every colour has one role. Nothing here is decorative: if a value is not
+  carrying meaning (identity, magnitude, state, hierarchy) it does not exist.
 
-    light   CVD ΔE 24.7 · normal 33.6 · contrast ≥ 3:1   all pass
-    dark    CVD ΔE 26.8 · normal 31.8 · contrast ≥ 3:1   all pass
+  Both modes are *selected* values, not an inversion. The sequential ramp flips
+  its anchor in dark mode — light-to-dark reads as low-to-high on a white
+  surface and the reverse on a dark one.
 
-  Re-run the dataviz skill's validate_palette.js before changing any series
-  colour. Do not reason about contrast by eye.
+  Validation:
+    categorical slots 1-2   light CVD dE 24.7 / normal 33.6 / contrast >= 3:1
+                            dark  CVD dE 26.8 / normal 31.8 / contrast >= 3:1
+    sequential ramp         lightness monotonic, span 0.49 light / 0.56 dark
+                            (sequential ramps are checked for monotonicity, not
+                            adjacency CVD — the categorical validator fails them
+                            by design)
 */
 
 @theme {
-  /* Surfaces */
+  /* ---- surfaces ---- */
   --color-surface: #ffffff;
   --color-surface-raised: #fbfbfa;
-  --color-surface-sunken: #f4f4f2;
+  --color-surface-sunken: #f5f5f3;
+  --color-surface-inset: #eeeeeb;
 
-  /* Lines */
-  --color-line: #e4e4df;
+  /* ---- lines ---- */
+  --color-line: #e5e5e0;
   --color-line-strong: #c9c9c2;
 
-  /* Ink. Text always wears these, never a series colour. */
-  --color-ink: #101010;
-  --color-ink-soft: #4f4e4b;
-  --color-ink-faint: #78776f;
+  /* ---- ink. Text wears these, never a series colour. ---- */
+  --color-ink: #0f0f0e;
+  --color-ink-soft: #4d4c49;
+  --color-ink-faint: #77766e;
 
-  /* Categorical series */
+  /* ---- brand & action ---- */
+  --color-brand: #1c5aa6;
+  --color-link: #1f5fad;
+  --color-selected: #e3edfa;
+
+  /* ---- categorical series: identity, fixed order, never cycled ---- */
   --color-series-1: #2a78d6;
   --color-series-2: #eb6834;
 
-  --color-link: #1f5fad;
+  /* ---- sequential ramp: magnitude, light -> dark ---- */
+  --color-seq-1: #eef4fd;
+  --color-seq-2: #c3dbf7;
+  --color-seq-3: #7fb0e9;
+  --color-seq-4: #3d84da;
+  --color-seq-5: #1c5aa6;
 
-  /* Type scale. Tight tracking on display sizes only. */
-  --text-display: 2.5rem;
-  --text-display--line-height: 1.1;
-  --text-display--letter-spacing: -0.025em;
-  --text-title: 1.5rem;
-  --text-title--line-height: 1.25;
-  --text-title--letter-spacing: -0.015em;
-  --text-heading: 1rem;
-  --text-heading--line-height: 1.4;
-  --text-heading--letter-spacing: -0.01em;
-  --text-stat: 1.75rem;
-  --text-stat--line-height: 1.05;
-  --text-stat--letter-spacing: -0.025em;
+  /* ---- movement. Not good/bad: more inflation is not "bad data". ---- */
+  --color-rise: #1f6f4a;
+  --color-fall: #a33b2a;
+
+  /* ---- type scale ---- */
+  --text-display: 3.25rem;
+  --text-display--line-height: 1.02;
+  --text-display--letter-spacing: -0.035em;
+  --text-title: 1.875rem;
+  --text-title--line-height: 1.15;
+  --text-title--letter-spacing: -0.025em;
+  --text-heading: 1.0625rem;
+  --text-heading--line-height: 1.35;
+  --text-heading--letter-spacing: -0.011em;
+  --text-stat: 2rem;
+  --text-stat--line-height: 1;
+  --text-stat--letter-spacing: -0.03em;
   --text-label: 0.6875rem;
   --text-label--line-height: 1.3;
-  --text-label--letter-spacing: 0.06em;
+  --text-label--letter-spacing: 0.07em;
 
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, "Noto Sans Devanagari", sans-serif;
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  --font-devanagari:
+    "Noto Sans Devanagari", "Kantipur", ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* Content measure. Tables need room; prose does not. */
-  --container-page: 76rem;
+  /*
+    Width scale. One container width for everything is why the old layout
+    wasted desktop space: prose wants ~70 characters, a 77-row data table wants
+    everything it can get, and a map wants to be square-ish.
+  */
+  --container-prose: 42rem; /* editorial text */
+  --container-page: 84rem; /* page chrome, grids */
+  --container-wide: 96rem; /* full-bleed data surfaces */
 }
 
 @layer theme {
   @media (prefers-color-scheme: dark) {
     :root:where(:not([data-theme="light"])) {
-      --color-surface: #111110;
-      --color-surface-raised: #191918;
-      --color-surface-sunken: #232322;
+      --color-surface: #100f0e;
+      --color-surface-raised: #181817;
+      --color-surface-sunken: #222221;
+      --color-surface-inset: #2b2b29;
 
-      --color-line: #313130;
-      --color-line-strong: #484843;
+      --color-line: #302f2d;
+      --color-line-strong: #474641;
 
       --color-ink: #ffffff;
-      --color-ink-soft: #c4c3b8;
-      --color-ink-faint: #93928a;
+      --color-ink-soft: #c5c4ba;
+      --color-ink-faint: #94938a;
+
+      --color-brand: #6ba6e6;
+      --color-link: #82b4f1;
+      --color-selected: #1b2f4a;
 
       --color-series-1: #3987e5;
       --color-series-2: #d95926;
 
-      --color-link: #82b4f1;
-    }
-  }
+      /* Anchor flipped: dark = low on a dark surface. */
+      --color-seq-1: #16283d;
+      --color-seq-2: #1d4270;
+      --color-seq-3: #2a6bb5;
+      --color-seq-4: #5698e2;
+      --color-seq-5: #a8caf1;
 
-  :root[data-theme="dark"] {
-    --color-surface: #111110;
-    --color-surface-raised: #191918;
-    --color-surface-sunken: #232322;
-    --color-line: #313130;
-    --color-line-strong: #484843;
-    --color-ink: #ffffff;
-    --color-ink-soft: #c4c3b8;
-    --color-ink-faint: #93928a;
-    --color-series-1: #3987e5;
-    --color-series-2: #d95926;
-    --color-link: #82b4f1;
+      --color-rise: #5fbe8d;
+      --color-fall: #e08974;
+    }
   }
 }
 
@@ -100,6 +128,13 @@
   html {
     color-scheme: light dark;
     -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
   }
 
   body {
@@ -109,9 +144,22 @@
     font-size: 15px;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
+    font-feature-settings: "kern";
   }
 
-  /* Numbers in tables and stats must align vertically. */
+  /*
+    Devanagari has a smaller x-height than Latin at the same point size, so
+    equal sizing does not read as equal weight. Nepali text gets a small optical
+    bump and a font stack that actually has the glyphs, rather than falling back
+    to whatever the OS picks.
+  */
+  :lang(ne),
+  .ne {
+    font-family: var(--font-devanagari);
+    font-size: 1.06em;
+    line-height: 1.5;
+  }
+
   .tabular {
     font-variant-numeric: tabular-nums;
   }
@@ -126,13 +174,27 @@
   }
 
   ::selection {
-    background-color: var(--color-series-1);
-    color: #fff;
+    background-color: var(--color-selected);
+    color: var(--color-ink);
   }
 
   :focus-visible {
     outline: 2px solid var(--color-series-1);
     outline-offset: 2px;
     border-radius: 2px;
+  }
+
+  /* Map and chart geometry inherits stroke from the surface so borders between
+     shapes read as separation rather than as data. */
+  .geo-shape {
+    stroke: var(--color-surface);
+    stroke-width: 0.6;
+    vector-effect: non-scaling-stroke;
+    transition: fill 120ms ease;
+  }
+  a:hover > .geo-shape,
+  a:focus-visible > .geo-shape {
+    stroke: var(--color-ink);
+    stroke-width: 1.4;
   }
 }

@@ -141,9 +141,19 @@ export function DataTable({
   columns: { label: string; numeric?: boolean }[];
   children: React.ReactNode;
 }) {
+  /*
+    A minimum width so the table scrolls instead of compressing.
+
+    `overflow-x-auto` alone does nothing when the table is `w-full`: it shrinks
+    to fit and every cell wraps to a column of single words. A five-column table
+    at 390px became six lines of broken text per row. Scaling the floor with the
+    column count means a two-column table still fits a phone without a
+    pointless scrollbar, while a wide one stays legible and scrolls.
+  */
+  const minWidth = `${Math.max(0, columns.length - 2) * 8.5 + 17}rem`;
   return (
     <div className="border-line overflow-x-auto rounded-lg border">
-      <table className="w-full text-[13px]">
+      <table className="w-full text-[13px]" style={{ minWidth }}>
         <thead>
           <tr className="border-line bg-surface-raised border-b">
             {columns.map((c) => (
@@ -195,18 +205,47 @@ export function Cell({
 
 /* --------------------------------------------------------------- provenance */
 
+/*
+  Provenance comes in two levels, deliberately.
+
+  Level 1 (`SourceNote`) goes on every public page: who published this, for what
+  period, under what terms, and where the full record lives. It is a short
+  paragraph, because a reader checking whether a number is trustworthy needs an
+  answer in one glance, not an audit trail.
+
+  Level 2 is the audit trail — retrieval dates, acquisition path, source tier,
+  methodology links, revision policy, commercial-reuse status, per-source
+  caveats — and lives on /datasets, where someone has come specifically to
+  interrogate the data. It is rendered there directly rather than by a shared
+  component, because that page needs every field and no other page does.
+
+  The old design put Level 2 on every page. That is not more honest; it is the
+  same information presented so heavily that readers stop reading it, which is
+  how provenance theatre replaces provenance. Nothing is removed here — it moved
+  to where it gets read.
+*/
+
+/** Human licence names. The identifiers are exact; these are for prose. */
+const LICENCE_LABEL: Record<string, string> = {
+  "cc-by-4.0": "CC BY 4.0",
+  "cc-by-sa-4.0": "CC BY-SA 4.0",
+  "cc-by-igo-3.0": "CC BY-IGO 3.0",
+  "cc0-1.0": "CC0 1.0",
+  unknown: "no stated licence",
+};
+
+function licenceLabel(id: string): string {
+  return LICENCE_LABEL[id] ?? id;
+}
+
 /**
- * Provenance block. Present on every page that shows a figure.
+ * Level 1 provenance: a compact "Sources & methodology" summary.
  *
- * Not decorative, and not marketing. A reader should be able to see who
- * produced the data, what period it covers, when we retrieved it, and under
- * what terms they may reuse it -- without leaving the page.
- *
- * The licence shown is the table's *effective* licence, computed from its
- * sources by taking the most restrictive. DataNepal does not relicense upstream
- * data, and attribution obligations travel with it.
+ * Names every publisher with its reference period, states the reuse terms that
+ * actually apply, and routes to the full record. Download links stay here —
+ * getting the data is a promise of the platform, not an advanced feature.
  */
-export function Sources({
+export function SourceNote({
   tables,
   sources,
 }: {
@@ -214,66 +253,42 @@ export function Sources({
   sources: SourceDataset[];
 }) {
   if (!sources.length) return null;
-  return (
-    <Section
-      title="Sources"
-      note="Who produced the data on this page, what it covers, and how to reuse it."
-    >
-      <ul className="border-line divide-line divide-y rounded-lg border">
-        {sources.map((s) => (
-          <li key={s.dataset_id} className="px-4 py-4">
-            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-              <span className="text-ink text-[14px] font-medium">{s.title}</span>
-              <span className="text-ink-faint text-[12px]">
-                Reference period {s.vintage}
-              </span>
-            </div>
-            <p className="text-ink-soft mt-1 text-[13px]">{s.publisher}</p>
-            <dl className="text-ink-faint mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[12px]">
-              <dt>Retrieved</dt>
-              <dd className="text-ink-soft tabular">{s.retrieved}</dd>
-              <dt>Licence</dt>
-              <dd className="text-ink-soft">
-                {s.licence_statement_url ? (
-                  <a
-                    href={s.licence_statement_url}
-                    rel="noopener noreferrer"
-                    target="_blank"
-                  >
-                    {s.licence}
-                  </a>
-                ) : (
-                  s.licence
-                )}
-              </dd>
-              {s.revises_published_values && (
-                <>
-                  <dt>Revisions</dt>
-                  <dd className="text-ink-soft">
-                    This publisher restates previously published figures
-                  </dd>
-                </>
-              )}
-            </dl>
-            <p className="mt-3 text-[12px]">
-              <a href={s.url} rel="noopener noreferrer" target="_blank">
-                View at source
-              </a>
-              {s.methodology_url && (
-                <>
-                  {" · "}
-                  <a href={s.methodology_url} rel="noopener noreferrer" target="_blank">
-                    Methodology
-                  </a>
-                </>
-              )}
-            </p>
-          </li>
-        ))}
-      </ul>
 
-      <h3 className="text-label text-ink-faint mt-8 mb-3 uppercase">Download</h3>
-      <div className="flex flex-wrap gap-2">
+  // Distinct licences across the sources on this page, most-restrictive-first
+  // ordering is handled upstream; here we just need the set.
+  const licences = [...new Set(sources.map((s) => s.licence))];
+  const shareAlike = tables.some((t) => t.share_alike);
+  const retrieved = sources.map((s) => s.retrieved).sort().at(-1);
+
+  return (
+    <section aria-labelledby="sources-note" className="border-line mt-16 border-t pt-8">
+      <h2 id="sources-note" className="text-label text-ink-faint mb-3 uppercase">
+        Sources &amp; methodology
+      </h2>
+
+      <p className="max-w-prose text-ink-soft text-[13px] leading-relaxed">
+        {sources.map((s, i) => (
+          <span key={s.dataset_id}>
+            {i > 0 && " · "}
+            <a href={s.url} rel="noopener noreferrer" target="_blank">
+              {s.publisher}
+            </a>
+            <span className="text-ink-faint"> ({s.vintage})</span>
+          </span>
+        ))}
+      </p>
+
+      <p className="max-w-prose text-ink-faint mt-2 text-[13px] leading-relaxed">
+        Reusable under {licences.map(licenceLabel).join(" and ")} with attribution
+        {shareAlike && ", and share-alike terms apply"}.
+        {retrieved && ` Retrieved ${retrieved}.`}{" "}
+        <Link href="/datasets/">
+          Full metadata, caveats and revision history →
+        </Link>
+      </p>
+
+      <div className="mt-5 flex flex-wrap items-center gap-2">
+        <span className="text-label text-ink-faint mr-1 uppercase">Download</span>
         {tables.map((t) => (
           <a
             key={t.table}
@@ -284,15 +299,15 @@ export function Sources({
             ↓ {t.table}.parquet
           </a>
         ))}
-      </div>
-      <p className="text-ink-faint mt-3 text-[12px]">
-        Full dataset catalogue and revision history in{" "}
-        <a href="/data/manifest.json" download>
-          manifest.json
+        <a
+          href="/data/manifest.json"
+          download
+          className="border-line-strong text-ink-soft hover:bg-surface-sunken rounded border px-2.5 py-1 font-mono text-[11px] no-underline"
+        >
+          ↓ manifest.json
         </a>
-        .
-      </p>
-    </Section>
+      </div>
+    </section>
   );
 }
 

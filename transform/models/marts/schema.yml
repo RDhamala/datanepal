@@ -127,6 +127,23 @@ models:
         tests:
           - relationships: {to: ref('datasets'), field: dataset_id}
 
+  - name: place_boundaries
+    description: >
+      Simplified boundary geometry per place, as GeoJSON MultiPolygon strings in
+      lon/lat.
+    columns:
+      - name: place_id
+        tests:
+          - unique
+          - not_null
+          - relationships: {to: ref('places'), field: place_id}
+      - name: geometry_geojson
+        tests: [not_null]
+      - name: admin_level
+        tests:
+          - not_null
+          - accepted_values: {values: [1, 2], quote: false}
+
   - name: place_identifiers
     description: External identifiers mapped to canonical place_ids.
     columns:
@@ -176,7 +193,21 @@ models:
           - not_null
           - relationships: {to: ref('topics'), field: topic_id}
       - name: name_en
-        tests: [not_null]
+        description: >
+          Unique, not just present. Two indicators sharing a display name are
+          indistinguishable to a reader and produce two links with the same
+          accessible name pointing at different pages. This caught
+          remittances_received_usd and remittances_percent_gdp, which were both
+          named "Personal remittances received" -- the same World Bank concept in
+          two units. Every consistency check passed; only rendering the topic
+          page showed it.
+        tests: [not_null, unique]
+      - name: name_ne
+        description: Same reasoning as name_en, where a Nepali name exists.
+        tests:
+          - unique:
+              config:
+                where: name_ne is not null
       - name: default_unit_id
         description: The unit policy. An indicator without one is unusable.
         tests:

@@ -233,12 +233,15 @@ export function RankedBars({
   label,
   valueLabel = "Value",
   max: maxOverride,
+  compact = false,
 }: {
   rows: { name: string; nameNe?: string | null; href?: string; value: number }[];
   unit?: Unit;
   label: string;
   valueLabel?: string;
   max?: number;
+  /** Narrow column beside a map: tighter grid, no duplicate table. */
+  compact?: boolean;
 }) {
   if (!rows.length) return null;
   const max = maxOverride ?? Math.max(...rows.map((r) => r.value));
@@ -268,18 +271,24 @@ export function RankedBars({
                 style={{ width: `${Math.max((r.value / max) * 100, 0.6)}%` }}
               />
             </span>
-            <span className="text-ink tabular w-24 text-right text-[13px]">
+            <span
+              className={`text-ink tabular text-right text-[13px] ${
+                compact ? "w-16" : "w-24"
+              }`}
+            >
               {fmt(r.value)}
             </span>
           </li>
         ))}
       </ul>
 
-      <DataDisclosure
-        caption={label}
-        columns={["Place", "नेपाली", valueLabel]}
-        rows={rows.map((r) => [r.name, r.nameNe ?? "—", fmt(r.value)])}
-      />
+      {!compact && (
+        <DataDisclosure
+          caption={label}
+          columns={["Place", "नेपाली", valueLabel]}
+          rows={rows.map((r) => [r.name, r.nameNe ?? "—", fmt(r.value)])}
+        />
+      )}
     </figure>
   );
 }

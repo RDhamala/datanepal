@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-23T16:21:19.674037+00:00",
-  "table_count": 15,
+  "generated_at": "2026-08-23T17:24:36.904808+00:00",
+  "table_count": 16,
   "tables": [
     {
       "table": "datasets",
@@ -118,7 +118,7 @@
       "row_count": 5,
       "parquet": "indicators.parquet",
       "json": "indicators.json",
-      "bytes": 3462
+      "bytes": 3562
     },
     {
       "table": "licences",
@@ -229,6 +229,34 @@
       "bytes": 5522
     },
     {
+      "table": "place_boundaries",
+      "title": "Nepal boundary geometry",
+      "title_ne": "नेपालको सीमा भूगोल",
+      "description": "Simplified administrative boundary geometry for Nepal's 7 provinces and 77 districts, as GeoJSON MultiPolygon strings in lon/lat, joined to canonical place identifiers.",
+      "grain": "One row per place with geometry.",
+      "geography_level": "mixed",
+      "sources": [
+        "cod-ab-npl"
+      ],
+      "effective_licence": "cc-by-igo-3.0",
+      "share_alike": false,
+      "contributing_licences": [
+        "cc-by-igo-3.0"
+      ],
+      "attribution": [
+        "UN Office for the Coordination of Humanitarian Affairs"
+      ],
+      "caveats": [
+        "Simplified with Ramer-Douglas-Peucker at 0.004 degrees for provinces and 0.006 for districts, reducing 161,502 province vertices to about 3,000. Fine for cartographic display at web sizes; not suitable for area calculation, adjacency analysis, or any measurement. Use the source package for that.\n",
+        "Rings under roughly 1 km² are dropped, so small river islands and slivers are absent.\n",
+        "Coordinates are lon/lat (EPSG:4326). No projection is applied."
+      ],
+      "row_count": 84,
+      "parquet": "place_boundaries.parquet",
+      "json": "place_boundaries.json",
+      "bytes": 94670
+    },
+    {
       "table": "place_identifiers",
       "title": "Place identifiers by source system",
       "title_ne": null,
@@ -332,10 +360,10 @@
       ],
       "attribution": [],
       "caveats": [],
-      "row_count": 18,
+      "row_count": 21,
       "parquet": "table_sources.parquet",
       "json": "table_sources.json",
-      "bytes": 654
+      "bytes": 698
     },
     {
       "table": "topics",

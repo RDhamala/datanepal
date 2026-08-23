@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "predev": "node scripts/copy-data.mjs",
+    "predev": "node scripts/copy-data.mjs && node scripts/build-search-index.mjs",
     "dev": "next dev",
-    "prebuild": "node scripts/copy-data.mjs",
+    "prebuild": "node scripts/copy-data.mjs && node scripts/build-search-index.mjs",
     "build": "next build",
     "start": "npx serve out",
     "lint": "next lint",

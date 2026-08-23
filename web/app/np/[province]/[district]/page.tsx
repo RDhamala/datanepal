@@ -23,7 +23,7 @@ import {
   FactStrip,
   PageHeader,
   SectionNav,
-  Sources,
+  SourceNote,
 } from "@/components/ui";
 
 /*
@@ -251,7 +251,7 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
       )}
 
       <div id="sources" className="scroll-mt-20">
-        <Sources tables={tables} sources={sourcesFor(tables)} />
+        <SourceNote tables={tables} sources={sourcesFor(tables)} />
       </div>
     </>
   );

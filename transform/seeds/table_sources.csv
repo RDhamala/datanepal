@@ -10,10 +10,13 @@ observation_dimensions,cod-ps-npl
 observation_dimensions,worldbank-npl
 observations,cod-ps-npl
 observations,worldbank-npl
+organisations,datanepal-internal
+place_boundaries,cod-ab-npl
 place_identifiers,cod-ab-npl
 place_identifiers,wikidata-np-places
 places,cod-ab-npl
 places,wikidata-np-places
 protected_areas,cod-ab-npl
 table_sources,datanepal-internal
+topics,datanepal-internal
 units,datanepal-internal

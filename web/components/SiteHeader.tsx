@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Search } from "@/components/Search";
 
 /*
   Global header.
@@ -40,7 +41,7 @@ export function SiteHeader() {
           </span>
         </Link>
 
-        <nav aria-label="Main" className="ml-auto">
+        <nav aria-label="Main" className="order-3 w-full lg:order-none lg:ml-auto lg:w-auto">
           <ul className="flex flex-wrap items-center gap-x-6 gap-y-1 text-[13px]">
             {NAV.map((item) => (
               <li key={item.href}>
@@ -54,6 +55,11 @@ export function SiteHeader() {
             ))}
           </ul>
         </nav>
+
+        {/* Header search stays narrow; the homepage carries the prominent one. */}
+        <div className="order-2 ml-auto w-full max-w-64 lg:order-none lg:ml-0">
+          <Search placeholder="Search…" />
+        </div>
       </div>
     </header>
   );
