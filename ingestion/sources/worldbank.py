@@ -71,6 +71,22 @@ INDICATORS: dict[str, tuple[str, str]] = {
 # single country's annual series.
 PER_PAGE = 500
 
+# The shortest real series today is 24 observations (clean_cooking_fuel_access_pct,
+# first published 2000). A per-indicator floor, not just a total, because a total
+# check alone can pass while one renamed or discontinued code silently returns
+# zero rows and every other indicator masks it in the sum -- the same shape of
+# failure as the COD-PS 80Plus/80PL case in CLAUDE.md, where an aggregate count
+# looked fine while one field silently went to zero.
+MIN_OBSERVATIONS_PER_INDICATOR = 10
+
+# A genuinely different failure from the per-indicator floor above: something
+# uniform truncating every series by roughly the same amount (a pagination
+# regression, a date-range parameter applied globally) would have every
+# indicator individually clear 10 and still be badly wrong. The real average
+# today is ~50; 30 catches a uniform ~40% loss without being so tight that a
+# few indicators legitimately starting later trips it.
+MIN_AVERAGE_OBSERVATIONS_PER_INDICATOR = 30
+
 
 def _verify() -> str | bool:
     """Honour conventional CA env vars; httpx ignores them by default."""
@@ -85,6 +101,7 @@ def _verify() -> str | bool:
 def indicators() -> Iterator[dict[str, Any]]:
     """Yield one row per indicator-year."""
     emitted = 0
+    kept_by_code: dict[str, int] = {}
     with httpx.Client(timeout=60, follow_redirects=True, verify=_verify()) as client:
         for wb_code, (indicator_id, unit_id) in INDICATORS.items():
             response = client.get(
@@ -146,14 +163,27 @@ def indicators() -> Iterator[dict[str, Any]]:
                 }
 
             logger.info("%s -> %s: %d observations", wb_code, indicator_id, kept)
+            kept_by_code[wb_code] = kept
 
-    if emitted < 100:
-        # Four indicators across six decades should comfortably exceed this. A
-        # short read means a truncated response or a renamed indicator code,
-        # both of which would otherwise pass silently.
+    # Per-indicator first: catches one renamed or discontinued code even when
+    # every other indicator is healthy and the total looks unremarkable.
+    thin = {code: n for code, n in kept_by_code.items() if n < MIN_OBSERVATIONS_PER_INDICATOR}
+    if thin:
         raise ValueError(
-            f"Only {emitted} observations across {len(INDICATORS)} indicators; "
-            "expected several hundred. Check for renamed indicator codes."
+            f"Fewer than {MIN_OBSERVATIONS_PER_INDICATOR} observations for: "
+            f"{thin}. Check for renamed or discontinued indicator codes."
+        )
+
+    # Then the average, scaled to how many indicators are actually registered --
+    # a flat number here goes stale exactly as indicators are added, which is
+    # what happened to this check between the first four and today's sixteen.
+    expected_floor = MIN_AVERAGE_OBSERVATIONS_PER_INDICATOR * len(INDICATORS)
+    if emitted < expected_floor:
+        raise ValueError(
+            f"Only {emitted} observations across {len(INDICATORS)} indicators "
+            f"({emitted / len(INDICATORS):.0f} average); expected at least "
+            f"{expected_floor} ({MIN_AVERAGE_OBSERVATIONS_PER_INDICATOR} average). "
+            "Check for a uniform truncation, e.g. pagination or a date filter."
         )
 
 
