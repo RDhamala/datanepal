@@ -210,16 +210,12 @@ export function ReferenceMap({
     box: (d) => boxes.get(d.placeId)!,
     width,
     height,
-    maxWidth,
   });
-  const svgWidth = layout.frameWidth;
-  const svgHeight = height + layout.bandHeight;
-  const dx = layout.offsetX;
 
   return (
     <figure className="m-0">
       <svg
-        viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+        viewBox={`0 0 ${width} ${height}`}
         /*
           Natural size, capped at the container -- not `w-full`.
 
@@ -231,11 +227,11 @@ export function ReferenceMap({
           at 42px. Sizing to the viewBox keeps one user unit at one pixel, so a
           font size means the same thing on every map.
         */
-        style={{ width: `${svgWidth}px`, maxWidth: "100%", height: "auto" }}
+        style={{ width: `${width}px`, maxWidth: "100%", height: "auto" }}
         role="img"
         aria-label={`Administrative reference map: ${dis.length} areas in ${provs.length} groups. Every area is named, either on the map or in the leader labels below it.`}
       >
-        <g transform={`translate(${dx},0)`}>
+        <g>
           {/* Shapes, filled by their group's tint. Wrapped in a link only when
             the area actually has a page. */}
           {dis.map((d) => {
@@ -270,7 +266,7 @@ export function ReferenceMap({
           ))}
         </g>
 
-        <MapLabels layout={layout} href={(d) => d.href} name={(d) => d.name} />
+        <MapLabels layout={layout} />
       </svg>
 
       {legend && legend.length > 0 && (
@@ -287,6 +283,29 @@ export function ReferenceMap({
           ))}
         </ul>
       )}
+
+      {/*
+        The table the caption promises.
+
+        Not optional: labels now stay inside the map, so a shape too small for a
+        name gets a dot, and this is where that name lives. A caption that says
+        "named in the table below" has to be true.
+      */}
+      <details className="mt-4">
+        <summary className="text-ink-faint hover:text-ink-soft cursor-pointer text-[12px]">
+          View all {dis.length} names
+        </summary>
+        <ul className="border-line divide-line mt-3 max-h-80 divide-y overflow-auto rounded-md border text-[13px]">
+          {[...dis]
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((d) => (
+              <li key={d.placeId} className="px-3 py-1.5">
+                {d.href ? <Link href={d.href}>{d.name}</Link> : <span>{d.name}</span>}
+                {d.nameNe && <span className="text-ink-faint ne"> · {d.nameNe}</span>}
+              </li>
+            ))}
+        </ul>
+      </details>
 
       <figcaption className="text-ink-faint mt-4 text-[12px] leading-relaxed">
         {caption} {labelCaption(layout, dis.length)}

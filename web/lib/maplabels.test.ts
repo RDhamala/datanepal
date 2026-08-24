@@ -1,15 +1,17 @@
 /**
- * Tests for map label shortening.
+ * Tests for map label rendering choices.
  *
- * The interesting assertions here are the negative ones. A shortened label that
- * names a *different* real place is worse than no label, and Nepal has several
- * traps: Sankhuwasabha truncates to "Sankhu", which is a well-known settlement
- * near Kathmandu, and "Nawalparasi" alone is ambiguous between two separate
- * districts.
+ * The important assertions are the negative ones. Nepal publishes no standard
+ * set of English district abbreviations -- OCHA's COD leaves all 77
+ * alternate-name fields empty, Wikidata has no P1813 short name for any of the
+ * 79 district items, and NSO's census tables use full names -- so this module
+ * must not invent any. An earlier version shortened "Nawalparasi East" to
+ * "Nawalparasi E" and truncated names to "Ruk…", which produced "Nawal…" beside
+ * "Nawalparasi E": a prefix of two different districts.
  */
 
 import { describe, expect, it } from "vitest";
-import { shortForms, textWidth } from "./maplabels";
+import { shortForms, textWidth, wrapName } from "./maplabels";
 
 describe("shortForms", () => {
   it("always offers the full name first", () => {
@@ -17,50 +19,54 @@ describe("shortForms", () => {
     expect(shortForms("Sankhuwasabha")[0]).toBe("Sankhuwasabha");
   });
 
-  it("abbreviates a directional qualifier", () => {
-    expect(shortForms("Nawalparasi East")).toContain("Nawalparasi E");
-    expect(shortForms("Rukum West")).toContain("Rukum W");
+  it("leaves a single-word name completely alone", () => {
+    for (const name of ["Sankhuwasabha", "Kavrepalanchok", "Okhaldhunga"]) {
+      expect(shortForms(name)).toEqual([name]);
+    }
   });
 
-  it("never offers the base name of a split district on its own", () => {
-    // "Nawalparasi" is ambiguous between Nawalparasi East and Nawalparasi West,
-    // which are different districts with different populations.
-    expect(shortForms("Nawalparasi East")).not.toContain("Nawalparasi");
-    expect(shortForms("Rukum West")).not.toContain("Rukum");
+  it("never abbreviates a directional qualifier, because no standard defines one", () => {
+    expect(shortForms("Nawalparasi East")).toEqual(["Nawalparasi East"]);
+    expect(shortForms("Rukum West")).toEqual(["Rukum West"]);
   });
 
-  it("never truncates, because a truncation can name another place", () => {
-    // Every form offered must be reconstructible from the original by dropping
-    // a generic word or abbreviating a direction -- never by cutting letters.
-    for (const name of [
-      "Sankhuwasabha",
-      "Kavrepalanchok",
-      "Sindhupalchok",
-      "Okhaldhunga",
-      "Mukhiyapatti Musaharmiya",
-    ]) {
+  it("never truncates", () => {
+    for (const name of ["Sankhuwasabha", "Mukhiyapatti Musaharmiya", "Rukum West"]) {
       for (const form of shortForms(name)) {
-        const words = form.split(" ");
-        const originals = name.split(" ");
-        for (const w of words) {
-          // A word is either present verbatim, or is a single-letter direction.
-          expect(originals.includes(w) || w.length === 1).toBe(true);
-        }
+        expect(form).not.toContain("…");
+        // Every word survives verbatim; nothing is cut mid-word.
+        for (const w of form.split(" ")) expect(name.split(" ")).toContain(w);
       }
     }
-    expect(shortForms("Sankhuwasabha")).toEqual(["Sankhuwasabha"]);
   });
 
-  it("drops generic administrative words that distinguish nothing", () => {
+  it("drops only the administrative type word, which the spine stores separately", () => {
     expect(shortForms("Phungling Municipality")).toContain("Phungling");
     expect(shortForms("Kathmandu Metropolitan City")).toContain("Kathmandu");
+    // And never the place name itself.
+    expect(shortForms("Phungling Municipality")).not.toContain("Municipality");
+  });
+});
+
+describe("wrapName", () => {
+  it("splits a multi-word name at its most balanced point", () => {
+    expect(wrapName("Nawalparasi East")).toEqual(["Nawalparasi", "East"]);
+    expect(wrapName("Mukhiyapatti Musaharmiya")).toEqual([
+      "Mukhiyapatti",
+      "Musaharmiya",
+    ]);
   });
 
-  it("returns forms that are no longer than the full name", () => {
-    for (const name of ["Nawalparasi East", "Kathmandu Metropolitan City"]) {
-      const forms = shortForms(name);
-      const full = textWidth(forms[0], 10);
-      for (const f of forms) expect(textWidth(f, 10)).toBeLessThanOrEqual(full);
-    }
+  it("refuses to split a single word", () => {
+    expect(wrapName("Sankhuwasabha")).toBeNull();
+    expect(wrapName("Kathmandu")).toBeNull();
+  });
+
+  it("makes a wrapped name narrower than the same name on one line", () => {
+    const name = "Ganeshman Charnath";
+    const wrapped = wrapName(name)!;
+    const oneLine = textWidth(name, 10);
+    const widestLine = Math.max(...wrapped.map((l) => textWidth(l, 10)));
+    expect(widestLine).toBeLessThan(oneLine);
   });
 });

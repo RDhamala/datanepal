@@ -163,15 +163,13 @@ export function Choropleth({
     box: (f) => boxes.get(f.placeId)!,
     width,
     height: frameHeight,
-    maxWidth: 1000,
     inShape: showLabels,
   });
-  const svgHeight = frameHeight + layout.bandHeight;
 
   return (
     <figure className="m-0">
       <svg
-        viewBox={`0 0 ${layout.frameWidth} ${svgHeight}`}
+        viewBox={`0 0 ${width} ${frameHeight}`}
         /*
           Natural size, capped at the container -- not `w-full`.
 
@@ -183,7 +181,7 @@ export function Choropleth({
           at 42px. Sizing to the viewBox keeps one user unit at one pixel, so a
           font size means the same thing on every map.
         */
-        style={{ width: `${layout.frameWidth}px`, maxWidth: "100%", height: "auto" }}
+        style={{ width: `${width}px`, maxWidth: "100%", height: "auto" }}
         role="img"
         aria-label={`Map of Nepal showing ${label}${period ? `, ${period}` : ""}. ${
           sorted.length
@@ -191,7 +189,7 @@ export function Choropleth({
           sorted[sorted.length - 1]?.name
         } at ${formatNumber(sorted[sorted.length - 1]?.value ?? 0)}. Values follow in a table.`}
       >
-        <g transform={`translate(${layout.offsetX},0)`}>
+        <g>
           {parsed.map((f) => (
             <Link key={f.placeId} href={f.href}>
               {/* title gives a native tooltip with no JavaScript. Single string
@@ -225,8 +223,6 @@ export function Choropleth({
 
         <MapLabels
           layout={layout}
-          href={(f) => f.href}
-          name={(f) => f.name}
           // Dark fills need light ink. The bin decides, not the label.
           ink={(f) => (bin(f.value) >= 3 ? "var(--color-surface)" : "var(--color-ink)")}
         />
