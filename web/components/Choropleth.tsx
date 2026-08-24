@@ -60,6 +60,7 @@ export function Choropleth({
   period,
   valueLabel = "Value",
   height = 420,
+  maxWidth = 1000,
   showLabels = true,
   scale = "equal",
   outlines = [],
@@ -70,6 +71,11 @@ export function Choropleth({
   period?: number;
   valueLabel?: string;
   height?: number;
+  /** Intrinsic cap in CSS pixels; the SVG still shrinks to fit a narrower
+   * container. Raise it for a section that genuinely has the width to spend --
+   * label font sizes are fixed in absolute pixels, so a bigger frame makes the
+   * shapes bigger without making labels harder to read. */
+  maxWidth?: number;
   showLabels?: boolean;
   /**
    * Heavier boundaries drawn over the shapes -- provinces over districts.
@@ -114,7 +120,7 @@ export function Choropleth({
     project,
   } = projector(
     [...parsed.map((f) => f.polygons), ...groupOutlines.map((o) => o.polygons)],
-    { maxWidth: 1000, maxHeight: height },
+    { maxWidth, maxHeight: height },
   );
 
   const values = parsed

@@ -6,10 +6,12 @@ import {
   formatWithUnit,
   indicatorSlug,
   indicatorsOfTopic,
+  nationalHeadline,
+  placeProfile,
   populationOf,
   seriesFor,
-  statusLabel,
   topics,
+  units,
   type Topic,
 } from "@/lib/data";
 import { Sparkline } from "@/components/charts";
@@ -37,17 +39,9 @@ export const metadata: Metadata = {
 const HEADLINE: Record<string, string> = {
   population: "population",
   economy: "cpi_inflation_annual",
+  education: "literacy_rate",
 };
 
-/**
- * A headline figure for a topic card.
- *
- * `seriesFor` only returns undimensioned observations, so population — which is
- * stored as an age × sex cube — is invisible to it. Reading the population total
- * from `populationOf` is not a special case bolted on; it is the difference
- * between a cube and a scalar series, and the demographics topic is exactly the
- * one whose headline needs the cube.
- */
 type Headline = {
   name: string;
   value: string;
@@ -57,39 +51,29 @@ type Headline = {
 };
 
 export default async function TopicsIndex() {
-  const [all, np] = await Promise.all([topics(), country()]);
+  const [all, np, us] = await Promise.all([topics(), country(), units()]);
   const live = all.filter((t) => t.status === "live" && t.observation_count > 0);
   const planned = all.filter((t) => !(t.status === "live" && t.observation_count > 0));
   const series = np ? await seriesFor(np) : [];
   const pop = np ? await populationOf(np) : null;
+  const profile = np ? await placeProfile(np) : [];
 
   const detail = await Promise.all(
     live.map(async (t: Topic) => {
       const inds = await indicatorsOfTopic(t.topic_id);
       const headlineId = HEADLINE[t.slug] ?? inds[0]?.indicator_id;
+      const ind = inds.find((i) => i.indicator_id === headlineId);
 
-      let headline: Headline | null = null;
-      if (headlineId === "population" && pop) {
-        const unit = inds.find((i) => i.indicator_id === "population");
-        headline = {
-          name: unit?.name_en ?? "Population",
-          value: formatNumber(pop.total),
-          period: String(pop.period),
-          note: statusLabel(pop.status) ?? "",
-          points: [],
-        };
-      } else {
-        const s = series.find((x) => x.indicator.indicator_id === headlineId);
-        if (s?.latest) {
-          headline = {
-            name: s.indicator.name_en,
-            value: formatWithUnit(s.latest.value, s.unit),
-            period: String(s.latest.year),
-            note: `${s.points.length} years of data`,
-            points: s.points,
-          };
-        }
-      }
+      const h = nationalHeadline(headlineId, { pop, series, profile, units: us });
+      const headline: Headline | null = h
+        ? {
+            name: ind?.name_en ?? "",
+            value: formatWithUnit(h.value, h.unit),
+            period: h.period,
+            note: h.points.length > 1 ? `${h.points.length} years of data` : h.status ?? "",
+            points: h.points,
+          }
+        : null;
 
       return { topic: t, indicators: inds, headline };
     }),

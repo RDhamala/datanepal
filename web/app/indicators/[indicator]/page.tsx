@@ -4,20 +4,26 @@ import { notFound } from "next/navigation";
 import {
   comparisonFor,
   country,
+  formatWithUnit,
   indicatorBySlug,
   indicatorSlug,
   indicators,
   indicatorsOfTopic,
+  metricMapFor,
+  nationalHeadline,
+  places,
+  placeProfile,
   populationOf,
   seriesFor,
   sourcesFor,
-  statusLabel,
   tablesFor,
   topics,
   units,
 } from "@/lib/data";
 import { Headline, RankedBars, TrendChart } from "@/components/charts";
+import { MetricMap } from "@/components/MetricMap";
 import { Crumbs, PageHeader, Section, SourceNote } from "@/components/ui";
+import { TYPE } from "@/lib/viz";
 
 /*
   Indicator page: "what exactly is this statistic, how has it changed, where
@@ -60,7 +66,12 @@ export default async function IndicatorPage({ params }: { params: Promise<Params
   const ind = await indicatorBySlug(indicator);
   if (!ind) notFound();
 
-  const [us, allTopics, np] = await Promise.all([units(), topics(), country()]);
+  const [us, allTopics, np, allPlaces] = await Promise.all([
+    units(),
+    topics(),
+    country(),
+    places(),
+  ]);
   const unit = us.find((u) => u.unit_id === ind.default_unit_id);
   const topic = allTopics.find((t) => t.topic_id === ind.topic_id);
 
@@ -74,9 +85,40 @@ export default async function IndicatorPage({ params }: { params: Promise<Params
   const provinceCmp = await comparisonFor(ind.indicator_id, "province");
   const districtCmp = await comparisonFor(ind.indicator_id, "district");
 
+  // Map, ranking and full table share one district-level breakdown -- the same
+  // pattern proven on topic pages, so a reader who has learned one learns
+  // nothing new about the furniture of the other.
+  const districts = allPlaces.filter((p) => p.place_type === "district");
+  const map =
+    districtCmp.rows.length > 0
+      ? await metricMapFor(districts, [ind.indicator_id], {
+          maxWidth: 1000,
+          maxHeight: 480,
+        })
+      : null;
+
   // Population is dimensioned, so its national headline comes from the
-  // population summary rather than the scalar series path.
+  // population summary rather than the scalar series path -- it also carries
+  // the census-vs-projection status logic that a generic profile lookup
+  // shouldn't have to re-derive.
   const pop = ind.indicator_id === "population" && np ? await populationOf(np) : null;
+
+  /*
+    Every other dimensioned indicator (a rate or count with a sex split, e.g.
+    literacy_rate, literate_population) has no scalar national series either,
+    which used to mean no headline at all -- the page went straight from the
+    definition to "how it varies by province" with no answer to "what is it
+    now". `nationalHeadline` is the one function the homepage, topics index,
+    and indicators index also call for exactly this, so a fifth surface can't
+    quietly reintroduce the gap.
+  */
+  const profile = !pop && !series?.latest && np ? await placeProfile(np) : [];
+  const headline = nationalHeadline(ind.indicator_id, {
+    pop,
+    series: nationalSeries,
+    profile,
+    units: us,
+  });
 
   const related = (await indicatorsOfTopic(ind.topic_id)).filter(
     (i) => i.indicator_id !== ind.indicator_id,
@@ -105,14 +147,14 @@ export default async function IndicatorPage({ params }: { params: Promise<Params
       )}
 
       {/* Latest value, with its period and qualification. */}
-      {(series?.latest || pop) && (
+      {headline && (
         <div className="border-line mb-12 grid grid-cols-1 gap-8 rounded-lg border p-6 sm:grid-cols-3">
           <Headline
-            value={pop ? pop.total : series!.latest!.value}
+            value={headline.value}
             unit={unit}
             label="Latest value"
-            period={String(pop ? pop.period : series!.latest!.year)}
-            status={statusLabel(pop ? pop.status : series!.latest!.status)}
+            period={headline.period}
+            status={headline.status}
           />
           <div>
             <div className="text-label text-ink-faint uppercase">Unit</div>
@@ -172,22 +214,124 @@ export default async function IndicatorPage({ params }: { params: Promise<Params
         </Section>
       )}
 
-      {districtCmp.rows.length > 0 && (
+      {map && districtCmp.rows.length > 0 && (
         <Section
-          title="Largest districts"
-          note={`Top 15 of ${districtCmp.rows.length}, ${districtCmp.period}. Complete values in the download.`}
+          title="How it varies by district"
+          note={`Every district, ${districtCmp.period}. Select a district to open it.`}
         >
-          <RankedBars
-            label={`${ind.name_en} by district, ${districtCmp.period}`}
-            valueLabel={ind.name_en}
-            unit={districtCmp.unit}
-            max={districtCmp.rows[0]?.value}
-            rows={districtCmp.rows.slice(0, 15).map((r) => ({
-              name: r.place.name_en,
-              nameNe: r.place.name_ne,
-              value: r.value,
-            }))}
-          />
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:gap-12">
+            <MetricMap
+              features={map.features}
+              metrics={map.metrics}
+              width={map.width}
+              height={map.height}
+              caption={`${map.features.length} districts.`}
+            />
+            <div>
+              <h3
+                className="text-label text-ink-faint mb-3 uppercase"
+                style={{ fontSize: TYPE.micro }}
+              >
+                Highest and lowest
+              </h3>
+              {/* Extremes rather than all 77: the map carries the pattern and
+                  the ranking answers "who is at the ends", which is what a
+                  reader actually asks of a list this long. The full table
+                  below is the exact-lookup fallback. */}
+              <table className="w-full" style={{ fontSize: TYPE.body }}>
+                <tbody>
+                  {[
+                    ...districtCmp.rows.slice(0, 5),
+                    null,
+                    ...districtCmp.rows.slice(-5),
+                  ].map((r, idx) =>
+                    r === null ? (
+                      <tr key="gap">
+                        <td colSpan={2} className="text-ink-faint py-1.5 text-center">
+                          ⋯
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr key={r.place.place_id ?? idx} className="border-line border-b">
+                        <td className="py-1.5">
+                          <Link
+                            href={`/np/${
+                              allPlaces.find(
+                                (p) => p.place_id === r.place.parent_place_id,
+                              )?.slug ?? ""
+                            }/${r.place.slug}/`}
+                          >
+                            {r.place.name_en}
+                          </Link>
+                        </td>
+                        <td className="text-ink tabular py-1.5 text-right">
+                          {formatWithUnit(r.value, districtCmp.unit)}
+                        </td>
+                      </tr>
+                    ),
+                  )}
+                </tbody>
+              </table>
+              <p className="text-ink-faint mt-3" style={{ fontSize: TYPE.small }}>
+                {districtCmp.rows.length} districts, from{" "}
+                {formatWithUnit(
+                  districtCmp.rows[districtCmp.rows.length - 1].value,
+                  districtCmp.unit,
+                )}{" "}
+                to {formatWithUnit(districtCmp.rows[0].value, districtCmp.unit)}.
+              </p>
+            </div>
+          </div>
+
+          {/* The exact-lookup fallback the map and the extremes list can't
+              give: every district, not just the ends. */}
+          <details className="mt-6">
+            <summary
+              className="text-ink-faint hover:text-ink-soft cursor-pointer"
+              style={{ fontSize: TYPE.small }}
+            >
+              View all {districtCmp.rows.length} districts
+            </summary>
+            <div className="border-line mt-3 max-h-96 overflow-auto rounded-md border">
+              <table className="w-full" style={{ fontSize: TYPE.body }}>
+                <thead className="bg-surface-raised sticky top-0">
+                  <tr className="border-line border-b">
+                    <th
+                      scope="col"
+                      className="text-label text-ink-faint px-3 py-2 text-left uppercase"
+                    >
+                      District
+                    </th>
+                    <th
+                      scope="col"
+                      className="text-label text-ink-faint px-3 py-2 text-right uppercase"
+                    >
+                      {ind.name_en}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {districtCmp.rows.map((r) => (
+                    <tr key={r.place.place_id} className="border-line border-b last:border-0">
+                      <td className="px-3 py-1.5">
+                        <Link
+                          href={`/np/${
+                            allPlaces.find((p) => p.place_id === r.place.parent_place_id)
+                              ?.slug ?? ""
+                          }/${r.place.slug}/`}
+                        >
+                          {r.place.name_en}
+                        </Link>
+                      </td>
+                      <td className="text-ink-soft tabular px-3 py-1.5 text-right">
+                        {formatWithUnit(r.value, districtCmp.unit)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </details>
         </Section>
       )}
 

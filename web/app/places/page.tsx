@@ -131,61 +131,65 @@ export default async function PlacesIndex() {
         </Section>
       )}
 
-      {/* Provinces, ranked, each with its districts ranked beneath. */}
+      {/*
+        Provinces, as cards, not as seven flat district directories.
+
+        This used to list all 77 districts by name under their province, every
+        time, in a two-column wall of text -- the exact "directory instead of
+        discovery" pattern the rest of the visualization work was meant to
+        eliminate. It was also pure duplication: the map above already carries
+        every district's exact value in its own "View data table" disclosure,
+        sorted and linked. A province card only needs to say what it is, how
+        big it is, and where its largest districts are -- the full list is one
+        click away either through the map's table or the province's own page.
+      */}
       <Section
         title="By province"
-        note={`Districts listed by population, ${districtCmp.period}.`}
+        note={`Ranked by population, ${districtCmp.period}. Every district and its exact value is in the map's data table above.`}
       >
-        <div className="grid gap-x-12 gap-y-10 lg:grid-cols-2">
-          {grouped.map(({ province, districts, population }) => (
-            <div key={province.place_id} className="border-line border-t pt-5">
-              <div className="flex flex-wrap items-baseline justify-between gap-x-4">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {grouped.map(({ province, districts, population }) => {
+            const localUnits = all.filter(
+              (p) =>
+                LOCAL_TYPES.includes(p.place_type) &&
+                districts.some((d) => d.place_id === p.parent_place_id),
+            ).length;
+            const largest = districts.slice(0, 3);
+            return (
+              <div key={province.place_id} className="border-line border-t pt-5">
                 <h3 className="text-[1.0625rem] font-semibold">
                   <Link href={`/np/${province.slug}/`}>{province.name_en}</Link>
-                  {province.name_ne && (
-                    <span className="text-ink-faint ne ml-2 text-[14px] font-normal">
-                      {province.name_ne}
-                    </span>
-                  )}
                 </h3>
-                {population && (
-                  <span className="text-ink tabular text-[15px] font-medium">
-                    {formatNumber(population)}
-                  </span>
+                {province.name_ne && (
+                  <p className="text-ink-faint ne text-[13px]">{province.name_ne}</p>
                 )}
+                {population && (
+                  <p className="text-ink tabular mt-2 text-[1.5rem] leading-none font-semibold">
+                    {formatNumber(population)}
+                  </p>
+                )}
+                <p className="text-ink-faint mt-1.5 text-[12px]">
+                  {districts.length} districts · {localUnits} local governments
+                </p>
+                {largest.length > 0 && (
+                  <p className="text-ink-soft mt-3 text-[12px] leading-relaxed">
+                    Largest:{" "}
+                    {largest.map((d, i) => (
+                      <span key={d.place_id}>
+                        {i > 0 && ", "}
+                        <Link href={`/np/${province.slug}/${d.slug}/`}>{d.name_en}</Link>
+                      </span>
+                    ))}
+                  </p>
+                )}
+                <p className="mt-3 text-[13px]">
+                  <Link href={`/np/${province.slug}/`}>
+                    {province.name_en} overview →
+                  </Link>
+                </p>
               </div>
-              <p className="text-ink-faint mt-0.5 text-[12px]">
-                {districts.length} districts ·{" "}
-                {
-                  all.filter(
-                    (p) =>
-                      LOCAL_TYPES.includes(p.place_type) &&
-                      districts.some((d) => d.place_id === p.parent_place_id),
-                  ).length
-                }{" "}
-                local units
-              </p>
-
-              <ul className="divide-line mt-4 divide-y text-[13px]">
-                {districts.map((d) => (
-                  <li key={d.place_id} className="flex justify-between gap-4 py-1.5">
-                    <Link href={`/np/${province.slug}/${d.slug}/`}>{d.name_en}</Link>
-                    <span className="text-ink-faint tabular">
-                      {popOf.has(d.place_id)
-                        ? formatNumber(popOf.get(d.place_id))
-                        : "—"}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-
-              <p className="mt-4 text-[13px]">
-                <Link href={`/np/${province.slug}/`}>
-                  {province.name_en} overview →
-                </Link>
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </Section>
 

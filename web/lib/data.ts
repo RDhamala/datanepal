@@ -18,6 +18,7 @@ import {
   pickHeadline,
   pickLaterEstimate,
   pickMember,
+  statusLabel,
 } from "./format";
 
 const DIST = path.join(process.cwd(), "..", "publish", "dist");
@@ -919,6 +920,74 @@ export async function placeProfile(place: Place): Promise<ProfileTopic[]> {
     }))
     .filter((g) => g.topic)
     .sort((a, b) => a.topic.sort_order - b.topic.sort_order);
+}
+
+export type NationalHeadline = {
+  value: number;
+  unit: Unit | undefined;
+  period: string;
+  status: string | null;
+  /** Empty when the indicator has no series to plot -- population's headline
+   * comes from `populationOf`, which does not expose one. */
+  points: SeriesPoint[];
+};
+
+/**
+ * The current national figure for one indicator, however it happens to be
+ * stored.
+ *
+ * Population is an age x sex cube; a plain series is a scalar row per year;
+ * everything else with a sex or category split (literacy rate, literate
+ * population, population aged 5+) is a `placeProfile` metric. Three call
+ * sites -- the homepage, the topics index, and the indicators index --
+ * independently re-derived this before this existed, and two of the three
+ * never got the `placeProfile` fallback, which is why Education's card and
+ * four rows of the indicators index rendered nothing at all: they only ever
+ * checked `population` and a plain series. One function, called from all
+ * three, is what keeps that from happening a fourth time.
+ */
+export function nationalHeadline(
+  indicatorId: string,
+  ctx: {
+    pop: PopulationSummary | null;
+    series: IndicatorSeries[];
+    profile: ProfileTopic[];
+    units: Unit[];
+  },
+): NationalHeadline | null {
+  if (indicatorId === "population" && ctx.pop) {
+    return {
+      value: ctx.pop.total,
+      unit: ctx.units.find((u) => u.unit_id === "persons"),
+      period: String(ctx.pop.period),
+      status: statusLabel(ctx.pop.status),
+      points: [],
+    };
+  }
+
+  const s = ctx.series.find((x) => x.indicator.indicator_id === indicatorId);
+  if (s?.latest) {
+    return {
+      value: s.latest.value,
+      unit: s.unit,
+      period: String(s.latest.year),
+      status: statusLabel(s.latest.status),
+      points: s.points,
+    };
+  }
+
+  const m = ctx.profile.flatMap((t) => t.metrics).find((x) => x.indicatorId === indicatorId);
+  if (m) {
+    return {
+      value: m.value,
+      unit: m.unit,
+      period: String(m.period),
+      status: statusLabel(m.status),
+      points: [],
+    };
+  }
+
+  return null;
 }
 
 /** Local units of a district, for routing and listing. */

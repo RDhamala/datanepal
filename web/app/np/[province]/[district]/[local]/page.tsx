@@ -309,20 +309,6 @@ export default async function LocalUnitPage({ params }: { params: Promise<Params
         </div>
       </AnchoredSection>
 
-      {/* Naming what is absent rather than leaving a reader to wonder. */}
-      <AnchoredSection
-        id="coverage"
-        title="Not yet covered"
-        note="Supported by the data model, not yet ingested at this level."
-      >
-        <p className="text-ink-soft max-w-prose text-[13px] leading-relaxed">
-          Ward-level detail, local government budgets and expenditure, school and health
-          facility counts, and election results. The census publishes ward tables and
-          the model already supports the grain; nothing is ingested there yet, so no
-          section for it appears above.
-        </p>
-      </AnchoredSection>
-
       {compare && (
         <AnchoredSection
           id="compare"

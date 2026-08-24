@@ -9,11 +9,11 @@ import {
   formatWithUnit,
   indicatorSlug,
   manifest,
+  nationalHeadline,
   places,
   populationOf,
   seriesFor,
   sourcesFor,
-  statusLabel,
   tablesFor,
   placeProfile,
   topics,
@@ -96,29 +96,49 @@ export default async function Home() {
   );
 
   /*
-    One headline figure per topic for the previews below. Population comes from
-    `populationOf` rather than `seriesFor`, because it is stored as an age x sex
-    cube and undimensioned series queries cannot see it.
+    One headline figure per topic for the previews below, through the one
+    function every "what is this topic's current number" surface now shares.
+    Before this, each of the homepage, the topics index, and the indicators
+    index re-derived it independently, and Education's card and several
+    indicator rows silently rendered nothing because two of those three never
+    grew the `placeProfile` fallback the third one needed.
   */
+  const HEADLINE_INDICATOR: Record<string, string> = {
+    population: "population",
+    economy: "cpi_inflation_annual",
+    education: "literacy_rate",
+  };
   const topicHeadline: Record<
     string,
     { label: string; value: string; period: string } | undefined
-  > = {
-    population: pop
-      ? {
-          label: "Population",
-          value: formatCompact(pop.total),
-          period: `${pop.period} ${statusLabel(pop.status) ?? ""}`.trim(),
-        }
-      : undefined,
-    economy: inflation?.latest
-      ? {
-          label: inflation.indicator.name_en,
-          value: formatWithUnit(inflation.latest.value, inflation.unit),
-          period: String(inflation.latest.year),
-        }
-      : undefined,
-  };
+  > = {};
+  for (const t of liveTopicList) {
+    const indicatorId = HEADLINE_INDICATOR[t.topic_id];
+    const h = indicatorId
+      ? nationalHeadline(indicatorId, {
+          pop,
+          series,
+          profile: nationalProfile,
+          units: allUnits,
+        })
+      : null;
+    if (!h) continue;
+    const label =
+      indicatorId === "population"
+        ? "Population"
+        : (series.find((s) => s.indicator.indicator_id === indicatorId)?.indicator
+            .name_en ??
+          nationalProfile
+            .flatMap((p) => p.metrics)
+            .find((m) => m.indicatorId === indicatorId)?.name ??
+          "");
+    topicHeadline[t.topic_id] = {
+      label,
+      value:
+        indicatorId === "population" ? formatCompact(h.value) : formatWithUnit(h.value, h.unit),
+      period: `${h.period}${h.status ? ` ${h.status}` : ""}`.trim(),
+    };
+  }
 
   const tables = tablesFor(["observations", "places", "geography"]);
 
@@ -204,6 +224,7 @@ export default async function Home() {
       <section className="mb-16">
         <h2 className="text-label text-ink-faint mb-1 uppercase">Nepal today</h2>
         <MetricStrip
+          large
           metrics={[
             ...(pop
               ? [
@@ -277,14 +298,15 @@ export default async function Home() {
           title="Explore Nepal"
           note={`${counts.provinces} provinces · ${counts.districts} districts · ${counts.localUnits} local units. Shaded by population, ${provinceMap.period}. Select a province to open it.`}
         >
-          <div className="grid gap-8 lg:grid-cols-[minmax(0,1.75fr)_minmax(0,1fr)] lg:gap-12">
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-12">
             <Choropleth
               features={provinceMap.features}
               unit={provinceMap.unit}
               label="Population by province"
               period={provinceMap.period}
               valueLabel="Population"
-              height={460}
+              height={560}
+              maxWidth={1150}
             />
             <div>
               <h3 className="text-label text-ink-faint mb-3 uppercase">
@@ -294,7 +316,6 @@ export default async function Home() {
                 label={`Provinces by population, ${provinceCmp.period}`}
                 valueLabel="Population"
                 unit={provinceCmp.unit}
-                compact
                 rows={provinceCmp.rows.map((r) => ({
                   name: r.place.name_en,
                   nameNe: r.place.name_ne,

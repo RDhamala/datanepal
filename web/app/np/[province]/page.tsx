@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   comparisonFor,
@@ -247,19 +246,6 @@ export default async function ProvincePage({ params }: { params: Promise<Params>
           </div>
         </AnchoredSection>
       )}
-
-      {/* Naming what is absent, rather than leaving a reader to wonder. */}
-      <AnchoredSection
-        id="coverage"
-        title="Not yet covered"
-        note="Architecturally supported, no provincial data published yet."
-      >
-        <p className="text-ink-soft max-w-2xl text-[13px]">
-          Economy · Government &amp; budgets · Elections · Education · Health ·
-          Agriculture · Infrastructure. See <Link href="/topics/">topics</Link> for what
-          is available now.
-        </p>
-      </AnchoredSection>
 
       {compare && (
         <AnchoredSection

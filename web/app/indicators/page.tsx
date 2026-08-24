@@ -5,11 +5,12 @@ import {
   formatWithUnit,
   indicatorSlug,
   indicators,
+  nationalHeadline,
   observations,
+  placeProfile,
   places,
   populationOf,
   seriesFor,
-  statusLabel,
   topics,
   units,
 } from "@/lib/data";
@@ -74,6 +75,7 @@ export default async function IndicatorsIndex() {
   const unitOf = (id: string) => us.find((u) => u.unit_id === id);
   const series = np ? await seriesFor(np) : [];
   const pop = np ? await populationOf(np) : null;
+  const profile = np ? await placeProfile(np) : [];
 
   // Deepest place type each indicator reaches. A reader comparing districts
   // needs to know which indicators actually go that far before clicking.
@@ -121,28 +123,16 @@ export default async function IndicatorsIndex() {
 
             <ul className="divide-line border-line mt-4 divide-y border-t">
               {byTopic.get(t.topic_id)!.map((i) => {
-                const s = series.find(
-                  (x) => x.indicator.indicator_id === i.indicator_id,
-                );
                 const unit = unitOf(i.default_unit_id);
-                // Population is the one indicator whose national figure comes
-                // from the age/sex cube rather than a plain series.
-                const value =
-                  i.indicator_id === "population" && pop
-                    ? {
-                        text: formatWithUnit(pop.total, unit),
-                        period: String(pop.period),
-                      }
-                    : s?.latest
-                      ? {
-                          text: formatWithUnit(s.latest.value, s.unit),
-                          period: String(s.latest.year),
-                        }
-                      : null;
-                const status =
-                  i.indicator_id === "population" && pop
-                    ? statusLabel(pop.status)
-                    : null;
+                // One shared lookup for "what is this indicator's current
+                // national figure" -- whether it lives in a plain series, the
+                // population cube, or a dimensioned placeProfile metric. Before
+                // this, only the population and plain-series cases were
+                // handled here, so literacy rate, literate population,
+                // population aged 5+ and households all rendered a bare dash.
+                const h = nationalHeadline(i.indicator_id, { pop, series, profile, units: us });
+                const value = h ? { text: formatWithUnit(h.value, h.unit), period: h.period } : null;
+                const status = h?.status ?? null;
 
                 return (
                   <li
@@ -195,8 +185,8 @@ export default async function IndicatorsIndex() {
                     </div>
 
                     <div className="sm:w-33">
-                      {s && s.points.length >= 3 && (
-                        <Sparkline points={s.points.slice(-30)} />
+                      {h && h.points.length >= 3 && (
+                        <Sparkline points={h.points.slice(-30)} />
                       )}
                     </div>
                   </li>

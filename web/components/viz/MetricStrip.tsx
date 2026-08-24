@@ -34,7 +34,18 @@ export type StripMetric = {
   note?: string;
 };
 
-export function MetricStrip({ metrics }: { metrics: StripMetric[] }) {
+export function MetricStrip({
+  metrics,
+  large = false,
+}: {
+  metrics: StripMetric[];
+  /** For a strip that's the whole point of its section rather than a
+   * supporting summary -- the homepage's, not a place page's. Bigger figures
+   * only; the surrounding label/period/source stay the same size, so the
+   * numbers gain presence without the cell losing its rhythm with the rest
+   * of the page. */
+  large?: boolean;
+}) {
   return (
     <dl className="border-line divide-line grid grid-cols-1 gap-y-6 border-y py-7 sm:grid-cols-2 sm:gap-x-10 lg:grid-cols-4 lg:gap-x-0 lg:gap-y-0 lg:divide-x">
       {metrics.map((m) => (
@@ -52,7 +63,11 @@ export function MetricStrip({ metrics }: { metrics: StripMetric[] }) {
             )}
           </dt>
 
-          <dd className="text-ink tabular mt-2 text-[1.6rem] leading-none font-semibold tracking-[-0.03em]">
+          <dd
+            className={`text-ink tabular mt-2 leading-none font-semibold tracking-[-0.03em] ${
+              large ? "text-[2rem] lg:text-[2.5rem]" : "text-[1.6rem]"
+            }`}
+          >
             {formatWithUnit(m.value, m.unit)}
           </dd>
 
