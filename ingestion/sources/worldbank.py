@@ -53,6 +53,12 @@ INDICATORS: dict[str, tuple[str, str]] = {
     "SH.DYN.MORT": ("under5_mortality_rate", "per_1000_live_births"),
     "SH.STA.MMRT": ("maternal_mortality_ratio", "per_100000_live_births"),
     "SH.IMM.IDPT": ("immunization_dpt_rate", "percent"),
+    # Agriculture topic's first indicators -- FAO-compiled, same aggregator
+    # pattern again.
+    "NV.AGR.TOTL.ZS": ("agriculture_value_added_pct_gdp", "percent_gdp"),
+    "AG.LND.AGRI.ZS": ("agricultural_land_pct", "percent"),
+    "AG.YLD.CREL.KG": ("cereal_yield_kg_per_ha", "kg_per_hectare"),
+    "AG.PRD.FOOD.XD": ("food_production_index", "index"),
 }
 
 # The API is generous but paginated; one page per indicator is plenty for a

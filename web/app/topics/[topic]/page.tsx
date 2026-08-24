@@ -81,6 +81,12 @@ const TOPIC_VIEW: Record<
     // "L", not because it's the more recognised headline health statistic.
     headline: "life_expectancy_at_birth",
   },
+  agriculture: {
+    // The sector's weight in the economy, the same framing Economy itself
+    // leads with (inflation), rather than a specific yield or land-share
+    // figure that means less without the macro context first.
+    headline: "agriculture_value_added_pct_gdp",
+  },
   education: {
     headline: "literacy_rate",
     mapIndicator: "literacy_rate",

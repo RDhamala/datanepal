@@ -1,9 +1,10 @@
 dataset_id: worldbank-npl
 title: World Bank World Development Indicators — Nepal
 description: 'National annual indicators for Nepal from the World Bank''s Indicators
-  API: consumer price inflation, GDP per capita, personal remittances received, and
-  the health indicators life expectancy at birth, under-5 mortality, maternal mortality,
-  and DPT immunization coverage.
+  API: consumer price inflation, GDP per capita, personal remittances received; the
+  health indicators life expectancy at birth, under-5 mortality, maternal mortality,
+  and DPT immunization coverage; and the agriculture indicators value added share
+  of GDP, agricultural land share, cereal yield, and the food production index.
 
   '
 publisher_org_id: worldbank

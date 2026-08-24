@@ -108,6 +108,7 @@ export default async function Home() {
     economy: "cpi_inflation_annual",
     education: "literacy_rate",
     health: "life_expectancy_at_birth",
+    agriculture: "agriculture_value_added_pct_gdp",
   };
   const topicHeadline: Record<
     string,
