@@ -2,43 +2,89 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
-  asPercentValue,
   comparisonFor,
+  compositionFor,
   country,
+  formatNumber,
+  formatWithUnit,
   indicatorSlug,
   indicatorsOfTopic,
   liveTopics,
+  metricMapFor,
+  places,
+  placeProfile,
   populationOf,
   seriesFor,
   sourcesFor,
+  spreadFor,
   statusLabel,
   tablesFor,
   topicBySlug,
   units,
 } from "@/lib/data";
 import { AgePyramid } from "@/components/AgePyramid";
-import { Headline, RankedBars, TrendChart } from "@/components/charts";
+import { TrendChart } from "@/components/charts";
+import { MetricMap } from "@/components/MetricMap";
+import { Composition } from "@/components/viz/Composition";
+import { Figure, FigureCell, FigureRow, FigureTable } from "@/components/viz/Figure";
+import { PairedBars } from "@/components/viz/MetricStrip";
 import { Crumbs, PageHeader, Section, SourceNote } from "@/components/ui";
+import { TYPE } from "@/lib/viz";
 
 /*
-  Topic page: "what should I know about this subject across Nepal?"
+  Topic overview, built from the visualization grammar rather than per topic.
 
-  Distinct from an indicator page, which goes deep on one statistic, and from a
-  place page, which goes wide across topics for one location. A topic page is
-  wide across a subject, national in scope, with routes down to both.
+  The old version was hardcoded for Population: an `isPopulation` flag gated the
+  headline, the map and the rankings, so Education -- a live topic with data for
+  all 838 places -- rendered as a list of three indicator names. Every future
+  topic would have needed the same bespoke branch.
 
-  Built as one reusable pattern rather than a bespoke page per topic. Sections
-  render only when the underlying data exists -- a topic showing an empty
-  "geographic comparison" heading reads as broken, not as forthcoming.
+  What varies between topics is not the layout, it is which indicator leads and
+  which breakdown is meaningful. So that is configuration and the rest is shared:
+  headline, sex split, composition, geographic variation, trend, then the
+  indicator table. A topic with no series simply has no trend section, which is
+  the same rule place pages follow -- a missing section reads as scope, an empty
+  one reads as breakage.
 */
 
 type Params = { topic: string };
 
 export async function generateStaticParams(): Promise<Params[]> {
-  // Only live topics get pages. A planned topic with no data would render an
-  // empty shell that looks like a bug.
   return (await liveTopics()).map((t) => ({ topic: t.slug }));
 }
+
+/**
+ * Per-topic choices, and only the choices.
+ *
+ * `headline` is stated rather than inferred from indicator order, so ingestion
+ * order cannot silently change what a page leads with. `composition` names a
+ * dimension that genuinely partitions its indicator -- offering one that does not
+ * would produce a 100% bar that renormalises nonsense.
+ */
+const TOPIC_VIEW: Record<
+  string,
+  {
+    headline: string;
+    mapIndicator?: string;
+    composition?: { indicator: string; dimension: string; label: string };
+    pyramid?: boolean;
+  }
+> = {
+  population: {
+    headline: "population",
+    mapIndicator: "population",
+    pyramid: true,
+  },
+  education: {
+    headline: "literacy_rate",
+    mapIndicator: "literacy_rate",
+    composition: {
+      indicator: "population_5plus",
+      dimension: "literacy_status",
+      label: "Literacy status of the population aged 5 and over",
+    },
+  },
+};
 
 export async function generateMetadata({
   params,
@@ -48,7 +94,10 @@ export async function generateMetadata({
   const { topic } = await params;
   const t = await topicBySlug(topic);
   if (!t) return {};
-  return { title: t.name_en, description: t.description ?? undefined };
+  return {
+    title: t.name_en,
+    description: t.description ?? `${t.name_en} indicators for Nepal.`,
+  };
 }
 
 export default async function TopicPage({ params }: { params: Promise<Params> }) {
@@ -56,24 +105,46 @@ export default async function TopicPage({ params }: { params: Promise<Params> })
   const t = await topicBySlug(topic);
   if (!t || t.status !== "live") notFound();
 
-  const [inds, np, us] = await Promise.all([
+  const view = TOPIC_VIEW[t.slug];
+  const [inds, np, us, allPlaces] = await Promise.all([
     indicatorsOfTopic(t.topic_id),
     country(),
     units(),
+    places(),
   ]);
+  if (!np) notFound();
   const unitOf = (id: string) => us.find((u) => u.unit_id === id);
 
-  const pop = np ? await populationOf(np) : null;
-  const series = np ? await seriesFor(np) : [];
-  const topicSeries = series.filter((s) => s.indicator.topic_id === t.topic_id);
+  const [profile, pop, series, districtCmp] = await Promise.all([
+    placeProfile(np),
+    populationOf(np),
+    seriesFor(np),
+    view?.mapIndicator
+      ? comparisonFor(view.mapIndicator, "district")
+      : Promise.resolve(null),
+  ]);
 
-  const isPopulation = t.topic_id === "population";
-  const provinceCmp = isPopulation
-    ? await comparisonFor("population", "province")
+  const metrics = profile.find((p) => p.topic.topic_id === t.topic_id)?.metrics ?? [];
+  const headline =
+    metrics.find((m) => m.indicatorId === view?.headline) ?? metrics[0] ?? null;
+  const supporting = metrics.filter((m) => m.indicatorId !== headline?.indicatorId);
+
+  const composition = view?.composition
+    ? await compositionFor(np, view.composition.indicator, view.composition.dimension)
     : null;
-  const districtCmp = isPopulation
-    ? await comparisonFor("population", "district")
-    : null;
+
+  // District map for the topic's headline geography, and the spread beneath it.
+  const districts = allPlaces.filter((p) => p.place_type === "district");
+  const [map, spread] = await Promise.all([
+    view?.mapIndicator
+      ? metricMapFor(districts, [view.mapIndicator], { maxWidth: 1000, maxHeight: 480 })
+      : Promise.resolve(null),
+    view?.mapIndicator ? spreadFor("district", view.mapIndicator) : Promise.resolve([]),
+  ]);
+
+  const topicSeries = series.filter((s) => s.indicator.topic_id === t.topic_id);
+  const female = headline?.bySex.find((s) => s.sex === "female")?.value;
+  const male = headline?.bySex.find((s) => s.sex === "male")?.value;
 
   const tables = tablesFor(["observations", "places", "indicators"]);
 
@@ -89,152 +160,240 @@ export default async function TopicPage({ params }: { params: Promise<Params> })
 
       <PageHeader eyebrow="Topic" title={t.name_en} native={t.name_ne} />
       {t.description && (
-        <p className="text-ink-soft -mt-4 mb-10 max-w-2xl text-[15px]">
+        <p className="text-ink-soft -mt-4 mb-10 max-w-prose text-[15px] leading-relaxed">
           {t.description}
         </p>
       )}
 
-      {/* Headline: the one figure a reader wants first. */}
-      {isPopulation && pop && (
-        <Section title="Nepal's population">
-          <div className="border-line grid grid-cols-1 gap-8 rounded-lg border p-6 sm:grid-cols-3">
-            <Headline
-              value={pop.total}
-              label="Total population"
-              period={String(pop.period)}
-              status={statusLabel(pop.status)}
-              unit={unitOf("persons")}
-            />
-            <Headline
-              value={asPercentValue(pop.femaleShare)}
-              unit={unitOf("percent")}
-              label="Female share"
-              period={String(pop.period)}
-              note="Of total population"
-            />
-            <Headline
-              value={asPercentValue(pop.workingAgeShare)}
-              unit={unitOf("percent")}
-              label="Working age"
-              period={String(pop.period)}
-              note="Aged 15–64"
-            />
+      {/* Headline plus the sex split, which is the first question a national
+          rate invites and the one the old page made a reader hunt for. */}
+      {headline && (
+        <Section
+          title={`Nepal: ${headline.name.toLowerCase()}`}
+          note={`${headline.period}${
+            headline.periodType === "instant" ? " census" : ""
+          }${statusLabel(headline.status) ? ` ${statusLabel(headline.status)}` : ""}.`}
+        >
+          <div className="grid gap-x-12 gap-y-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+            <div>
+              <p className="text-ink tabular text-[2.6rem] leading-none font-semibold tracking-[-0.04em]">
+                {formatWithUnit(headline.value, headline.unit)}
+              </p>
+              {headline.definition && (
+                <p
+                  className="text-ink-soft mt-3 max-w-prose leading-relaxed"
+                  style={{ fontSize: TYPE.body }}
+                >
+                  {headline.definition}
+                </p>
+              )}
+              {female !== undefined && male !== undefined && (
+                <div className="mt-6">
+                  <p className="text-ink-soft mb-2" style={{ fontSize: TYPE.body }}>
+                    By sex
+                  </p>
+                  <PairedBars
+                    pairs={[
+                      { label: "Female", value: female },
+                      { label: "Male", value: male, accent: true },
+                    ]}
+                    unit={headline.unit}
+                  />
+                </div>
+              )}
+            </div>
+
+            {composition && view?.composition && (
+              <Figure
+                title={view.composition.label}
+                subtitle="Categories the census reports, which together account for everyone counted."
+                table={
+                  <FigureTable
+                    columns={[
+                      { label: "Category" },
+                      { label: "People", numeric: true },
+                    ]}
+                  >
+                    {composition.slices.map((sl) => (
+                      <FigureRow key={sl.id}>
+                        <FigureCell strong>{sl.label}</FigureCell>
+                        <FigureCell numeric>{formatNumber(sl.value)}</FigureCell>
+                      </FigureRow>
+                    ))}
+                  </FigureTable>
+                }
+              >
+                <Composition slices={composition.slices} total={composition.total} />
+              </Figure>
+            )}
           </div>
         </Section>
       )}
 
-      {/* National trends for this topic's indicators. */}
+      {/* Geographic variation: the question a national figure hides. */}
+      {map && districtCmp && districtCmp.rows.length > 0 && (
+        <Section
+          title="How it differs across Nepal"
+          note={`Every district, ${districtCmp.period}. Select a district to open it.`}
+        >
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:gap-12">
+            <MetricMap
+              features={map.features}
+              metrics={map.metrics}
+              width={map.width}
+              height={map.height}
+              caption={`${map.features.length} districts.`}
+            />
+            <div>
+              <h3
+                className="text-label text-ink-faint mb-3 uppercase"
+                style={{ fontSize: TYPE.micro }}
+              >
+                Highest and lowest
+              </h3>
+              {/* Extremes rather than all 77: the map carries the pattern and
+                  the ranking answers "who is at the ends", which is what a
+                  reader actually asks of a list this long. */}
+              <table className="w-full" style={{ fontSize: TYPE.body }}>
+                <tbody>
+                  {[
+                    ...districtCmp.rows.slice(0, 5),
+                    null,
+                    ...districtCmp.rows.slice(-5),
+                  ].map((r) =>
+                    r === null ? (
+                      <tr key="gap">
+                        <td colSpan={2} className="text-ink-faint py-1.5 text-center">
+                          ⋯
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr key={r.place.place_id} className="border-line border-b">
+                        <td className="py-1.5">
+                          <Link
+                            href={`/np/${
+                              allPlaces.find(
+                                (p) => p.place_id === r.place.parent_place_id,
+                              )?.slug ?? ""
+                            }/${r.place.slug}/`}
+                          >
+                            {r.place.name_en}
+                          </Link>
+                        </td>
+                        <td className="text-ink tabular py-1.5 text-right">
+                          {formatWithUnit(r.value, districtCmp.unit)}
+                        </td>
+                      </tr>
+                    ),
+                  )}
+                </tbody>
+              </table>
+              {spread.length > 4 && (
+                <p className="text-ink-faint mt-3" style={{ fontSize: TYPE.small }}>
+                  {districtCmp.rows.length} districts, from{" "}
+                  {formatWithUnit(
+                    districtCmp.rows[districtCmp.rows.length - 1].value,
+                    districtCmp.unit,
+                  )}{" "}
+                  to {formatWithUnit(districtCmp.rows[0].value, districtCmp.unit)}.
+                </p>
+              )}
+            </div>
+          </div>
+        </Section>
+      )}
+
+      {view?.pyramid && pop && pop.bands.length > 0 && (
+        <Section
+          title="Age and sex structure"
+          note={`Five-year age bands, ${pop.bandPeriod ?? pop.period}. Both sides share one scale, so bar lengths are directly comparable.`}
+        >
+          <AgePyramid bands={pop.bands} period={pop.bandPeriod ?? pop.period} />
+        </Section>
+      )}
+
       {topicSeries.length > 0 && (
         <Section
-          title="National trends"
-          note="Annual series. Follow an indicator for its full history and methodology."
+          title="Over time"
+          note="National series, where the publisher provides one."
         >
-          <div className="grid gap-10 lg:grid-cols-2">
+          <div className="grid gap-x-12 gap-y-10 lg:grid-cols-2">
             {topicSeries.map((s) => (
-              <div key={s.indicator.indicator_id}>
-                <h3 className="text-ink mb-1 text-[14px] font-medium">
-                  <Link
-                    href={`/indicators/${indicatorSlug(s.indicator.indicator_id)}/`}
-                  >
-                    {s.indicator.name_en}
-                  </Link>
-                </h3>
-                <p className="text-ink-faint mb-3 text-[12px]">
-                  {s.unit?.name_en}, {s.points[0].year}–{s.latest!.year}
-                </p>
+              <Figure
+                key={s.indicator.indicator_id}
+                title={s.indicator.name_en}
+                subtitle={`${s.unit?.name_en} · ${s.points[0].year}–${s.latest?.year}`}
+              >
                 <TrendChart
                   points={s.points}
                   unit={s.unit}
                   label={s.indicator.name_en}
                 />
-              </div>
+              </Figure>
             ))}
           </div>
         </Section>
       )}
 
-      {/* Age structure: a pyramid is the right form and a table is not. */}
-      {isPopulation && pop && pop.bands.length > 0 && (
-        <Section
-          title="Age and sex structure"
-          note={`Five-year age bands, ${pop.period}. Both sides share one scale, so bar lengths are directly comparable.`}
+      <Section
+        title="Indicators in this topic"
+        note={`${inds.length} published. Every one has its own page with a full series and geographic breakdown.`}
+      >
+        <FigureTable
+          columns={[
+            { label: "Indicator" },
+            { label: "Nepal", numeric: true },
+            { label: "Unit" },
+          ]}
         >
-          <AgePyramid bands={pop.bands} period={pop.period} />
-        </Section>
-      )}
+          {inds.map((i) => {
+            const m = metrics.find((x) => x.indicatorId === i.indicator_id);
+            return (
+              <FigureRow key={i.indicator_id}>
+                <FigureCell strong>
+                  <Link href={`/indicators/${indicatorSlug(i.indicator_id)}/`}>
+                    {i.name_en}
+                  </Link>
+                  {i.name_ne && (
+                    <span className="text-ink-faint ne ml-2">{i.name_ne}</span>
+                  )}
+                </FigureCell>
+                <FigureCell numeric>
+                  {m ? formatWithUnit(m.value, m.unit) : "—"}
+                </FigureCell>
+                <FigureCell>{unitOf(i.default_unit_id)?.name_en}</FigureCell>
+              </FigureRow>
+            );
+          })}
+        </FigureTable>
 
-      {/* Geographic comparison: where does this differ? */}
-      {provinceCmp && provinceCmp.rows.length > 0 && (
-        <Section
-          title="By province"
-          note={`Population by province, ${provinceCmp.period}.`}
-        >
-          <RankedBars
-            label={`Population by province, ${provinceCmp.period}`}
-            valueLabel="Population"
-            unit={provinceCmp.unit}
-            rows={provinceCmp.rows.map((r) => ({
-              name: r.place.name_en,
-              nameNe: r.place.name_ne,
-              href: `/np/${r.place.slug}/`,
-              value: r.value,
-            }))}
-          />
-        </Section>
-      )}
-
-      {districtCmp && districtCmp.rows.length > 0 && (
-        <Section
-          title="Largest districts"
-          note={`The ten most populous of ${districtCmp.rows.length} districts, ${districtCmp.period}. Full values in the table.`}
-        >
-          <RankedBars
-            label={`Districts by population, ${districtCmp.period}`}
-            valueLabel="Population"
-            unit={districtCmp.unit}
-            max={districtCmp.rows[0]?.value}
-            rows={districtCmp.rows.slice(0, 10).map((r) => ({
-              name: r.place.name_en,
-              nameNe: r.place.name_ne,
-              value: r.value,
-            }))}
-          />
-          <p className="text-ink-faint mt-3 text-[12px]">
-            Showing 10 of {districtCmp.rows.length}.{" "}
-            <a href="/data/observations.parquet" download>
-              Download all values
-            </a>
-            .
-          </p>
-        </Section>
-      )}
-
-      {/* Indicators in this topic: the route to statistical depth. */}
-      <Section title="Indicators" note={`${inds.length} in this topic.`}>
-        <ul className="divide-line border-line divide-y rounded-lg border">
-          {inds.map((i) => (
-            <li key={i.indicator_id} className="px-4 py-3">
-              <Link
-                href={`/indicators/${indicatorSlug(i.indicator_id)}/`}
-                className="text-[14px] font-medium"
-              >
-                {i.name_en}
-              </Link>
-              {i.name_ne && (
-                <span className="text-ink-faint text-[13px]"> · {i.name_ne}</span>
-              )}
-              {i.definition && (
-                <p className="text-ink-soft mt-1 max-w-2xl text-[13px]">
-                  {i.definition}
-                </p>
-              )}
-              <p className="text-ink-faint mt-1 text-[12px]">
-                {unitOf(i.default_unit_id)?.name_en}
-                {!i.is_additive && " · not additive across places"}
-              </p>
-            </li>
-          ))}
-        </ul>
+        {supporting.length > 0 && (
+          <details className="mt-4">
+            <summary
+              className="text-ink-faint hover:text-ink-soft cursor-pointer"
+              style={{ fontSize: TYPE.small }}
+            >
+              What these measure
+            </summary>
+            <dl className="mt-3 max-w-prose space-y-3">
+              {inds
+                .filter((i) => i.definition)
+                .map((i) => (
+                  <div key={i.indicator_id}>
+                    <dt className="text-ink-soft" style={{ fontSize: TYPE.body }}>
+                      {i.name_en}
+                    </dt>
+                    <dd
+                      className="text-ink-faint leading-relaxed"
+                      style={{ fontSize: TYPE.small }}
+                    >
+                      {i.definition}
+                    </dd>
+                  </div>
+                ))}
+            </dl>
+          </details>
+        )}
       </Section>
 
       <SourceNote tables={tables} sources={sourcesFor(tables)} />

@@ -395,6 +395,52 @@ census_literacy_composition as (
       and m.value is not null
 ),
 
+/*
+  The national literacy composition, aggregated the same way as the rate.
+
+  Without this the country has a literacy rate but no breakdown, so the Education
+  topic page could state 76.2% and not what the remaining 23.8% consists of --
+  the exact gap the composition chart exists to close, reappearing one level up.
+
+  Same reasoning as the national rate above: the four statuses are counts, counts
+  are additive, and the province sums reconcile with the district sums exactly.
+*/
+census_literacy_composition_national as (
+    select
+        'nso-nphc-2021'       as dataset_id,
+        'population_5plus'    as indicator_id,
+        c.place_id,
+        date '2021-11-25'     as period_start,
+        date '2021-11-25'     as period_end,
+        'instant'             as period_type,
+        b.value               as value_numeric,
+        cast(null as varchar) as value_text,
+        'persons'             as unit_id,
+        'actual'              as status,
+        [
+            struct_pack(dimension_id := 'sex',             member_id := b.sex),
+            struct_pack(dimension_id := 'literacy_status', member_id := b.status)
+        ] as dimensions
+    from (
+        select
+            sx.member_id  as sex,
+            ls.member_id  as status,
+            sum(o.value_numeric) as value
+        from census_literacy_composition o
+        inner join {{ ref('int_places') }} p on p.place_id = o.place_id
+        cross join unnest(o.dimensions) as t1(sx)
+        cross join unnest(o.dimensions) as t2(ls)
+        where p.place_type = 'province'
+          and sx.dimension_id = 'sex'
+          and ls.dimension_id = 'literacy_status'
+        group by sx.member_id, ls.member_id
+    ) b
+    cross join (
+        select place_id from {{ ref('int_places') }} where place_type = 'country'
+    ) c
+    where b.value is not null
+),
+
 unioned as (
     select * from population_shaped
     union all by name
@@ -409,6 +455,8 @@ unioned as (
     select * from census_literacy_national
     union all by name
     select * from census_literacy_composition
+    union all by name
+    select * from census_literacy_composition_national
 ),
 
 keyed as (

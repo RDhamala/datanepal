@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-24T03:18:02.274576+00:00",
+  "generated_at": "2026-08-24T03:31:47.928667+00:00",
   "table_count": 16,
   "tables": [
     {
@@ -166,10 +166,10 @@
       "caveats": [
         "An observation with no dimensions has no rows here. That is normal for scalar indicators like national inflation.\n"
       ],
-      "row_count": 43215,
+      "row_count": 43239,
       "parquet": "observation_dimensions.parquet",
       "json": null,
-      "bytes": 503219
+      "bytes": 503552
     },
     {
       "table": "observations",
@@ -201,10 +201,10 @@
         "Check the indicator's is_additive flag before aggregating. Rates and ratios (inflation, GDP per capita, density) must not be summed or unweighted-averaged.\n",
         "A NULL value with status 'suppressed' or 'not_collected' is meaningful and distinct from zero.\n"
       ],
-      "row_count": 26027,
+      "row_count": 26039,
       "parquet": "observations.parquet",
       "json": null,
-      "bytes": 602736
+      "bytes": 602648
     },
     {
       "table": "organisations",
@@ -421,9 +421,9 @@
     "table": "observation_history",
     "title": "Observation revision history",
     "description": "Append-only history of every published observation. One row per revision; is_current marks the present value. A superseded row keeps its original value and records when it was replaced.",
-    "row_count": 26027,
+    "row_count": 26039,
     "parquet": "observation_history.parquet",
-    "bytes": 600043
+    "bytes": 600308
   },
   "sources": [
     {
