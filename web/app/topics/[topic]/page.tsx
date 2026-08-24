@@ -105,6 +105,12 @@ const TOPIC_VIEW: Record<
     // reader arrives asking about first.
     headline: "unemployment_rate",
   },
+  government: {
+    // The broader of the two revenue figures, freshest alongside consumption
+    // expenditure -- debt is the one indicator here with a real reporting
+    // lag (2021), so it leads nothing.
+    headline: "government_revenue_pct_gdp",
+  },
   education: {
     headline: "literacy_rate",
     mapIndicator: "literacy_rate",

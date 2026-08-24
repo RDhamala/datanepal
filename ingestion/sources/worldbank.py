@@ -84,6 +84,15 @@ INDICATORS: dict[str, tuple[str, str]] = {
     "SL.TLF.CACT.ZS": ("labor_force_participation_rate", "percent"),
     "SL.AGR.EMPL.ZS": ("agriculture_employment_pct", "percent"),
     "SL.TLF.CACT.FM.ZS": ("female_male_labor_participation_ratio", "percent"),
+    # Government & Budgets topic's first indicators. Revenue and consumption
+    # are current; central government debt lags to 2021 for Nepal -- a normal
+    # multi-year fiscal-reporting delay, not a discontinued series like
+    # Tourism's, and disclosed as such in the indicator's own notes rather
+    # than hidden.
+    "GC.TAX.TOTL.GD.ZS": ("tax_revenue_pct_gdp", "percent_gdp"),
+    "GC.REV.XGRT.GD.ZS": ("government_revenue_pct_gdp", "percent_gdp"),
+    "NE.CON.GOVT.ZS": ("government_consumption_pct_gdp", "percent_gdp"),
+    "GC.DOD.TOTL.GD.ZS": ("government_debt_pct_gdp", "percent_gdp"),
 }
 
 # The API is generous but paginated; one page per indicator is plenty for a
