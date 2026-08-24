@@ -334,21 +334,38 @@ export async function comparisonFor(
     return { period: 0, unit: undefined, rows: [] };
   }
 
-  const period = Math.max(...relevant.map((o) => Number(o.period_start.slice(0, 4))));
-  const current = relevant.filter((o) => o.period_start.startsWith(String(period)));
+  /*
+    One aggregate row per place, choosing the enumeration over the projection.
 
-  // One aggregate row per place, chosen by shape. Filtering on a literal
-  // dimension key here is what made every census figure invisible: local
-  // governments publish population as `residence_type=household|sex=all`, which
-  // no hardcoded key matched, and summing members instead would double count.
-  const perPlace = new Map<string, typeof current>();
-  for (const o of current) {
+    Two earlier versions of this were wrong in different ways. Filtering on a
+    literal dimension key made every census figure invisible, because local
+    governments publish population as `residence_type=household|sex=all` and no
+    hardcoded key matched. Then taking the latest period ranked districts on
+    modelled 2023 figures while the 2021 count sat unused, so a map and the
+    profile beside it disagreed.
+  */
+  const perPlace = new Map<string, typeof relevant>();
+  for (const o of relevant) {
     perPlace.set(o.place_id!, [...(perPlace.get(o.place_id!) ?? []), o]);
   }
-  const rows = [...perPlace.entries()]
-    .map(([placeId, rowsForPlace]) => ({
-      place: byId.get(placeId)!,
-      value: pickAggregate(rowsForPlace)?.value_numeric ?? null,
+  const picked = [...perPlace.entries()].map(([placeId, rowsForPlace]) => ({
+    place: byId.get(placeId)!,
+    row: pickHeadline(rowsForPlace),
+  }));
+  // The period is whatever the places agree on; comparing a 2021 count with a
+  // 2023 projection across places would be worse than either.
+  const period = picked.length
+    ? Math.max(
+        ...picked
+          .map((p) => (p.row ? Number(p.row.period_start.slice(0, 4)) : 0))
+          .filter((y) => y > 0),
+      )
+    : 0;
+  const rows = picked
+    .filter((p) => p.row && Number(p.row.period_start.slice(0, 4)) === period)
+    .map((p) => ({
+      place: p.place,
+      value: p.row!.value_numeric ?? null,
     }))
     .filter(
       (r): r is { place: Place; value: number } => Boolean(r.place) && r.value !== null,
@@ -474,6 +491,65 @@ function specificMembers(dimensionKey: string): string[] {
 
 type Dimensioned = { dimension_key: string };
 
+/*
+  Enumerations before projections.
+
+  A census is a count; a projection is a model. When both exist for a place --
+  as they do for every province and district, NSO 2021 against UNFPA 2023 -- the
+  headline should be the count, with the projection shown beside it as the later
+  estimate it is. Picking purely by latest period gave districts a modelled 2023
+  figure as their primary population while the actual enumeration sat unused,
+  and put 2021 households next to 2023 population in the same section.
+
+  No arbitrary staleness window. The most recent enumeration leads, the most
+  recent projection is shown alongside when it is newer, and the reader has both.
+*/
+const STATUS_RANK: Record<string, number> = {
+  actual: 0,
+  provisional: 1,
+  estimate: 2,
+  projection: 3,
+  forecast: 4,
+};
+
+const statusRank = (status: string): number => STATUS_RANK[status] ?? 5;
+
+type Ranked = Dimensioned & { status: string; period_start: string };
+
+const yearOf = (row: { period_start: string }): number =>
+  Number(row.period_start.slice(0, 4));
+
+/**
+ * The row a headline figure should use: latest enumeration, else latest of
+ * whatever there is.
+ */
+export function pickHeadline<T extends Ranked>(rows: T[]): T | undefined {
+  const best = [...rows].sort(
+    (a, b) => statusRank(a.status) - statusRank(b.status) || yearOf(b) - yearOf(a),
+  )[0];
+  if (!best) return undefined;
+  // Among rows of the winning status and period, take the aggregate.
+  return pickAggregate(
+    rows.filter((r) => r.status === best.status && yearOf(r) === yearOf(best)),
+  );
+}
+
+/** The most recent modelled figure, when it postdates the enumeration. */
+export function pickLaterEstimate<T extends Ranked>(
+  rows: T[],
+  headline: T | undefined,
+): T | undefined {
+  if (!headline) return undefined;
+  const later = rows.filter(
+    (r) =>
+      statusRank(r.status) > statusRank(headline.status) &&
+      yearOf(r) > yearOf(headline),
+  );
+  if (!later.length) return undefined;
+  const newest = Math.max(...later.map(yearOf));
+  return pickAggregate(later.filter((r) => yearOf(r) === newest));
+}
+
 /** The least specific row: the aggregate across every dimension. */
 export function pickAggregate<T extends Dimensioned>(rows: T[]): T | undefined {
   return [...rows].sort(
@@ -515,26 +591,57 @@ export type PopulationSummary = {
   density: number | null;
   workingAgeShare: number | null;
   bands: { band: string; female: number; male: number }[];
+  /** Reference period of the age bands, which may differ from the headline. */
+  bandPeriod: number | null;
+  /** A later modelled figure, where the publisher offers one. */
+  laterEstimate: { value: number; period: number; status: string } | null;
 };
 
 export async function populationOf(place: Place): Promise<PopulationSummary | null> {
   const rows = (await observations()).filter(
-    (o) => o.place_id === place.place_id && o.indicator_id === "population",
+    (o) =>
+      o.place_id === place.place_id &&
+      o.indicator_id === "population" &&
+      o.value_numeric !== null,
   );
   if (!rows.length) return null;
 
-  const period = Math.max(...rows.map((r) => Number(r.period_start.slice(0, 4))));
-  const current = rows.filter((r) => r.period_start.startsWith(String(period)));
+  // The enumeration leads. For provinces and districts that is the 2021 census
+  // rather than the 2023 projection, which is what a reader means by "the
+  // population of Kathmandu".
+  const headline = pickHeadline(rows);
+  if (!headline) return null;
+  const period = Number(headline.period_start.slice(0, 4));
+  const sameRun = rows.filter(
+    (r) =>
+      r.status === headline.status && r.period_start.slice(0, 4) === String(period),
+  );
 
-  const total = pickAggregate(current)?.value_numeric ?? 0;
-  const female = pickMember(current, "sex", "female")?.value_numeric ?? 0;
-  const male = pickMember(current, "sex", "male")?.value_numeric ?? 0;
+  const total = headline.value_numeric ?? 0;
+  const female = pickMember(sameRun, "sex", "female")?.value_numeric ?? 0;
+  const male = pickMember(sameRun, "sex", "male")?.value_numeric ?? 0;
 
-  // Age bands only exist in the projection series; the census tables ingested
-  // here carry sex but not age, so this is empty for local governments and the
-  // age pyramid simply does not render.
+  /*
+    Age bands come from whichever source publishes them, independently of the
+    headline. The census tables ingested here carry sex but not age, so the age
+    pyramid stays on the UNFPA projection -- which is a legitimate use of a
+    projection and is labelled with its own period, rather than being quietly
+    mixed into the census figures above it.
+  */
+  const banded = rows.filter((r) => {
+    const band = r.dimension_key
+      .split("|")
+      .find((part) => part.startsWith("age_band="));
+    return band !== undefined && band !== "age_band=all";
+  });
+  const bandPeriod = banded.length
+    ? Math.max(...banded.map((r) => Number(r.period_start.slice(0, 4))))
+    : null;
+  const bandRows = banded.filter(
+    (r) => r.period_start.slice(0, 4) === String(bandPeriod),
+  );
   const at = (sex: string, band: string) =>
-    current.find((r) => r.dimension_key === dimensionKey({ sex, age_band: band }))
+    bandRows.find((r) => r.dimension_key === dimensionKey({ sex, age_band: band }))
       ?.value_numeric ?? 0;
   const bands = AGE_BANDS.map((band) => ({
     band,
@@ -543,22 +650,39 @@ export async function populationOf(place: Place): Promise<PopulationSummary | nu
   })).filter((b) => b.female > 0 || b.male > 0);
 
   const WORKING = new Set(AGE_BANDS.slice(3, 13)); // 15-19 .. 60-64
+  const bandTotal = bands.reduce((sum, b) => sum + b.female + b.male, 0);
   const workingAge = bands
     .filter((b) => WORKING.has(b.band))
     .reduce((sum, b) => sum + b.female + b.male, 0);
+
+  // The later modelled figure, where one exists. Shown as context, never as the
+  // headline, and never mixed with the census in a derived ratio.
+  const later = pickLaterEstimate(rows, headline);
 
   return {
     period,
     // Surfacing this is not cosmetic: presenting a projection as a census count
     // is the error that destroys trust in a statistics site.
-    status: current[0]?.status ?? "actual",
+    status: headline.status,
     total,
     female,
     male,
     femaleShare: total > 0 ? female / total : null,
     density: place.area_sqkm ? total / place.area_sqkm : null,
-    workingAgeShare: total > 0 ? workingAge / total : null,
+    // Computed against the band total, not the headline total: the two come
+    // from different periods, and dividing across them would be exactly the
+    // error this split exists to prevent.
+    workingAgeShare: bandTotal > 0 ? workingAge / bandTotal : null,
     bands,
+    bandPeriod,
+    laterEstimate:
+      later && later.value_numeric !== null
+        ? {
+            value: later.value_numeric,
+            period: Number(later.period_start.slice(0, 4)),
+            status: later.status,
+          }
+        : null,
   };
 }
 
@@ -890,6 +1014,14 @@ export type ProfileMetric = {
   isAdditive: boolean;
   /** The same measure split by sex, where the source publishes it. */
   bySex: { sex: string; value: number }[];
+  /**
+   * A later modelled figure for the same measure, where one exists.
+   *
+   * Shown as context beside the enumeration, never in its place. A district has
+   * both a 2021 census count and a 2023 UNFPA projection; a reader deserves the
+   * count as the answer and the projection as the update.
+   */
+  laterEstimate: { value: number; period: number; status: string } | null;
 };
 
 export type ProfileTopic = {
@@ -961,16 +1093,15 @@ export async function placeProfile(place: Place): Promise<ProfileTopic[]> {
     const topic = topicById.get(indicator.topic_id);
     if (!topic) continue;
 
-    const latest = Math.max(...rows.map((r) => Number(r.period_start.slice(0, 4))));
-    const current = rows.filter((r) => r.period_start.startsWith(String(latest)));
-
-    // The aggregate row: fewest non-total dimension members.
-    const headline = [...current].sort(
-      (a, b) =>
-        specificity(a.dimension_key) - specificity(b.dimension_key) ||
-        a.dimension_key.length - b.dimension_key.length,
-    )[0];
+    // Enumeration before projection, then latest. The census is the answer;
+    // a projection for a later date is context.
+    const headline = pickHeadline(rows);
     if (!headline || headline.value_numeric === null) continue;
+    const latest = Number(headline.period_start.slice(0, 4));
+    const current = rows.filter(
+      (r) => r.status === headline.status && r.period_start.startsWith(String(latest)),
+    );
+    const later = pickLaterEstimate(rows, headline);
 
     // The same measure by sex, at the headline's other dimensions.
     const bySex = current
@@ -997,6 +1128,14 @@ export async function placeProfile(place: Place): Promise<ProfileTopic[]> {
       datasetId: headline.dataset_id,
       isAdditive: indicator.is_additive,
       bySex,
+      laterEstimate:
+        later && later.value_numeric !== null
+          ? {
+              value: later.value_numeric,
+              period: Number(later.period_start.slice(0, 4)),
+              status: later.status,
+            }
+          : null,
       topicId: topic.topic_id,
       sortOrder: topic.sort_order,
     });

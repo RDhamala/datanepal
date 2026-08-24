@@ -141,6 +141,19 @@ export function PlaceProfile({
                         {m.unit.name_en}
                       </div>
                     )}
+                    {/*
+                      The later modelled figure, as context under the count.
+                      Shown small and labelled, because a projection is a
+                      different kind of claim from an enumeration and the
+                      difference should be visible without reading a footnote.
+                    */}
+                    {m.laterEstimate && (
+                      <div className="text-ink-faint tabular mt-1.5 text-[11px]">
+                        {formatWithUnit(m.laterEstimate.value, m.unit)} ·{" "}
+                        {m.laterEstimate.period}{" "}
+                        {statusLabel(m.laterEstimate.status) ?? ""}
+                      </div>
+                    )}
                   </dd>
 
                   <dd className="sm:text-right">

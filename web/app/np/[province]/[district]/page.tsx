@@ -40,6 +40,19 @@ import {
   municipalities and 1 sub-metropolitan city are not the same kind of thing.
 */
 
+/**
+ * Who published the headline population figure, and how it was arrived at.
+ *
+ * Derived rather than hardcoded: these pages said "UNFPA" unconditionally,
+ * which was right while the projection was the only figure and became wrong the
+ * moment the census supplied the count.
+ */
+function populationProvenance(pop: { period: number; status: string }): string {
+  return pop.status === "actual"
+    ? `${pop.period} census · NSO`
+    : `${pop.period} ${statusLabel(pop.status) ?? "estimate"} · UNFPA`;
+}
+
 type Params = { province: string; district: string };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -74,7 +87,7 @@ export async function generateMetadata({
   return {
     title: `${place.name_en} District`,
     description: pop
-      ? `${place.name_en} District, ${prov.name_en} Province, Nepal: population ${formatNumber(pop.total)} (${pop.period} projection), ${formatNumber(place.area_sqkm)} km².`
+      ? `${place.name_en} District, ${prov.name_en} Province, Nepal: population ${formatNumber(pop.total)} (${pop.period}${pop.status === "actual" ? " census" : " projection"}), ${formatNumber(place.area_sqkm)} km².`
       : `${place.name_en} District, ${prov.name_en} Province, Nepal.`,
   };
 }
@@ -167,7 +180,7 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
           {
             label: "Population",
             value: pop ? formatCompact(pop.total) : "—",
-            sub: pop ? `${pop.period} ${statusLabel(pop.status) ?? ""} · UNFPA` : null,
+            sub: pop ? populationProvenance(pop) : null,
           },
           { label: "Area", value: formatNumber(place.area_sqkm), sub: "km²" },
           {
@@ -197,9 +210,9 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
         <AnchoredSection
           id="age-sex"
           title="Age and sex structure"
-          note="Five-year age bands. Both sides share one scale, so bar lengths are directly comparable."
+          note={`Five-year age bands from the UNFPA ${pop.bandPeriod ?? pop.period} projection, the only source that publishes age detail at this level. Both sides share one scale, so bar lengths are directly comparable.`}
         >
-          <AgePyramid bands={pop.bands} period={pop.period} />
+          <AgePyramid bands={pop.bands} period={pop.bandPeriod ?? pop.period} />
         </AnchoredSection>
       )}
 

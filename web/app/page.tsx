@@ -38,7 +38,9 @@ import { Cell, DataTable, Row, Section, SourceNote } from "@/components/ui";
 */
 
 const ATTRIBUTION: Record<string, string> = {
-  population: "UNFPA",
+  // The census supplies the national count; UNFPA supplies the later
+  // projection, which the Metric shows as context rather than as the figure.
+  population: "NSO",
   cpi_inflation_annual: "World Bank",
   gdp_per_capita_usd: "World Bank",
   remittances_percent_gdp: "World Bank",
@@ -186,6 +188,17 @@ export default async function Home() {
               status={statusLabel(pop.status)}
               attribution={ATTRIBUTION.population}
               href={`/indicators/${indicatorSlug("population")}/`}
+              /*
+                A national headline is one of the few places a projection
+                genuinely earns its space: the census count is the authoritative
+                figure, and a reader also wants to know roughly how many people
+                live in Nepal now. Both, labelled, in that order.
+              */
+              note={
+                pop.laterEstimate
+                  ? `${formatCompact(pop.laterEstimate.value)} projected for ${pop.laterEstimate.period}`
+                  : undefined
+              }
             />
           )}
           {inflation?.latest && (

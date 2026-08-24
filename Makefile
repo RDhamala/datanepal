@@ -43,6 +43,7 @@ all: catalog ingest build revisions publish
 
 check:
 	.venv/bin/ruff check .
+	$(PY) -m tests.check_catalog
 	$(PY) -m pytest -q
 	cd web && npm run check
 

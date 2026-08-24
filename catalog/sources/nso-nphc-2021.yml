@@ -16,7 +16,7 @@ rights_review_status: reviewed_ok
 retrieved: '2026-08-23'
 vintage: '2021'
 time_coverage: '2021'
-geographic_granularity: local_unit
+geographic_granularity: municipality
 update_frequency: decennial
 revises_published_values: false
 ingestion_difficulty: hard

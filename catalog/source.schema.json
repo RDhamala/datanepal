@@ -83,6 +83,7 @@
       "type": "string",
       "enum": [
         "one-off",
+        "decennial",
         "annual",
         "quarterly",
         "monthly",

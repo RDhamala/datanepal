@@ -270,10 +270,56 @@ describe("observations — population", () => {
 
     expect(pop).not.toBeNull();
     expect(pop!.female + pop!.male).toBe(pop!.total);
-    expect(pop!.bands).toHaveLength(AGE_BANDS.length);
     expect(pop!.density).toBeGreaterThan(0);
-    // 2023 figures are projections, and the page must say so.
-    expect(pop!.status).toBe("projection");
+  });
+
+  /*
+    Kathmandu district has both a 2021 census count and a 2023 UNFPA projection.
+    Which one leads is a substantive editorial decision, not an implementation
+    detail: taking the latest period gave the district a modelled figure as its
+    primary population while the actual enumeration sat unused, and then put
+    2021 households beside 2023 population in one section, where dividing them
+    gives 4.0 people per household instead of 3.75.
+  */
+  it("leads with the enumeration and keeps the projection as context", async () => {
+    const bagmati = await placeBySlug("province", "bagmati");
+    const ktm = await placeBySlug("district", "kathmandu", bagmati!.place_id);
+    const pop = await populationOf(ktm!);
+
+    expect(pop!.status).toBe("actual");
+    expect(pop!.period).toBe(2021);
+    expect(pop!.total).toBe(2_041_587);
+
+    // The projection is not discarded, just demoted.
+    expect(pop!.laterEstimate).not.toBeNull();
+    expect(pop!.laterEstimate!.period).toBe(2023);
+    expect(pop!.laterEstimate!.status).toBe("projection");
+    expect(pop!.laterEstimate!.value).toBeGreaterThan(pop!.total);
+  });
+
+  it("keeps age bands on their own period, since the census carries no age detail", async () => {
+    // The bands come from UNFPA and the headline from NSO, so they legitimately
+    // disagree on period. That must be visible rather than silently mixed --
+    // and any share derived from the bands has to use the band total, not the
+    // census total.
+    const bagmati = await placeBySlug("province", "bagmati");
+    const ktm = await placeBySlug("district", "kathmandu", bagmati!.place_id);
+    const pop = await populationOf(ktm!);
+
+    expect(pop!.bands).toHaveLength(AGE_BANDS.length);
+    expect(pop!.bandPeriod).toBe(2023);
+    expect(pop!.bandPeriod).not.toBe(pop!.period);
+    expect(pop!.workingAgeShare).toBeGreaterThan(0.5);
+    expect(pop!.workingAgeShare).toBeLessThan(0.9);
+  });
+
+  it("has no later estimate for a local government, where only the census reaches", async () => {
+    const all = await places();
+    const local = all.filter((p) => LOCAL_TYPES.has(p.place_type))[0];
+    const pop = await populationOf(local);
+    expect(pop!.status).toBe("actual");
+    expect(pop!.laterEstimate).toBeNull();
+    expect(pop!.bands).toEqual([]);
   });
 
   /*
