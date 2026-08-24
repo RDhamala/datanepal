@@ -45,7 +45,11 @@ export function PageHeader({
     <header className="border-line mb-10 border-b pb-8">
       {eyebrow && <p className="text-label text-ink-faint mb-3 uppercase">{eyebrow}</p>}
       <h1 className="text-display text-ink font-semibold">{title}</h1>
-      {native && <p className="text-title text-ink-soft mt-2 font-normal">{native}</p>}
+      {native && (
+        <p lang="ne" className="text-title text-ink-soft ne mt-2 font-normal">
+          {native}
+        </p>
+      )}
       {meta && <div className="text-ink-faint mt-4 text-[13px]">{meta}</div>}
     </header>
   );

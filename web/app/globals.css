@@ -35,12 +35,26 @@
   --color-ink-soft: #4d4c49;
   --color-ink-faint: #77766e;
 
-  /* ---- brand & action ---- */
+  /*
+    ---- brand & action ----
+
+    One accent, one value. `--color-link` used to carry its own separate blue,
+    which meant the site's "signature accent" was actually two near-identical
+    blues with no principled difference -- it aliases to --color-brand instead,
+    so there is genuinely one restrained accent rather than two competing ones.
+
+    Deliberately not the same value as --color-series-1: reusing a data-series
+    colour as chrome (a focus ring, a link, a button) makes charts read as
+    branding instead of data, which is the mistake this keeps distinct. Every
+    other chrome accent (focus rings, checkbox accents, link colour) should
+    reference this token or --color-link, never a series colour.
+  */
   --color-brand: #1c5aa6;
-  --color-link: #1f5fad;
+  --color-link: var(--color-brand);
   --color-selected: #e3edfa;
 
-  /* ---- categorical series: identity, fixed order, never cycled ---- */
+  /* ---- categorical series: identity, fixed order, never cycled. Chart data
+     only -- see the brand & action note above. ---- */
   --color-series-1: #2a78d6;
   --color-series-2: #eb6834;
 
@@ -98,8 +112,15 @@
   --font-sans:
     ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
     Arial, sans-serif;
+  /*
+    --font-noto-devanagari is set by next/font on <html> in app/layout.tsx,
+    which self-hosts the face at build time -- naming "Noto Sans Devanagari" here
+    directly would only work for visitors who already have it installed, which
+    is not a system font on Windows or macOS. "Kantipur" stays as a fallback for
+    the rare visitor with it installed locally before generic system fonts.
+  */
   --font-devanagari:
-    "Noto Sans Devanagari", "Kantipur", ui-sans-serif, system-ui, sans-serif;
+    var(--font-noto-devanagari), "Kantipur", ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /*
@@ -128,7 +149,7 @@
       --color-ink-faint: #94938a;
 
       --color-brand: #6ba6e6;
-      --color-link: #82b4f1;
+      --color-link: var(--color-brand);
       --color-selected: #1b2f4a;
 
       --color-series-1: #3987e5;
@@ -207,7 +228,7 @@
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-series-1);
+    outline: 2px solid var(--color-brand);
     outline-offset: 2px;
     border-radius: 2px;
   }

@@ -214,7 +214,7 @@ export function Search({
             setOpen(true);
           }}
           onKeyDown={onKeyDown}
-          className={`border-line-strong bg-surface text-ink placeholder:text-ink-faint focus:border-series-1 w-full rounded-md border pr-3 outline-none ${
+          className={`border-line-strong bg-surface text-ink placeholder:text-ink-faint focus:border-brand w-full rounded-md border pr-3 outline-none ${
             large ? "py-3 pl-10 text-[15px]" : "py-1.5 pl-9 text-[13px]"
           }`}
         />

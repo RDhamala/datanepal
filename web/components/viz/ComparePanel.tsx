@@ -147,7 +147,7 @@ export function ComparePanel({
               type="checkbox"
               checked={onlySelected}
               onChange={(e) => setOnlySelected(e.target.checked)}
-              className="accent-series-1"
+              className="accent-brand"
             />
             Show only the {selected.size} selected
           </label>
@@ -228,7 +228,7 @@ export function ComparePanel({
                         checked={isPicked}
                         onChange={() => toggle(p.placeId)}
                         aria-label={`Compare ${p.name}`}
-                        className="accent-series-1"
+                        className="accent-brand"
                       />
                       {p.href && !isSubject ? (
                         <Link href={p.href}>{p.name}</Link>

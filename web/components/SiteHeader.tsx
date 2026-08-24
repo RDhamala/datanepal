@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Search } from "@/components/Search";
 
 /*
@@ -17,6 +20,12 @@ import { Search } from "@/components/Search";
   pointing at an unbuilt Compare page or a non-functional search box is a dead
   experience, which is worse than an absence. Search and language switching go
   in when they work, not as affordances.
+
+  The header's own search stays hidden on narrow screens specifically on the
+  homepage, which already carries a second, more prominent search box in its
+  hero one scroll below -- on mobile the two sat close enough together to read
+  as a mistake rather than a hierarchy. Every other page has only the header's,
+  so it stays.
 */
 
 const NAV = [
@@ -28,6 +37,8 @@ const NAV = [
 ];
 
 export function SiteHeader() {
+  const isHome = usePathname() === "/";
+
   return (
     <header className="border-line bg-surface/90 sticky top-0 z-40 border-b backdrop-blur">
       <div className="max-w-page mx-auto flex flex-wrap items-center gap-x-8 gap-y-2 px-5 py-3.5 sm:px-8">
@@ -36,7 +47,10 @@ export function SiteHeader() {
             DataNepal
           </span>
           <span aria-hidden className="bg-line-strong h-4 w-px self-center" />
-          <span className="text-ink-soft group-hover:text-ink text-[18px] font-medium">
+          <span
+            lang="ne"
+            className="text-ink-soft group-hover:text-ink ne text-[18px] font-medium"
+          >
             तथ्याङ्क नेपाल
           </span>
         </Link>
@@ -59,8 +73,13 @@ export function SiteHeader() {
           </ul>
         </nav>
 
-        {/* Header search stays narrow; the homepage carries the prominent one. */}
-        <div className="order-2 ml-auto w-full max-w-64 lg:order-none lg:ml-0">
+        {/* Header search stays narrow; the homepage carries the prominent one,
+            so it hides here below lg on that one page rather than doubling it. */}
+        <div
+          className={`order-2 ml-auto w-full max-w-64 lg:order-none lg:ml-0 lg:block ${
+            isHome ? "hidden" : ""
+          }`}
+        >
           <Search placeholder="Search…" />
         </div>
       </div>
@@ -76,7 +95,9 @@ export function SiteFooter() {
           <div>
             <div className="flex items-baseline gap-2">
               <span className="text-ink text-[15px] font-semibold">DataNepal</span>
-              <span className="text-ink-soft text-[15px]">तथ्याङ्क नेपाल</span>
+              <span lang="ne" className="text-ink-soft ne text-[15px]">
+                तथ्याङ्क नेपाल
+              </span>
             </div>
             <p className="text-ink-faint mt-2 max-w-xs text-[13px]">
               Open, documented public data for Nepal. Aggregates only — this platform

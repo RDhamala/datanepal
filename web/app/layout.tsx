@@ -1,8 +1,26 @@
 import type { Metadata } from "next";
+import { Noto_Sans_Devanagari } from "next/font/google";
 import "./globals.css";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 
+/*
+  Self-hosted at build time so every visitor sees the chosen Devanagari face
+  rather than whatever their OS happens to substitute. "Noto Sans Devanagari"
+  as a bare CSS font-family name only works for the fraction of visitors who
+  already have it installed -- most don't, since it isn't a system font on
+  Windows or macOS. next/font fetches it once at build time and serves it from
+  our own origin, so it renders identically everywhere and needs no runtime
+  request to Google.
+*/
+const notoDevanagari = Noto_Sans_Devanagari({
+  subsets: ["devanagari"],
+  weight: ["400", "500", "600"],
+  display: "swap",
+  variable: "--font-noto-devanagari",
+});
+
 export const metadata: Metadata = {
+  metadataBase: new URL("https://datanepal.org"),
   title: {
     default: "DataNepal — Nepal, in data",
     template: "%s — DataNepal",
@@ -22,7 +40,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={notoDevanagari.variable}>
       <body className="flex min-h-screen flex-col">
         <a
           href="#main"
