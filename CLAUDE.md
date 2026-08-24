@@ -13,6 +13,30 @@ Live at [datanepal.org](https://datanepal.org).
 sources → ingestion (dlt) → warehouse (DuckDB) → transform (dbt) → publish (static) → web (Next.js)
 ```
 
+## Project Skills
+
+Nine Skills under `.claude/skills/` encode what's specific and repeatable about
+this project — not things Claude already knows (React, dbt, SQL). Use the
+relevant one(s) rather than re-deriving these rules from scratch:
+
+| Skill | Owns |
+|---|---|
+| `datanepal-ui` | Interface chrome: layout, typography, cards, bilingual presentation, provenance display |
+| `datanepal-dataviz` | Chart-type choice, chart mechanics, colour roles, maps-as-visualization |
+| `datanepal-visual-review` | Browser-based visual QA — required after any UI/chart/map change, before calling it done |
+| `datanepal-place-page` | Information architecture of Nepal/province/district/local-government pages |
+| `datanepal-topic-page` | Information architecture of topic hub pages |
+| `datanepal-source-research` | Evaluating a candidate Nepal dataset before ingestion |
+| `datanepal-ingestion` | Building the source-to-canonical pipeline for a new dataset |
+| `datanepal-geography` | Canonical place identity, crosswalks, P-code/geography rules |
+| `datanepal-data-quality` | What to test, and the publication gate |
+
+Frontend work always pairs a build skill with `datanepal-visual-review` — code
+that passes CI is not the same as a page that looks right. Ingestion work always
+pairs `datanepal-ingestion` with `datanepal-data-quality`, and with
+`datanepal-geography` whenever a new source's identifiers need to join the
+spine. See each Skill's frontmatter for exactly when it should trigger.
+
 ## Hard constraints
 
 **Never ingest, store, or publish personal data.** This platform publishes

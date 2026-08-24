@@ -31,6 +31,7 @@ stacked bar of all seventy-seven.
 | Is this high or low? | Benchmark against parents | `Benchmark` |
 | Where does it sit among peers? | Dot plot with median | `Distribution` |
 | How do two groups compare? | Paired bars | `PairedBars` |
+| Compare several peers on several measures, at whatever level you've drilled to | Sortable table, one bar per cell | `ComparePanel` |
 | Age and sex | Population pyramid | `AgePyramid` |
 | Exact value | Table | `FigureTable` |
 
@@ -148,6 +149,14 @@ Two rules:
 - **Only measures that compare.** Counts are excluded: a district's population
   against Nepal's is a share, not a benchmark, and three bars of wildly different
   magnitude tell a reader nothing.
+
+`Benchmark` answers "is this high or low against its own lineage." `ComparePanel`
+answers the sideways question — "how do these peers compare to each other" — and
+is level-agnostic: the same component compares a province's districts, a
+district's local governments, or a local government's siblings, because the
+peers are whatever the page passes it. Selecting a row pins and highlights it;
+it never filters the rest away, since filtering on the first selection makes a
+second selection impossible.
 
 ## Accessibility
 

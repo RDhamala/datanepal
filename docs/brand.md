@@ -1,8 +1,12 @@
 # Brand direction
 
-Status: **direction agreed, implementation deferred.** Recorded during the
-architecture validation pass so it isn't lost. Do not act on the visual parts
-until the foundation work is finished.
+Status: **direction agreed; the visual language is now implemented.** Data-as-hero,
+the colour-role system, type scale, and bilingual place names (`name_ne`
+rendered alongside `name_en` throughout, not as translated metadata) are built —
+see [visualization.md](visualization.md) and `web/lib/viz.ts`. Still open: the
+Nepali wordmark rendering, the Devanagari typeface pairing, and whether the
+signature accent reuses a data series colour (see "Open questions" below,
+unchanged since this section was written).
 
 ## What DataNepal should feel like
 
@@ -43,30 +47,32 @@ Plain. It should read like a reliable reference work.
 | Source: National Statistics Office | Powered by trusted data partners |
 | Updated 23 Aug 2026 | Fresh insights updated regularly |
 
-## Bilingual lockup — proposal, needs a decision
+## Bilingual lockup — decided and implemented
 
-Nepali is first-class, not decorative. A small grey translation under the English
-wordmark is exactly what to avoid.
+Nepali is first-class, not decorative. A small grey translation under the
+English wordmark is exactly what to avoid.
 
-Candidate Nepali renderings of the name:
+**Decided: तथ्याङ्क नेपाल** (*tathyāṅka Nepāl* — "Statistics Nepal"). Native
+vocabulary, institutional register, not a transliteration of the English name —
+chosen over the transliterated डेटा नेपाल and the reordered नेपाल तथ्याङ्क for
+exactly that reason.
 
-| Rendering | Reading | Character |
-|---|---|---|
-| **तथ्याङ्क नेपाल** | *tathyāṅka Nepāl* — "Statistics Nepal" | Institutional, precise, native vocabulary. Reads like a national statistical body. |
-| डेटा नेपाल | *ḍeṭā Nepāl* — transliterated "Data Nepal" | Modern, colloquial, but a loanword doing no semantic work. |
-| नेपाल तथ्याङ्क | *Nepāl tathyāṅka* | Same words, government-department word order. |
+Implemented in `SiteHeader`/`SiteFooter` (`web/components/SiteHeader.tsx`) as a
+genuine two-part lockup — "DataNepal" and "तथ्याङ्क नेपाल" on one baseline,
+separated by a hairline rule, Devanagari set one step larger than the Latin
+(18px vs 17px in the header) because its x-height reads smaller at equal point
+size. Not a primary-and-subtitle pairing. `नेपाल, तथ्याङ्कमा` ("Nepal, in
+data") remains a separate tagline, not the brand name — the two roles stay
+distinct in the markup as well as in meaning.
 
-**Recommendation: तथ्याङ्क नेपाल.** It uses native vocabulary, carries the
-institutional register we want, and is not a transliteration of an English name.
-
-For the lockup: set both at equal weight and equal optical size, separated by a
-rule or as two balanced lines — a genuine bilingual mark, not a primary and a
-subtitle. Note that `नेपाल, तथ्याङ्कमा` currently on the site is a *tagline*
-("Nepal, in data"), not the brand name, and the two roles should stay distinct.
-
-Devanagari and Latin have different x-heights and vertical metrics; equal point
-size will not look equal. The lockup needs optical adjustment, which is a
-reason to settle it deliberately rather than in passing.
+Devanagari renders through a self-hosted **Noto Sans Devanagari** (via
+`next/font/google` in `app/layout.tsx`), not a bare CSS font-family name — a
+name alone only renders correctly for the fraction of visitors who happen to
+have that font installed, which is nearly nobody outside Nepal on Windows or
+macOS. "Kantipur" remains a fallback for the rare visitor who has it locally,
+ahead of generic system fonts. This was the resolution of the typeface-pairing
+question below: the free, guaranteed-coverage option, self-hosted rather than
+assumed.
 
 ## Trust is part of the brand
 
@@ -101,15 +107,24 @@ hundreds of datasets and thousands of pages without becoming visually noisy —
 which argues for a small number of rigorously reused patterns rather than
 bespoke layouts per dataset.
 
-## Open questions to settle before implementing
+## Resolved decisions
 
-1. Nepali wordmark: confirm **तथ्याङ्क नेपाल**, or choose otherwise.
-2. Typeface pairing. Devanagari support is the constraint, not the Latin choice.
-   Candidates worth testing: Noto Serif / Noto Sans Devanagari for guaranteed
-   coverage, or a licensed pair with a genuine Devanagari companion.
-3. The signature accent. Currently a validated blue used as a categorical series
-   colour. Decide whether the brand accent and the first series colour should be
-   the same value — reusing a data colour as chrome makes charts read as
-   branding, which is usually a mistake.
-4. Map styling conventions, which will carry more identity than any other single
-   element once maps exist.
+The four questions this section used to pose are all settled:
+
+1. **Nepali wordmark** — तथ्याङ्क नेपाल. See "Bilingual lockup" above.
+2. **Typeface pairing** — self-hosted Noto Sans Devanagari, not a licensed pair.
+   See "Bilingual lockup" above.
+3. **The signature accent** — kept deliberately distinct from the chart series
+   colour. `--color-brand` (`web/app/globals.css`) is the one accent value;
+   `--color-link` aliases to it rather than carrying its own separate blue, so
+   there is genuinely one restrained accent rather than two similar ones
+   competing. It drives link colour, focus rings, and other interactive chrome.
+   `--color-series-1`/`--color-series-2` are reserved for chart data only —
+   before this was enforced, the global focus ring and a couple of form
+   controls had drifted into using the series colour as chrome, which is the
+   exact mistake this question warned against; that's fixed.
+4. **Map styling conventions** — settled as part of building the visualization
+   system rather than as a separate brand exercise: see
+   [visualization.md](visualization.md)'s "Maps" section for boundaries,
+   labels, hover, legend and colour conventions, shared identically between the
+   administrative-navigation and data-choropleth modes.
