@@ -269,6 +269,132 @@ census_literacy_shaped as (
     where m.value is not null
 ),
 
+/*
+  National literacy, aggregated from the provinces.
+
+  NSO's literacy table has no Nepal row -- it starts at province level -- so
+  without this every place page could compare a district to its province and
+  then stop, which is exactly the "is this high or low" question left half
+  answered.
+
+  This is an aggregation, not an estimate. population_5plus and
+  literate_population are both additive, the province sums and the district sums
+  agree to the person (26,725,295 and 20,377,980 either way), and the implied
+  rate of 76.25% matches the national figure NSO publishes in its own commentary.
+  The rate is recomputed from the summed components rather than averaged from the
+  province rates, because averaging rates across places of different sizes is
+  wrong and is the single most common way a derived national figure goes bad.
+*/
+census_literacy_national_base as (
+    select
+        d.member_id                                     as sex,
+        sum(case when o.indicator_id = 'population_5plus'
+                 then o.value_numeric end)              as population_5plus,
+        sum(case when o.indicator_id = 'literate_population'
+                 then o.value_numeric end)              as literate_population
+    from census_literacy_shaped o
+    inner join {{ ref('int_places') }} p on p.place_id = o.place_id
+    cross join unnest(o.dimensions) as t(d)
+    where p.place_type = 'province'
+      and d.dimension_id = 'sex'
+    group by d.member_id
+),
+
+census_literacy_national as (
+    select
+        'nso-nphc-2021'       as dataset_id,
+        m.indicator_id,
+        c.place_id,
+        date '2021-11-25'     as period_start,
+        date '2021-11-25'     as period_end,
+        'instant'             as period_type,
+        m.value               as value_numeric,
+        cast(null as varchar) as value_text,
+        m.unit_id,
+        'actual'              as status,
+        [struct_pack(dimension_id := 'sex', member_id := b.sex)] as dimensions
+    from census_literacy_national_base b
+    cross join (
+        select place_id from {{ ref('int_places') }} where place_type = 'country'
+    ) c
+    cross join unnest([
+        struct_pack(
+            indicator_id := 'population_5plus',
+            unit_id := 'persons',
+            value := b.population_5plus
+        ),
+        struct_pack(
+            indicator_id := 'literate_population',
+            unit_id := 'persons',
+            value := b.literate_population
+        ),
+        struct_pack(
+            indicator_id := 'literacy_rate',
+            unit_id := 'percent',
+            value := case
+                when b.population_5plus > 0
+                then 100.0 * b.literate_population / b.population_5plus
+            end
+        )
+    ]) as t(m)
+    where m.value is not null
+),
+
+/*
+  Literacy as a composition, not just a rate.
+
+  The census reports four exhaustive literacy statuses that sum to the 5-plus
+  population, and until now only one of them was published: the literate count
+  and the rate derived from it. That left the site able to say "72.4% literate"
+  and unable to say what the other 27.6% consists of -- and "cannot read or
+  write" and "can read only" are materially different situations.
+
+  Emitted as additional dimension members on population_5plus rather than as new
+  indicators, which is what the dimension system is for. The existing sex-only
+  rows are untouched: `sex=all` and `sex=all|literacy_status=can_read_only` are
+  different fingerprints, so nothing collides, and the aggregate selection still
+  picks the shorter key as the headline.
+
+  'all' is deliberately not emitted here. It would duplicate the total that the
+  sex-only rows already carry, and two rows meaning the same thing is how a
+  double count starts.
+*/
+census_literacy_composition as (
+    select
+        'nso-nphc-2021'       as dataset_id,
+        'population_5plus'    as indicator_id,
+        pl.place_id,
+        date '2021-11-25'     as period_start,
+        date '2021-11-25'     as period_end,
+        'instant'             as period_type,
+        m.value               as value_numeric,
+        cast(null as varchar) as value_text,
+        'persons'             as unit_id,
+        'actual'              as status,
+        [
+            struct_pack(dimension_id := 'sex',             member_id := lit.sex),
+            struct_pack(dimension_id := 'literacy_status', member_id := m.status)
+        ] as dimensions
+    from {{ ref('stg_nso__census_literacy') }} lit
+    inner join {{ ref('stg_nso__census_places') }} pl
+        on pl.level = lit.level
+       and coalesce(pl.district_name, '~') = coalesce(lit.district_name, '~')
+       and coalesce(pl.base_name, '~') = coalesce(lit.base_name, '~')
+       and coalesce(pl.unit_type, '~') = coalesce(lit.unit_type, '~')
+    cross join unnest([
+        struct_pack(status := 'can_read_and_write',
+                    value := cast(lit.can_read_and_write as double)),
+        struct_pack(status := 'can_read_only',
+                    value := cast(lit.can_read_only as double)),
+        struct_pack(status := 'cannot_read_or_write',
+                    value := cast(lit.cannot_read_or_write as double)),
+        struct_pack(status := 'not_stated',
+                    value := cast(lit.literacy_not_stated as double))
+    ]) as t(m)
+    where lit.level in ('province', 'district', 'local')
+      and m.value is not null
+),
+
 unioned as (
     select * from population_shaped
     union all by name
@@ -279,6 +405,10 @@ unioned as (
     select * from census_households
     union all by name
     select * from census_literacy_shaped
+    union all by name
+    select * from census_literacy_national
+    union all by name
+    select * from census_literacy_composition
 ),
 
 keyed as (

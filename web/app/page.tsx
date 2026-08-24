@@ -3,6 +3,7 @@ import {
   comparisonFor,
   country,
   mapFor,
+  formatChange,
   formatCompact,
   formatNumber,
   formatWithUnit,
@@ -14,13 +15,16 @@ import {
   sourcesFor,
   statusLabel,
   tablesFor,
+  placeProfile,
   topics,
+  units,
   updateLog,
 } from "@/lib/data";
-import { Metric, RankedBars, TrendChart } from "@/components/charts";
+import { RankedBars, TrendChart } from "@/components/charts";
+import { MetricStrip } from "@/components/viz/MetricStrip";
 import { Choropleth } from "@/components/Choropleth";
 import { Search } from "@/components/Search";
-import { Cell, DataTable, Row, Section, SourceNote } from "@/components/ui";
+import { Section, SourceNote } from "@/components/ui";
 
 /*
   Homepage: national overview + discovery.
@@ -37,15 +41,6 @@ import { Cell, DataTable, Row, Section, SourceNote } from "@/components/ui";
   not Nepal — so they sit in the data-access section.
 */
 
-const ATTRIBUTION: Record<string, string> = {
-  // The census supplies the national count; UNFPA supplies the later
-  // projection, which the Metric shows as context rather than as the figure.
-  population: "NSO",
-  cpi_inflation_annual: "World Bank",
-  gdp_per_capita_usd: "World Bank",
-  remittances_percent_gdp: "World Bank",
-};
-
 export default async function Home() {
   const [all, np, allTopics] = await Promise.all([places(), country(), topics()]);
   const pop = np ? await populationOf(np) : null;
@@ -57,7 +52,32 @@ export default async function Home() {
   const find = (id: string) => series.find((s) => s.indicator.indicator_id === id);
   const inflation = find("cpi_inflation_annual");
   const gdp = find("gdp_per_capita_usd");
-  const remit = find("remittances_percent_gdp");
+
+  /*
+    Values the strip needs, resolved once here rather than inside the markup.
+
+    Literacy comes from placeProfile on the country rather than seriesFor,
+    because seriesFor only sees undimensioned observations and literacy carries a
+    sex dimension -- the same trap that made every census figure invisible when
+    the selection helpers matched dimension keys literally.
+  */
+  const allUnits = await units();
+  const personsUnit = allUnits.find((u) => u.unit_id === "persons");
+  const nationalProfile = np ? await placeProfile(np) : [];
+  const literacy = nationalProfile
+    .flatMap((t) => t.metrics)
+    .find((m) => m.indicatorId === "literacy_rate");
+
+  const changeOf = (s: typeof inflation) =>
+    s && s.points.length >= 2
+      ? formatChange(
+          s.points[s.points.length - 2].value,
+          s.points[s.points.length - 1].value,
+          s.unit,
+        )
+      : null;
+  const inflationChange = changeOf(inflation);
+  const gdpChange = changeOf(gdp);
 
   const localTypes = [
     "metropolitan",
@@ -73,9 +93,6 @@ export default async function Home() {
 
   const liveTopicList = allTopics.filter(
     (t) => t.status === "live" && t.observation_count > 0,
-  );
-  const plannedTopics = allTopics.filter(
-    (t) => !(t.status === "live" && t.observation_count > 0),
   );
 
   /*
@@ -176,67 +193,80 @@ export default async function Home() {
         </dl>
       </header>
 
-      {/* National snapshot: facts about Nepal, each routing to its indicator. */}
-      <section className="border-line mb-16 border-y py-10">
-        <h2 className="text-label text-ink-faint mb-8 uppercase">Nepal today</h2>
-        <div className="grid grid-cols-1 gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
-          {pop && (
-            <Metric
-              label="Population"
-              value={pop.total}
-              period={String(pop.period)}
-              status={statusLabel(pop.status)}
-              attribution={ATTRIBUTION.population}
-              href={`/indicators/${indicatorSlug("population")}/`}
-              /*
-                A national headline is one of the few places a projection
-                genuinely earns its space: the census count is the authoritative
-                figure, and a reader also wants to know roughly how many people
-                live in Nepal now. Both, labelled, in that order.
-              */
-              note={
-                pop.laterEstimate
-                  ? `${formatCompact(pop.laterEstimate.value)} projected for ${pop.laterEstimate.period}`
-                  : undefined
-              }
-            />
-          )}
-          {inflation?.latest && (
-            <Metric
-              label="Inflation"
-              value={inflation.latest.value}
-              unit={inflation.unit}
-              period={String(inflation.latest.year)}
-              attribution={ATTRIBUTION.cpi_inflation_annual}
-              series={inflation.points.slice(-25)}
-              href={`/indicators/${indicatorSlug("cpi_inflation_annual")}/`}
-            />
-          )}
-          {gdp?.latest && (
-            <Metric
-              label="GDP per capita"
-              value={gdp.latest.value}
-              unit={gdp.unit}
-              period={String(gdp.latest.year)}
-              attribution={ATTRIBUTION.gdp_per_capita_usd}
-              series={gdp.points.slice(-25)}
-              href={`/indicators/${indicatorSlug("gdp_per_capita_usd")}/`}
-              note="Current US dollars"
-            />
-          )}
-          {remit?.latest && (
-            <Metric
-              label="Remittances"
-              value={remit.latest.value}
-              unit={remit.unit}
-              period={String(remit.latest.year)}
-              attribution={ATTRIBUTION.remittances_percent_gdp}
-              series={remit.points}
-              href={`/indicators/${indicatorSlug("remittances_percent_gdp")}/`}
-              note="Share of GDP"
-            />
-          )}
-        </div>
+      {/*
+        The national snapshot, as one strip rather than four columns.
+
+        This was four independently arranged cells -- each with its own order of
+        label, value, period, source, sparkline and change -- which read as four
+        widgets that happened to be adjacent. Every cell is now the same shape, so
+        the eye can compare across them instead of re-learning each one.
+      */}
+      <section className="mb-16">
+        <h2 className="text-label text-ink-faint mb-1 uppercase">Nepal today</h2>
+        <MetricStrip
+          metrics={[
+            ...(pop
+              ? [
+                  {
+                    label: "Population",
+                    value: pop.total,
+                    unit: personsUnit,
+                    period: String(pop.period),
+                    status: pop.status,
+                    source: "NSO census",
+                    href: `/indicators/${indicatorSlug("population")}/`,
+                    projection: pop.laterEstimate
+                      ? {
+                          value: pop.laterEstimate.value,
+                          period: pop.laterEstimate.period,
+                        }
+                      : null,
+                  },
+                ]
+              : []),
+            ...(literacy
+              ? [
+                  {
+                    label: "Literacy rate",
+                    value: literacy.value,
+                    unit: literacy.unit,
+                    period: String(literacy.period),
+                    source: "NSO census",
+                    href: `/indicators/${indicatorSlug("literacy_rate")}/`,
+                    note: "population aged 5 and over",
+                  },
+                ]
+              : []),
+            ...(inflation?.latest
+              ? [
+                  {
+                    label: "Inflation",
+                    value: inflation.latest.value,
+                    unit: inflation.unit,
+                    period: String(inflation.latest.year),
+                    source: "World Bank",
+                    href: `/indicators/${indicatorSlug("cpi_inflation_annual")}/`,
+                    series: inflation.points.slice(-25),
+                    change: inflationChange,
+                  },
+                ]
+              : []),
+            ...(gdp?.latest
+              ? [
+                  {
+                    label: "GDP per capita",
+                    value: gdp.latest.value,
+                    unit: gdp.unit,
+                    period: String(gdp.latest.year),
+                    source: "World Bank",
+                    href: `/indicators/${indicatorSlug("gdp_per_capita_usd")}/`,
+                    series: gdp.points.slice(-25),
+                    change: gdpChange,
+                  },
+                ]
+              : []),
+          ]}
+        />
       </section>
 
       {/* Geographic discovery. The map is the primary surface -- it answers
@@ -307,24 +337,18 @@ export default async function Home() {
                     <div className="text-ink-faint mt-1 text-[12px]">{h.period}</div>
                   </div>
                 )}
-                <div className="text-ink-faint tabular mt-3 text-[12px]">
-                  {t.indicator_count} indicator{t.indicator_count === 1 ? "" : "s"} ·{" "}
-                  {formatNumber(t.observation_count)} observations
+                {/*
+                  Indicator count, not observation count. How many things a
+                  reader can look up is useful to them; how many rows are in our
+                  warehouse is useful to us, and the homepage is not for us.
+                */}
+                <div className="text-ink-faint mt-3 text-[12px]">
+                  {t.indicator_count} indicator{t.indicator_count === 1 ? "" : "s"} →
                 </div>
               </li>
             );
           })}
         </ul>
-
-        <div className="border-line mt-8 border-t pt-6">
-          <h3 className="text-label text-ink-faint mb-3 uppercase">Planned coverage</h3>
-          <p className="text-ink-soft text-[13px]">
-            {plannedTopics.map((t) => t.name_en).join(" · ")}
-          </p>
-          <p className="text-ink-faint mt-2 text-[12px]">
-            No data published yet, so these have no pages.
-          </p>
-        </div>
       </Section>
 
       {/* Trends. Only where a real long series exists. */}
@@ -357,58 +381,42 @@ export default async function Home() {
         </Section>
       )}
 
-      {/* Latest data updates. Derived from the committed revision history, not
-          a hand-kept changelog, so it cannot claim a refresh that did not
-          happen. "Last change" is when a value was first seen or superseded —
-          re-fetching an unchanged file does not make data newer, and saying it
-          does is the most common way a data platform quietly misleads. */}
-      <Section
-        title="Latest data updates"
-        note={`How current each source is, and how often its publisher revises past figures. Site data built ${updates.generated}.`}
-      >
-        <DataTable
-          columns={[
-            { label: "Source dataset" },
-            { label: "Covers" },
-            { label: "Last change", numeric: true },
-            { label: "Publisher cadence" },
-            { label: "Revised", numeric: true },
-          ]}
-        >
+      {/*
+        Latest updates, in sentences rather than a metadata table.
+
+        This was a five-column table of source dataset, coverage, last change,
+        publisher cadence and revision count. All of it true and none of it what
+        a homepage visitor wants: they want to know whether the data is current
+        and roughly how often it moves. The audit trail still exists, in full, on
+        the dataset catalogue -- which is where someone who wants a cadence column
+        is already heading.
+      */}
+      <Section title="Latest updates" note={`Site data built ${updates.generated}.`}>
+        <ul className="divide-line border-line max-w-3xl divide-y border-t">
           {updates.datasets.map((u) => (
-            <Row key={u.source.dataset_id}>
-              <Cell strong>
+            <li key={u.source.dataset_id} className="py-3">
+              <p className="text-ink-soft text-[14px] leading-relaxed">
                 <a href={u.source.url} rel="noopener noreferrer" target="_blank">
-                  {u.source.title}
-                </a>
-                <span className="text-ink-faint block text-[12px]">
-                  {u.source.publisher} · {formatNumber(u.current)} observations
-                </span>
-              </Cell>
-              <Cell>{u.source.time_coverage || u.source.vintage}</Cell>
-              <Cell numeric>{u.lastChange}</Cell>
-              <Cell>
-                {u.source.update_frequency ?? "unknown"}
-                {u.source.revises_published_values && (
-                  <span className="text-ink-faint block text-[12px]">
-                    restates past values
-                  </span>
-                )}
-              </Cell>
-              <Cell numeric>{u.revised === 0 ? "—" : formatNumber(u.revised)}</Cell>
-            </Row>
+                  {u.source.publisher}
+                </a>{" "}
+                — {formatNumber(u.current)} figures covering{" "}
+                {u.source.time_coverage || u.source.vintage}, last changed{" "}
+                {u.lastChange}
+                {u.source.update_frequency && u.source.update_frequency !== "irregular"
+                  ? `, updated ${u.source.update_frequency}`
+                  : ""}
+                {u.revised > 0 && `, ${formatNumber(u.revised)} figures revised since`}.
+              </p>
+            </li>
           ))}
-        </DataTable>
+        </ul>
         <p className="text-ink-faint mt-4 max-w-prose text-[12px] leading-relaxed">
-          {formatNumber(updates.totalCurrent)} observations currently published;{" "}
+          {formatNumber(updates.totalCurrent)} figures published,{" "}
           {updates.totalRevised === 0
             ? "none revised since first publication"
-            : `${formatNumber(updates.totalRevised)} revised since first publication`}
-          . Superseded values are kept with the date they were replaced, so a figure
-          cited from this site can always be reconstructed. Reference datasets —
-          administrative boundaries and place names — hold no observations and so do not
-          appear above; they are listed in full in the{" "}
-          <Link href="/datasets/">dataset catalogue</Link>.
+            : `${formatNumber(updates.totalRevised)} revised`}
+          . Superseded values are kept with the date they were replaced.{" "}
+          <Link href="/datasets/">Full metadata and revision history →</Link>
         </p>
       </Section>
 

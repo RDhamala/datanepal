@@ -1076,3 +1076,249 @@ function hrefFor(place: Place, all: Map<string, Place>): string | null {
   }
   return null;
 }
+
+/* ------------------------------------------------------- benchmark context */
+
+export type BenchmarkRow = {
+  placeId: string;
+  name: string;
+  href: string | null;
+  value: number;
+  /** True for the place the page is about. */
+  isSubject: boolean;
+  /** Rank among peers of the same type, where that is meaningful. */
+  rank?: { position: number; of: number };
+};
+
+export type Benchmark = {
+  indicatorId: string;
+  label: string;
+  unit: Unit | undefined;
+  period: number;
+  isAdditive: boolean;
+  rows: BenchmarkRow[];
+};
+
+/**
+ * A place's value beside its parents' and the nation's.
+ *
+ * This answers the question place pages were not answering. A district page said
+ * "literacy 72.4%" and left the reader with no way to know whether that is good.
+ * Putting the province and Nepal next to it costs three rows and turns a number
+ * into a judgement.
+ *
+ * Only real values. If an ancestor has no published figure for an indicator its
+ * row is absent rather than interpolated -- a benchmark against a number we
+ * invented would be worse than no benchmark, because it would look like context.
+ *
+ * Additive indicators are excluded from the ancestor comparison on purpose:
+ * Dhading's population against Nepal's is not a benchmark, it is a share, and
+ * showing it as a bar chart of three wildly different magnitudes tells a reader
+ * nothing they did not already know. Rates and ratios are what benchmark
+ * usefully.
+ */
+export async function benchmarksFor(
+  place: Place,
+  indicatorIds: string[],
+): Promise<Benchmark[]> {
+  const [all, obs, inds, us] = await Promise.all([
+    places(),
+    observations(),
+    indicators(),
+    units(),
+  ]);
+  const byId = new Map(all.map((p) => [p.place_id, p]));
+
+  // The place, then each ancestor up to the country.
+  const lineage: Place[] = [place];
+  let cursor: Place | undefined = place;
+  while (cursor?.parent_place_id) {
+    cursor = byId.get(cursor.parent_place_id);
+    if (cursor) lineage.push(cursor);
+  }
+
+  const hrefFor = (p: Place): string | null => {
+    if (p.place_type === "country") return "/";
+    if (p.place_type === "province") return `/np/${p.slug}/`;
+    const parent = p.parent_place_id ? byId.get(p.parent_place_id) : undefined;
+    if (p.place_type === "district" && parent) return `/np/${parent.slug}/${p.slug}/`;
+    const gp = parent?.parent_place_id ? byId.get(parent.parent_place_id) : undefined;
+    if (parent && gp) return `/np/${gp.slug}/${parent.slug}/${p.slug}/`;
+    return null;
+  };
+
+  const valueFor = (placeId: string, indicatorId: string) => {
+    const rows = obs.filter(
+      (o) =>
+        o.place_id === placeId &&
+        o.indicator_id === indicatorId &&
+        o.value_numeric !== null,
+    );
+    return pickHeadline(rows);
+  };
+
+  const out: Benchmark[] = [];
+  for (const indicatorId of indicatorIds) {
+    const indicator = inds.find((i) => i.indicator_id === indicatorId);
+    if (!indicator || indicator.is_additive) continue;
+
+    const own = valueFor(place.place_id, indicatorId);
+    if (!own?.value_numeric) continue;
+
+    const rows: BenchmarkRow[] = [];
+    for (const ancestor of lineage) {
+      const row = valueFor(ancestor.place_id, indicatorId);
+      if (row?.value_numeric == null) continue;
+      rows.push({
+        placeId: ancestor.place_id,
+        name: ancestor.place_type === "country" ? "Nepal" : ancestor.name_en,
+        href: ancestor.place_id === place.place_id ? null : hrefFor(ancestor),
+        value: row.value_numeric,
+        isSubject: ancestor.place_id === place.place_id,
+      });
+    }
+    if (rows.length < 2) continue; // A benchmark of one is not a benchmark.
+
+    // Rank among peers of the same type, which is the other half of "is this
+    // high or low" -- 72.4% means more once you know it is 61st of 77.
+    const peers = obs
+      .filter(
+        (o) =>
+          o.indicator_id === indicatorId &&
+          o.value_numeric !== null &&
+          o.place_id !== null &&
+          byId.get(o.place_id)?.place_type === place.place_type,
+      )
+      .reduce((acc, o) => {
+        const existing = acc.get(o.place_id!);
+        if (!existing) acc.set(o.place_id!, [o]);
+        else existing.push(o);
+        return acc;
+      }, new Map<string, Observation[]>());
+
+    const ranked = [...peers.entries()]
+      .map(([id, rows_]) => ({ id, value: pickHeadline(rows_)?.value_numeric ?? null }))
+      .filter((r): r is { id: string; value: number } => r.value !== null)
+      .sort((a, b) => b.value - a.value);
+    const position = ranked.findIndex((r) => r.id === place.place_id);
+    const subject = rows.find((r) => r.isSubject);
+    if (subject && position >= 0 && ranked.length > 2) {
+      subject.rank = { position: position + 1, of: ranked.length };
+    }
+
+    out.push({
+      indicatorId,
+      label: indicator.name_en,
+      unit: us.find((u) => u.unit_id === indicator.default_unit_id),
+      period: Number(own.period_start.slice(0, 4)),
+      isAdditive: indicator.is_additive,
+      rows,
+    });
+  }
+  return out;
+}
+
+/* -------------------------------------------------- composition & spread */
+
+export type CompositionData = {
+  total: number;
+  slices: { id: string; label: string; value: number; tone: number }[];
+};
+
+/**
+ * A dimension's members for one place, as parts of a whole.
+ *
+ * Reads the member vocabulary and its declared sort order from the warehouse
+ * rather than hardcoding it, so a source that adds a category shows up here
+ * instead of being silently dropped -- which for a 100% bar would renormalise
+ * every proportion in it without any visible sign.
+ */
+export async function compositionFor(
+  place: Place,
+  indicatorId: string,
+  dimensionId: string,
+): Promise<CompositionData | null> {
+  const [obs, dims, members] = await Promise.all([
+    observations(),
+    table<{ observation_id: string; dimension_id: string; member_id: string }>(
+      "observation_dimensions.parquet",
+    ),
+    table<{
+      dimension_id: string;
+      member_id: string;
+      name_en: string;
+      sort_order: number;
+    }>("dimension_members.parquet"),
+  ]);
+
+  const byObs = new Map<string, Map<string, string>>();
+  for (const d of dims) {
+    let m = byObs.get(d.observation_id);
+    if (!m) byObs.set(d.observation_id, (m = new Map()));
+    m.set(d.dimension_id, d.member_id);
+  }
+
+  const rows = obs.filter((o) => {
+    if (o.place_id !== place.place_id || o.indicator_id !== indicatorId) return false;
+    if (o.value_numeric === null) return false;
+    const d = byObs.get(o.observation_id);
+    const member = d?.get(dimensionId);
+    // Total members are the whole, not a part.
+    return member !== undefined && member !== "all" && d?.get("sex") === "all";
+  });
+  if (!rows.length) return null;
+
+  const vocab = members
+    .filter((m) => m.dimension_id === dimensionId && m.member_id !== "all")
+    .sort((a, b) => a.sort_order - b.sort_order);
+
+  const slices = vocab
+    .map((m, i) => {
+      const row = rows.find(
+        (o) => byObs.get(o.observation_id)?.get(dimensionId) === m.member_id,
+      );
+      return row?.value_numeric != null
+        ? {
+            id: m.member_id,
+            label: m.name_en,
+            value: row.value_numeric,
+            /*
+              Ordered categories get ordered colour, starting at tone 1 rather
+              than 0. Tone 0 is very nearly the page, so putting the largest
+              category there made a bar that is 72% one thing look empty. The
+              ramp still runs monotonically -- darker means less literate -- it
+              just starts somewhere visible.
+            */
+            tone: 1 + Math.min(3, Math.round((i / Math.max(1, vocab.length - 1)) * 3)),
+          }
+        : null;
+    })
+    .filter((s): s is NonNullable<typeof s> => s !== null);
+
+  if (!slices.length) return null;
+  return { total: slices.reduce((sum, s) => sum + s.value, 0), slices };
+}
+
+/** Every peer value for an indicator, for locating one place in a distribution. */
+export async function spreadFor(
+  placeType: string,
+  indicatorId: string,
+): Promise<{ id: string; value: number }[]> {
+  const [obs, all] = await Promise.all([observations(), places()]);
+  const typeOf = new Map(all.map((p) => [p.place_id, p.place_type]));
+  const perPlace = new Map<string, Observation[]>();
+  for (const o of obs) {
+    if (
+      o.indicator_id !== indicatorId ||
+      o.value_numeric === null ||
+      !o.place_id ||
+      typeOf.get(o.place_id) !== placeType
+    ) {
+      continue;
+    }
+    perPlace.set(o.place_id, [...(perPlace.get(o.place_id) ?? []), o]);
+  }
+  return [...perPlace.entries()]
+    .map(([id, rows]) => ({ id, value: pickHeadline(rows)?.value_numeric ?? null }))
+    .filter((r): r is { id: string; value: number } => r.value !== null);
+}

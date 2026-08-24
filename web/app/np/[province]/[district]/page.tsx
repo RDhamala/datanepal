@@ -11,7 +11,10 @@ import {
   metricMapFor,
   localUnitsOf,
   placeBySlug,
+  benchmarksFor,
+  compositionFor,
   placeProfile,
+  spreadFor,
   populationOf,
   provinces,
   sourcesFor,
@@ -20,7 +23,10 @@ import {
 } from "@/lib/data";
 import { AgePyramid } from "@/components/AgePyramid";
 import { MetricMap } from "@/components/MetricMap";
-import { PlaceProfile, profileSections } from "@/components/PlaceProfile";
+import { profileSections } from "@/components/PlaceProfile";
+import { TopicSummary } from "@/components/viz/TopicSummary";
+import { Composition, Distribution } from "@/components/viz/Composition";
+import { Figure, FigureTable, FigureRow, FigureCell } from "@/components/viz/Figure";
 import {
   AnchoredSection,
   Crumbs,
@@ -53,6 +59,22 @@ function populationProvenance(pop: { period: number; status: string }): string {
 }
 
 type Params = { province: string; district: string };
+
+/*
+  Which indicator leads each topic.
+
+  Literacy rate leads Education; population leads Demographics. Inferring this
+  from row order would mean a page's emphasis changed whenever ingestion order
+  did, which is not a thing that should be able to happen by accident.
+*/
+const TOPIC_HEADLINE: Record<string, string> = {
+  population: "population",
+  education: "literacy_rate",
+};
+
+/* Measures worth benchmarking against province and nation. Rates and ratios
+   only: a district's population against Nepal's is a share, not a comparison. */
+const BENCHMARKED = ["literacy_rate", "population_density"];
 
 const TYPE_LABELS: Record<string, string> = {
   metropolitan: "Metropolitan city",
@@ -98,32 +120,50 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
   const place = await placeBySlug("district", district, prov.place_id);
   if (!place) notFound();
 
-  const [pop, units, np, localMap, muni, rural, subMetro, metro, profile] =
-    await Promise.all([
-      populationOf(place),
-      localUnitsOf(place.place_id),
-      country(),
-      // Local governments, with every census measure published for them. The
-      // geometry and labels are laid out here; the browser only recolours.
-      localUnitsOf(place.place_id).then((units) =>
-        metricMapFor(
-          units,
-          [
-            "population",
-            "households",
-            "literacy_rate",
-            "literate_population",
-            "population_5plus",
-          ],
-          { maxWidth: 760, maxHeight: 560 },
-        ),
+  const [
+    pop,
+    units,
+    np,
+    localMap,
+    muni,
+    rural,
+    subMetro,
+    metro,
+    profile,
+    benchmarks,
+    literacyMix,
+    literacySpread,
+  ] = await Promise.all([
+    populationOf(place),
+    localUnitsOf(place.place_id),
+    country(),
+    // Local governments, with every census measure published for them. The
+    // geometry and labels are laid out here; the browser only recolours.
+    localUnitsOf(place.place_id).then((units) =>
+      metricMapFor(
+        units,
+        [
+          "population",
+          "households",
+          "literacy_rate",
+          "literate_population",
+          "population_5plus",
+        ],
+        { maxWidth: 760, maxHeight: 560 },
       ),
-      comparisonFor("population", "municipality"),
-      comparisonFor("population", "rural_municipality"),
-      comparisonFor("population", "sub_metropolitan"),
-      comparisonFor("population", "metropolitan"),
-      placeProfile(place),
-    ]);
+    ),
+    comparisonFor("population", "municipality"),
+    comparisonFor("population", "rural_municipality"),
+    comparisonFor("population", "sub_metropolitan"),
+    comparisonFor("population", "metropolitan"),
+    placeProfile(place),
+    benchmarksFor(place, BENCHMARKED),
+    // What the non-literate share actually consists of, and where this
+    // district sits among all 77 -- the two questions a single rate cannot
+    // answer.
+    compositionFor(place, "population_5plus", "literacy_status"),
+    spreadFor("district", "literacy_rate"),
+  ]);
 
   // One lookup across all four local-unit types: the census publishes them as
   // separate place types, but a district list wants them together.
@@ -162,6 +202,10 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
     ...(units.length ? [{ id: "local-governments", label: "Local governments" }] : []),
     { id: "sources", label: "Sources" },
   ];
+
+  const ownLiteracy = profile
+    .flatMap((t) => t.metrics)
+    .find((m) => m.indicatorId === "literacy_rate")?.value;
 
   const tables = tablesFor(["observations", "places", "geography"]);
 
@@ -216,8 +260,92 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
 
       <SectionNav sections={sections} />
 
-      {/* Every topic this district has data for, rendered generically. */}
-      <PlaceProfile profile={profile} placeName={place.name_en} />
+      {/*
+        One visual summary per topic, rather than a stack of indicator rows.
+
+        Education was three vertical rows of name, definition, value, sex split
+        and provenance -- fifteen lines of text for a topic whose finding is a
+        single rate and whether it beats the province. The summary leads with the
+        rate, puts the comparison beside it, and keeps the definitions behind a
+        disclosure.
+      */}
+      {profile.map((t) => (
+        <AnchoredSection
+          key={t.topic.topic_id}
+          id={t.topic.slug}
+          title={t.topic.name_en}
+          note={
+            <>
+              {t.topic.description}{" "}
+              <Link href={`/topics/${t.topic.slug}/`}>
+                All {t.topic.name_en} indicators →
+              </Link>
+            </>
+          }
+        >
+          <TopicSummary
+            topic={t}
+            headlineId={TOPIC_HEADLINE[t.topic.slug] ?? t.metrics[0]?.indicatorId ?? ""}
+            benchmark={benchmarks.find((b) =>
+              t.metrics.some((m) => m.indicatorId === b.indicatorId),
+            )}
+            placeName={place.name_en}
+          />
+
+          {/*
+            Two additions that a rate alone cannot make: what the rest of the
+            population consists of, and where this district falls among its
+            peers. "Cannot read or write" and "can read only" are materially
+            different situations, and 72.4% means something different depending
+            on whether the other 76 districts cluster above or below it.
+          */}
+          {t.topic.slug === "education" && (literacyMix || literacySpread.length) && (
+            <div className="border-line mt-9 grid gap-x-12 gap-y-8 border-t pt-7 lg:grid-cols-2">
+              {literacyMix && (
+                <Figure
+                  title="Literacy status of the population aged 5 and over"
+                  subtitle="The four categories the census reports, which together account for everyone counted."
+                  table={
+                    <FigureTable
+                      columns={[
+                        { label: "Status" },
+                        { label: "People", numeric: true },
+                      ]}
+                    >
+                      {literacyMix.slices.map((sl) => (
+                        <FigureRow key={sl.id}>
+                          <FigureCell strong>{sl.label}</FigureCell>
+                          <FigureCell numeric>{formatNumber(sl.value)}</FigureCell>
+                        </FigureRow>
+                      ))}
+                    </FigureTable>
+                  }
+                >
+                  <Composition slices={literacyMix.slices} total={literacyMix.total} />
+                </Figure>
+              )}
+
+              {literacySpread.length > 4 && ownLiteracy && (
+                <Figure
+                  title="Where this district sits"
+                  subtitle="Every district's literacy rate, with the median marked."
+                >
+                  <Distribution
+                    values={literacySpread}
+                    subject={{
+                      id: place.place_id,
+                      name: place.name_en,
+                      value: ownLiteracy,
+                    }}
+                    format={(v) => `${v.toFixed(1)}%`}
+                    peerLabel="districts"
+                  />
+                </Figure>
+              )}
+            </div>
+          )}
+        </AnchoredSection>
+      ))}
 
       {pop && pop.bands.length > 0 && (
         <AnchoredSection
