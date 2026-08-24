@@ -44,6 +44,7 @@ const HEADLINE: Record<string, string> = {
   agriculture: "agriculture_value_added_pct_gdp",
   infrastructure: "electricity_access_pct",
   environment: "protected_areas_pct",
+  labour: "unemployment_rate",
 };
 
 type Headline = {

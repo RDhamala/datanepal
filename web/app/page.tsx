@@ -111,6 +111,7 @@ export default async function Home() {
     agriculture: "agriculture_value_added_pct_gdp",
     infrastructure: "electricity_access_pct",
     environment: "protected_areas_pct",
+    labour: "unemployment_rate",
   };
   const topicHeadline: Record<
     string,

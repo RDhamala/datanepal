@@ -100,6 +100,11 @@ const TOPIC_VIEW: Record<
     // than a number that needs the other three for context first.
     headline: "protected_areas_pct",
   },
+  labour: {
+    // The most universally recognised labour statistic, and the one a
+    // reader arrives asking about first.
+    headline: "unemployment_rate",
+  },
   education: {
     headline: "literacy_rate",
     mapIndicator: "literacy_rate",

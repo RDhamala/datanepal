@@ -73,6 +73,17 @@ INDICATORS: dict[str, tuple[str, str]] = {
     "ER.PTD.TOTL.ZS": ("protected_areas_pct", "percent"),
     "EN.ATM.PM25.MC.M3": ("pm25_air_pollution", "micrograms_per_m3"),
     "EN.GHG.CO2.PC.CE.AR5": ("co2_emissions_per_capita", "tonnes_co2_per_capita"),
+    # Labour & Migration topic's first indicators -- ILO-modelled estimates,
+    # same aggregator pattern again. Tourism was scoped alongside this and
+    # dropped: every World Bank tourism series for Nepal (arrivals, receipts,
+    # expenditure) stops dead at 2020 with nothing since, which would make
+    # the topic's headline five years stale next to seven live ones that
+    # aren't. International migrant stock was also dropped -- only 8
+    # observations, below this connector's own per-indicator floor.
+    "SL.UEM.TOTL.ZS": ("unemployment_rate", "percent"),
+    "SL.TLF.CACT.ZS": ("labor_force_participation_rate", "percent"),
+    "SL.AGR.EMPL.ZS": ("agriculture_employment_pct", "percent"),
+    "SL.TLF.CACT.FM.ZS": ("female_male_labor_participation_ratio", "percent"),
 }
 
 # The API is generous but paginated; one page per indicator is plenty for a
