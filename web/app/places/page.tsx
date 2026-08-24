@@ -11,7 +11,6 @@ import {
   tablesFor,
 } from "@/lib/data";
 import { Choropleth } from "@/components/Choropleth";
-import { ReferenceMap } from "@/components/ReferenceMap";
 import { Search } from "@/components/Search";
 import { Crumbs, PageHeader, Section, SourceNote } from "@/components/ui";
 
@@ -102,43 +101,19 @@ export default async function PlacesIndex() {
       </div>
 
       {/*
-        Two district maps, deliberately, because they answer different questions
-        and fill can only encode one variable.
+        One district map, not two.
 
-        The reference map names the districts and groups them by province: "where
-        is Dhanusa, and which province is it in". The choropleth below shades by
-        population: "where do people actually live". Putting province identity
-        and population magnitude in the same fill would have served neither.
+        This page briefly had a reference map naming all 77 districts and a
+        choropleth shading the same 77 below it -- every district named twice on
+        one page, in two visual languages. Fill can only carry one variable, but
+        grouping does not need fill: the heavy provincial outline carries it, the
+        ramp carries population, and the shared label engine names every district
+        once.
       */}
       {districtMap.features.length > 0 && (
         <Section
           title="All 77 districts"
-          note="Districts grouped by province, with the provincial border drawn heavier. Select a district to open it."
-        >
-          <ReferenceMap
-            shapes={districtMap.features.map((f) => ({
-              placeId: f.placeId,
-              name: f.name,
-              nameNe: f.nameNe,
-              href: f.href,
-              geometryGeoJson: f.geometryGeoJson,
-              group: f.parentPlaceId,
-            }))}
-            outlines={provinceMap.features.map((f) => ({
-              placeId: f.placeId,
-              geometryGeoJson: f.geometryGeoJson,
-            }))}
-            maxWidth={1240}
-            maxHeight={520}
-            caption="7 provinces, 77 districts. Shading groups districts by province; the heavier outline is the provincial border."
-          />
-        </Section>
-      )}
-
-      {districtMap.features.length > 0 && (
-        <Section
-          title="Where people live"
-          note={`The same 77 districts shaded by population, ${districtMap.period}.`}
+          note={`Shaded by population, ${districtMap.period} census. The heavier outline is the provincial border. Select a district to open it.`}
         >
           <Choropleth
             features={districtMap.features}
@@ -146,9 +121,12 @@ export default async function PlacesIndex() {
             label="Population by district"
             period={districtMap.period}
             valueLabel="Population"
-            height={460}
-            showLabels={false}
+            height={560}
             scale="quantile"
+            outlines={provinceMap.features.map((f) => ({
+              placeId: f.placeId,
+              geometryGeoJson: f.geometryGeoJson,
+            }))}
           />
         </Section>
       )}

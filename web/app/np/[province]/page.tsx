@@ -207,11 +207,12 @@ export default async function ProvincePage({ params }: { params: Promise<Params>
                 label={`Population by district, ${place.name_en}`}
                 period={districtMap.period}
                 valueLabel="Population"
-                height={340}
-                // Labels only where they fit inside the shapes; a province of
-                // thirteen districts at this size is a thicket of overlapping
-                // text. The ranking beside it carries the names either way.
-                showLabels={ownFeatures.length <= 8}
+                height={420}
+                // Labels always on. This used to be `ownFeatures.length <= 8`,
+                // which meant drilling into Bagmati or Koshi produced a district
+                // map with no district names at all. The label engine now
+                // decides per label -- fit, shrink, shorten, or leader line --
+                // so a dense province gets names rather than none.
                 // Same skew as the national map: one metropolitan district
                 // against a dozen rural ones flattens an equal-interval ramp.
                 scale="quantile"

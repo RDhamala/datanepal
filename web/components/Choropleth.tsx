@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { formatCompact, formatNumber, type Unit } from "@/lib/data";
-import { parseGeometry, projector, toPath, type Ring } from "@/lib/geo";
+import { parseGeometry, projector, toPath } from "@/lib/geo";
+import { labelBox, layoutLabels } from "@/lib/maplabels";
+import { MapLabels, labelCaption } from "@/components/MapLabels";
 
 /*
   Geographic exploration.
@@ -60,6 +62,7 @@ export function Choropleth({
   height = 420,
   showLabels = true,
   scale = "equal",
+  outlines = [],
 }: {
   features: Feature[];
   unit?: Unit;
@@ -68,6 +71,15 @@ export function Choropleth({
   valueLabel?: string;
   height?: number;
   showLabels?: boolean;
+  /**
+   * Heavier boundaries drawn over the shapes -- provinces over districts.
+   *
+   * Fill can only carry one variable, so grouping is carried by line weight
+   * instead. That is what lets one map answer both "how large" and "whose
+   * province is this", and it is why /places needs one district map rather than
+   * a shaded one and a grouped one side by side, naming all 77 districts twice.
+   */
+  outlines?: { placeId: string; geometryGeoJson: string }[];
   /**
    * How values are assigned to colour classes.
    *
@@ -90,6 +102,10 @@ export function Choropleth({
 
   if (!parsed.length) return null;
 
+  const groupOutlines = outlines
+    .map((o) => ({ ...o, polygons: parseGeometry(o.geometryGeoJson) }))
+    .filter((o) => o.polygons.length > 0);
+
   // Bounded on both axes so a user unit stays close to a rendered pixel; the
   // in-shape labels use a fixed font size and depend on that.
   const {
@@ -97,7 +113,7 @@ export function Choropleth({
     height: frameHeight,
     project,
   } = projector(
-    parsed.map((f) => f.polygons),
+    [...parsed.map((f) => f.polygons), ...groupOutlines.map((o) => o.polygons)],
     { maxWidth: 1000, maxHeight: height },
   );
 
@@ -128,50 +144,34 @@ export function Choropleth({
     return i;
   };
 
-  /**
-   * Label anchor plus the height of the shape around it.
-   *
-   * The height matters: Madhesh is a thin strip along the southern border, and
-   * a two-line label centred on its centroid puts the value outside the
-   * polygon entirely. Callers use the height to decide whether a second line
-   * fits.
-   */
-  const labelBox = (
-    polygons: Ring[][],
-  ): { x: number; y: number; height: number; width: number } => {
-    let best: Ring = [];
-    for (const poly of polygons) {
-      for (const ring of poly) if (ring.length > best.length) best = ring;
-    }
-    let sx = 0;
-    let sy = 0;
-    let top = Infinity;
-    let bottom = -Infinity;
-    let left = Infinity;
-    let right = -Infinity;
-    for (const [lon, lat] of best) {
-      const [x, y] = project(lon, lat);
-      sx += x;
-      sy += y;
-      if (y < top) top = y;
-      if (y > bottom) bottom = y;
-      if (x < left) left = x;
-      if (x > right) right = x;
-    }
-    return {
-      x: sx / best.length,
-      y: sy / best.length,
-      height: bottom - top,
-      width: right - left,
-    };
-  };
-
   const sorted = [...parsed].sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
+
+  /*
+    One label engine for every map on the site.
+
+    This component used to carry its own: a single `showLabels` boolean that
+    dropped every label at once. Drilling into a province with more than eight
+    districts therefore produced a district map with no district names on it,
+    while the reference map on the next page over labelled all 77 with leader
+    lines. Same country, same session, two behaviours.
+  */
+  const boxes = new Map(
+    parsed.map((f) => [f.placeId, labelBox(f.polygons, project)] as const),
+  );
+  const layout = layoutLabels(parsed, {
+    name: (f) => f.name,
+    box: (f) => boxes.get(f.placeId)!,
+    width,
+    height: frameHeight,
+    maxWidth: 1000,
+    inShape: showLabels,
+  });
+  const svgHeight = frameHeight + layout.bandHeight;
 
   return (
     <figure className="m-0">
       <svg
-        viewBox={`0 0 ${width} ${frameHeight}`}
+        viewBox={`0 0 ${layout.frameWidth} ${svgHeight}`}
         /*
           Natural size, capped at the container -- not `w-full`.
 
@@ -183,7 +183,7 @@ export function Choropleth({
           at 42px. Sizing to the viewBox keeps one user unit at one pixel, so a
           font size means the same thing on every map.
         */
-        style={{ width: `${width}px`, maxWidth: "100%", height: "auto" }}
+        style={{ width: `${layout.frameWidth}px`, maxWidth: "100%", height: "auto" }}
         role="img"
         aria-label={`Map of Nepal showing ${label}${period ? `, ${period}` : ""}. ${
           sorted.length
@@ -191,65 +191,45 @@ export function Choropleth({
           sorted[sorted.length - 1]?.name
         } at ${formatNumber(sorted[sorted.length - 1]?.value ?? 0)}. Values follow in a table.`}
       >
-        {parsed.map((f) => (
-          <Link key={f.placeId} href={f.href}>
-            {/* title gives a native tooltip with no JavaScript. Single string
+        <g transform={`translate(${layout.offsetX},0)`}>
+          {parsed.map((f) => (
+            <Link key={f.placeId} href={f.href}>
+              {/* title gives a native tooltip with no JavaScript. Single string
                 child, deliberately: two adjacent text children make React emit
                 comment separators that the SVG parser drops, which hydrates as
                 a mismatch. */}
-            <title>
-              {f.value !== null ? `${f.name} — ${formatNumber(f.value)}` : f.name}
-            </title>
+              <title>
+                {f.value !== null ? `${f.name} — ${formatNumber(f.value)}` : f.name}
+              </title>
+              <path
+                d={toPath(f.polygons, project)}
+                className="geo-shape"
+                fill={RAMP[bin(f.value)]}
+              />
+            </Link>
+          ))}
+
+          {/* Grouping, drawn over the fill. Fill can only carry one variable,
+              so the heavier provincial border carries the grouping while the
+              ramp carries magnitude -- which is what lets one district map do
+              the job two used to. Not interactive: the shapes beneath are the
+              links, and an overlay would swallow their clicks. */}
+          {groupOutlines.map((o) => (
             <path
-              d={toPath(f.polygons, project)}
-              className="geo-shape"
-              fill={RAMP[bin(f.value)]}
+              key={o.placeId}
+              d={toPath(o.polygons, project)}
+              className="geo-province-outline"
             />
-          </Link>
-        ))}
+          ))}
+        </g>
 
-        {showLabels &&
-          parsed.map((f) => {
-            const box = labelBox(f.polygons);
-            const dark = bin(f.value) >= 3;
-            // A second line needs roughly 26px of shape to sit inside.
-            const twoLines = box.height >= 34 && f.value !== null;
-            const ink = dark ? "var(--color-surface)" : "var(--color-ink)";
-            const inkSoft = dark ? "var(--color-surface)" : "var(--color-ink-soft)";
-            const value = f.value === null ? null : fmt(f.value, unit);
-
-            return (
-              <g key={`l-${f.placeId}`} pointerEvents="none">
-                <text
-                  x={box.x}
-                  y={twoLines ? box.y - 1 : box.y + 3}
-                  textAnchor="middle"
-                  className="text-[10px] font-medium"
-                  fill={ink}
-                >
-                  {f.name}
-                  {/* Thin shapes carry the value on the same line so it stays
-                      inside the polygon. */}
-                  {!twoLines && value && (
-                    <tspan className="tabular font-normal" fill={inkSoft}>
-                      {` ${value}`}
-                    </tspan>
-                  )}
-                </text>
-                {twoLines && value && (
-                  <text
-                    x={box.x}
-                    y={box.y + 11}
-                    textAnchor="middle"
-                    className="tabular text-[10px]"
-                    fill={inkSoft}
-                  >
-                    {value}
-                  </text>
-                )}
-              </g>
-            );
-          })}
+        <MapLabels
+          layout={layout}
+          href={(f) => f.href}
+          name={(f) => f.name}
+          // Dark fills need light ink. The bin decides, not the label.
+          ink={(f) => (bin(f.value) >= 3 ? "var(--color-surface)" : "var(--color-ink)")}
+        />
       </svg>
 
       {/*
@@ -274,13 +254,14 @@ export function Choropleth({
               ))}
             </div>
           </div>
-          <p className="text-ink-faint mt-2 text-[11px]">
+          <p className="text-ink-faint mt-2 max-w-prose text-[11px] leading-relaxed">
             {valueLabel}
             {period ? `, ${period}` : ""}
             {scale === "quantile" &&
               ` · five classes, each holding about ${Math.round(
                 values.length / 5,
               )} of ${values.length} areas`}
+            {showLabels && ` · ${labelCaption(layout, parsed.length)}`}
           </p>
         </figcaption>
       )}
