@@ -13,3 +13,5 @@ npr_current,currency,रू,Nepalese rupees (current prices),NPR,current,
 npr_constant,currency,रू,Nepalese rupees (constant prices),NPR,constant,Base year recorded in the indicator definition.
 years,duration,yr,Years,,,
 households,count,,Households,,,Counted dwelling units. An institutional facility counts as one household in census tables.
+per_1000_live_births,ratio,/1000 live births,Per 1000 live births,,,Not additive across places or periods.
+per_100000_live_births,ratio,/100000 live births,Per 100000 live births,,,Not additive across places or periods.

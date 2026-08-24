@@ -75,6 +75,12 @@ const TOPIC_VIEW: Record<
     mapIndicator: "population",
     pyramid: true,
   },
+  health: {
+    // Stated explicitly rather than left to the alphabetical fallback --
+    // "Immunization, DPT" would otherwise lead only because "I" sorts before
+    // "L", not because it's the more recognised headline health statistic.
+    headline: "life_expectancy_at_birth",
+  },
   education: {
     headline: "literacy_rate",
     mapIndicator: "literacy_rate",

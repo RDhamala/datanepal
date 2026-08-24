@@ -47,6 +47,12 @@ INDICATORS: dict[str, tuple[str, str]] = {
     "NY.GDP.PCAP.CD": ("gdp_per_capita_usd", "usd_current"),
     "BX.TRF.PWKR.CD.DT": ("remittances_received_usd", "usd_current"),
     "BX.TRF.PWKR.DT.GD.ZS": ("remittances_percent_gdp", "percent_gdp"),
+    # Health topic's first indicators -- WHO/UNICEF-compiled, same aggregator,
+    # same licence, same national-only shape as the economy series above.
+    "SP.DYN.LE00.IN": ("life_expectancy_at_birth", "years"),
+    "SH.DYN.MORT": ("under5_mortality_rate", "per_1000_live_births"),
+    "SH.STA.MMRT": ("maternal_mortality_ratio", "per_100000_live_births"),
+    "SH.IMM.IDPT": ("immunization_dpt_rate", "percent"),
 }
 
 # The API is generous but paginated; one page per indicator is plenty for a

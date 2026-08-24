@@ -107,6 +107,7 @@ export default async function Home() {
     population: "population",
     economy: "cpi_inflation_annual",
     education: "literacy_rate",
+    health: "life_expectancy_at_birth",
   };
   const topicHeadline: Record<
     string,

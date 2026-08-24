@@ -4,7 +4,7 @@ economy,Economy,अर्थतन्त्र,economy,"Prices, output, remittan
 government,Government & Budgets,सरकार र बजेट,government,"Public budgets, revenue and actual spending.",3,planned
 elections,Elections,निर्वाचन,elections,"Election results, candidates and turnout. Aggregate and candidate data only.",4,planned
 education,Education,शिक्षा,education,"Literacy, schooling and educational attainment.",5,live
-health,Health,स्वास्थ्य,health,"Health facilities, services and outcomes.",6,planned
+health,Health,स्वास्थ्य,health,"Health facilities, services and outcomes.",6,live
 agriculture,Agriculture,कृषि,agriculture,"Production, land use and inputs.",7,planned
 infrastructure,Infrastructure,पूर्वाधार,infrastructure,"Roads, electricity, telecommunications and water.",8,planned
 environment,Environment & Climate,वातावरण र जलवायु,environment,"Climate observations, hydrology and protected areas.",9,planned
