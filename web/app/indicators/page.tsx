@@ -130,8 +130,15 @@ export default async function IndicatorsIndex() {
                 // this, only the population and plain-series cases were
                 // handled here, so literacy rate, literate population,
                 // population aged 5+ and households all rendered a bare dash.
-                const h = nationalHeadline(i.indicator_id, { pop, series, profile, units: us });
-                const value = h ? { text: formatWithUnit(h.value, h.unit), period: h.period } : null;
+                const h = nationalHeadline(i.indicator_id, {
+                  pop,
+                  series,
+                  profile,
+                  units: us,
+                });
+                const value = h
+                  ? { text: formatWithUnit(h.value, h.unit), period: h.period }
+                  : null;
                 const status = h?.status ?? null;
 
                 return (

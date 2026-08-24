@@ -135,7 +135,9 @@ export default async function Home() {
     topicHeadline[t.topic_id] = {
       label,
       value:
-        indicatorId === "population" ? formatCompact(h.value) : formatWithUnit(h.value, h.unit),
+        indicatorId === "population"
+          ? formatCompact(h.value)
+          : formatWithUnit(h.value, h.unit),
       period: `${h.period}${h.status ? ` ${h.status}` : ""}`.trim(),
     };
   }

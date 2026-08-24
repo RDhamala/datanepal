@@ -18,8 +18,8 @@ export default function NotFound() {
       <p className="text-label text-ink-faint mb-3 uppercase">404</p>
       <h1 className="text-display text-ink font-semibold">Page not found</h1>
       <p className="text-ink-soft mt-3 max-w-prose text-[15px] leading-relaxed">
-        There&rsquo;s nothing published at this address. It may have moved, or the
-        link might have a typo — try searching for what you&rsquo;re after.
+        There&rsquo;s nothing published at this address. It may have moved, or the link
+        might have a typo — try searching for what you&rsquo;re after.
       </p>
 
       <div className="mt-8 max-w-lg">

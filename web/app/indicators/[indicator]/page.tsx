@@ -252,7 +252,10 @@ export default async function IndicatorPage({ params }: { params: Promise<Params
                         </td>
                       </tr>
                     ) : (
-                      <tr key={r.place.place_id ?? idx} className="border-line border-b">
+                      <tr
+                        key={r.place.place_id ?? idx}
+                        className="border-line border-b"
+                      >
                         <td className="py-1.5">
                           <Link
                             href={`/np/${
@@ -312,12 +315,16 @@ export default async function IndicatorPage({ params }: { params: Promise<Params
                 </thead>
                 <tbody>
                   {districtCmp.rows.map((r) => (
-                    <tr key={r.place.place_id} className="border-line border-b last:border-0">
+                    <tr
+                      key={r.place.place_id}
+                      className="border-line border-b last:border-0"
+                    >
                       <td className="px-3 py-1.5">
                         <Link
                           href={`/np/${
-                            allPlaces.find((p) => p.place_id === r.place.parent_place_id)
-                              ?.slug ?? ""
+                            allPlaces.find(
+                              (p) => p.place_id === r.place.parent_place_id,
+                            )?.slug ?? ""
                           }/${r.place.slug}/`}
                         >
                           {r.place.name_en}

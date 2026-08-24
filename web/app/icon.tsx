@@ -14,25 +14,23 @@ export const dynamic = "force-static";
 
 export default function Icon() {
   return new ImageResponse(
-    (
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#1c5aa6",
-          color: "#ffffff",
-          fontSize: 21,
-          fontWeight: 700,
-          fontFamily: "system-ui, sans-serif",
-          letterSpacing: -1,
-        }}
-      >
-        D
-      </div>
-    ),
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "#1c5aa6",
+        color: "#ffffff",
+        fontSize: 21,
+        fontWeight: 700,
+        fontFamily: "system-ui, sans-serif",
+        letterSpacing: -1,
+      }}
+    >
+      D
+    </div>,
     { ...size },
   );
 }

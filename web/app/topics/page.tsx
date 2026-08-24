@@ -70,7 +70,10 @@ export default async function TopicsIndex() {
             name: ind?.name_en ?? "",
             value: formatWithUnit(h.value, h.unit),
             period: h.period,
-            note: h.points.length > 1 ? `${h.points.length} years of data` : h.status ?? "",
+            note:
+              h.points.length > 1
+                ? `${h.points.length} years of data`
+                : (h.status ?? ""),
             points: h.points,
           }
         : null;

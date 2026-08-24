@@ -976,7 +976,9 @@ export function nationalHeadline(
     };
   }
 
-  const m = ctx.profile.flatMap((t) => t.metrics).find((x) => x.indicatorId === indicatorId);
+  const m = ctx.profile
+    .flatMap((t) => t.metrics)
+    .find((x) => x.indicatorId === indicatorId);
   if (m) {
     return {
       value: m.value,

@@ -177,7 +177,9 @@ export default async function PlacesIndex() {
                     {largest.map((d, i) => (
                       <span key={d.place_id}>
                         {i > 0 && ", "}
-                        <Link href={`/np/${province.slug}/${d.slug}/`}>{d.name_en}</Link>
+                        <Link href={`/np/${province.slug}/${d.slug}/`}>
+                          {d.name_en}
+                        </Link>
                       </span>
                     ))}
                   </p>
