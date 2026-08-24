@@ -65,6 +65,14 @@ INDICATORS: dict[str, tuple[str, str]] = {
     "IT.NET.USER.ZS": ("internet_users_pct", "percent"),
     "IT.CEL.SETS.P2": ("mobile_subscriptions_per100", "per_100_people"),
     "EG.CFT.ACCS.ZS": ("clean_cooking_fuel_access_pct", "percent"),
+    # Environment topic's first indicators. EN.ATM.CO2E.PC (the older CO2 code)
+    # returned nothing at all during scoping -- the AR5-methodology code below
+    # replaced it in the WDI catalogue -- which is exactly the "renamed code"
+    # failure this connector's shape guard exists to catch.
+    "AG.LND.FRST.ZS": ("forest_area_pct", "percent"),
+    "ER.PTD.TOTL.ZS": ("protected_areas_pct", "percent"),
+    "EN.ATM.PM25.MC.M3": ("pm25_air_pollution", "micrograms_per_m3"),
+    "EN.GHG.CO2.PC.CE.AR5": ("co2_emissions_per_capita", "tonnes_co2_per_capita"),
 }
 
 # The API is generous but paginated; one page per indicator is plenty for a

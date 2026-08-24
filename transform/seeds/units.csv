@@ -17,3 +17,5 @@ per_1000_live_births,ratio,/1000 live births,Per 1000 live births,,,Not additive
 per_100000_live_births,ratio,/100000 live births,Per 100000 live births,,,Not additive across places or periods.
 kg_per_hectare,ratio,kg/ha,Kilograms per hectare,,,Not additive across places.
 per_100_people,ratio,/100 people,Per 100 people,,,"Not additive across places. Can exceed 100 for a subscription count, e.g. multiple SIMs per person."
+micrograms_per_m3,ratio,µg/m³,Micrograms per cubic metre,,,Not additive across places or periods.
+tonnes_co2_per_capita,ratio,t CO2e,Tonnes of CO2-equivalent per capita,,,Not additive across places.

@@ -94,6 +94,12 @@ const TOPIC_VIEW: Record<
     // less finished story to open on.
     headline: "electricity_access_pct",
   },
+  environment: {
+    // Protected areas is the one the topic's own description names directly,
+    // and at 23.6% it is a distinctive, well-known fact about Nepal rather
+    // than a number that needs the other three for context first.
+    headline: "protected_areas_pct",
+  },
   education: {
     headline: "literacy_rate",
     mapIndicator: "literacy_rate",

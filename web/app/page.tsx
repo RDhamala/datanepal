@@ -110,6 +110,7 @@ export default async function Home() {
     health: "life_expectancy_at_birth",
     agriculture: "agriculture_value_added_pct_gdp",
     infrastructure: "electricity_access_pct",
+    environment: "protected_areas_pct",
   };
   const topicHeadline: Record<
     string,
