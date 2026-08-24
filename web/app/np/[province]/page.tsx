@@ -11,6 +11,7 @@ import {
   localUnitsOf,
   mapFor,
   placeBySlug,
+  compareFor,
   placeProfile,
   populationOf,
   provinces,
@@ -21,6 +22,7 @@ import {
 import { Choropleth } from "@/components/Choropleth";
 import { AgePyramid } from "@/components/AgePyramid";
 import { PlaceProfile, profileSections } from "@/components/PlaceProfile";
+import { ComparePanel } from "@/components/viz/ComparePanel";
 import { RankedBars } from "@/components/charts";
 import {
   AnchoredSection,
@@ -85,11 +87,22 @@ export default async function ProvincePage({ params }: { params: Promise<Params>
   const place = await placeBySlug("province", province);
   if (!place) notFound();
 
-  const [pop, districtList, np, profile] = await Promise.all([
+  const [pop, districtList, np, profile, compare] = await Promise.all([
     populationOf(place),
     districtsOf(place.place_id),
     country(),
     placeProfile(place),
+    // Peers change with the level: a province compares its districts, a
+    // district its local governments. Same component, same metrics, same rules.
+    districtsOf(place.place_id).then((ds) =>
+      compareFor(ds, [
+        "population",
+        "households",
+        "literacy_rate",
+        "literate_population",
+        "population_5plus",
+      ]),
+    ),
   ]);
   const national = np ? await populationOf(np) : null;
   const share =
@@ -118,6 +131,7 @@ export default async function ProvincePage({ params }: { params: Promise<Params>
     ...profileSections(profile),
     ...(pop && pop.bands.length ? [{ id: "age-sex", label: "Age & sex" }] : []),
     ...(districtRows.length ? [{ id: "districts", label: "Districts" }] : []),
+    ...(compare ? [{ id: "compare", label: "Compare" }] : []),
     { id: "sources", label: "Sources" },
   ];
 
@@ -246,6 +260,21 @@ export default async function ProvincePage({ params }: { params: Promise<Params>
           is available now.
         </p>
       </AnchoredSection>
+
+      {compare && (
+        <AnchoredSection
+          id="compare"
+          title={`Compare the districts of ${place.name_en}`}
+          note="Every published census measure, side by side. Rank by any column, or select rows to compare a few."
+        >
+          <ComparePanel
+            places={compare.places}
+            metrics={compare.metrics}
+            peerLabel="districts"
+            defaultMetricId="population"
+          />
+        </AnchoredSection>
+      )}
 
       <div id="sources" className="scroll-mt-20">
         <SourceNote tables={tables} sources={sourcesFor(tables)} />

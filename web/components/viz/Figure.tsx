@@ -74,7 +74,7 @@ export function Figure({
       {readout !== undefined && (
         <p
           aria-live="polite"
-          className="text-ink-soft mt-3 min-h-[1.35rem]"
+          className="text-ink-soft mt-3 min-h-[1.35rem] max-w-prose"
           style={{ fontSize: TYPE.body }}
         >
           {readout}

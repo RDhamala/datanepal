@@ -12,6 +12,7 @@ import {
   localUnitsOf,
   placeBySlug,
   benchmarksFor,
+  compareFor,
   compositionFor,
   placeProfile,
   spreadFor,
@@ -25,6 +26,7 @@ import { AgePyramid } from "@/components/AgePyramid";
 import { MetricMap } from "@/components/MetricMap";
 import { profileSections } from "@/components/PlaceProfile";
 import { TopicSummary } from "@/components/viz/TopicSummary";
+import { ComparePanel } from "@/components/viz/ComparePanel";
 import { Composition, Distribution } from "@/components/viz/Composition";
 import { Figure, FigureTable, FigureRow, FigureCell } from "@/components/viz/Figure";
 import {
@@ -133,6 +135,7 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
     benchmarks,
     literacyMix,
     literacySpread,
+    compare,
   ] = await Promise.all([
     populationOf(place),
     localUnitsOf(place.place_id),
@@ -163,6 +166,17 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
     // answer.
     compositionFor(place, "population_5plus", "literacy_status"),
     spreadFor("district", "literacy_rate"),
+    // Peers change with the level: a district compares its local governments,
+    // a province its districts. Same component, same metrics, same rules.
+    localUnitsOf(place.place_id).then((u) =>
+      compareFor(u, [
+        "population",
+        "households",
+        "literacy_rate",
+        "literate_population",
+        "population_5plus",
+      ]),
+    ),
   ]);
 
   // One lookup across all four local-unit types: the census publishes them as
@@ -200,6 +214,7 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
     ...profileSections(profile),
     ...(pop && pop.bands.length ? [{ id: "age-sex", label: "Age & sex" }] : []),
     ...(units.length ? [{ id: "local-governments", label: "Local governments" }] : []),
+    ...(compare ? [{ id: "compare", label: "Compare" }] : []),
     { id: "sources", label: "Sources" },
   ];
 
@@ -411,6 +426,21 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
               </div>
             ))}
           </div>
+        </AnchoredSection>
+      )}
+
+      {compare && (
+        <AnchoredSection
+          id="compare"
+          title={`Compare the local governments of ${place.name_en}`}
+          note="Every published census measure, side by side. Rank by any column, or select rows to compare a few."
+        >
+          <ComparePanel
+            places={compare.places}
+            metrics={compare.metrics}
+            peerLabel="local governments"
+            defaultMetricId="population"
+          />
         </AnchoredSection>
       )}
 

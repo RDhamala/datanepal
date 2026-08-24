@@ -251,7 +251,10 @@ export function MetricMap({
           its height whether or not anything is hovered, so nothing below it
           moves as the pointer travels.
         */}
-        <p aria-live="polite" className="text-ink-soft mt-3 min-h-[1.4rem] text-[13px]">
+        <p
+          aria-live="polite"
+          className="text-ink-soft mt-3 min-h-[1.4rem] max-w-prose text-[13px]"
+        >
           {hoveredFeature ? (
             <>
               <span className="text-ink font-medium">{hoveredFeature.name}</span>{" "}

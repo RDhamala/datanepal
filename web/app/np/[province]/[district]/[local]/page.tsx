@@ -6,6 +6,7 @@ import {
   comparisonFor,
   formatNumber,
   formatPercent,
+  compareFor,
   localUnitBySlug,
   localUnitMapFor,
   localUnitsOf,
@@ -17,6 +18,7 @@ import {
 } from "@/lib/data";
 import { ReferenceMap } from "@/components/ReferenceMap";
 import { PlaceProfile, profileSections } from "@/components/PlaceProfile";
+import { ComparePanel } from "@/components/viz/ComparePanel";
 import {
   AnchoredSection,
   Crumbs,
@@ -103,22 +105,40 @@ export default async function LocalUnitPage({ params }: { params: Promise<Params
   if (!found) notFound();
   const { prov, dist, place } = found;
 
-  const [profile, siblings, districtCmp, localMap, muni, rural, subMetro, metro] =
-    await Promise.all([
-      placeProfile(place),
-      localUnitsOf(dist.place_id),
-      // This unit's rank is against its own type: a rural municipality ranked
-      // among metropolitan cities would be a meaningless comparison.
-      comparisonFor("population", place.place_type),
-      localUnitMapFor(dist.place_id),
-      // The sibling list mixes all four types, because a district contains
-      // whatever it contains. Ranking within the district is the honest
-      // comparison there.
-      comparisonFor("population", "municipality"),
-      comparisonFor("population", "rural_municipality"),
-      comparisonFor("population", "sub_metropolitan"),
-      comparisonFor("population", "metropolitan"),
-    ]);
+  const [
+    profile,
+    siblings,
+    districtCmp,
+    localMap,
+    muni,
+    rural,
+    subMetro,
+    metro,
+    compare,
+  ] = await Promise.all([
+    placeProfile(place),
+    localUnitsOf(dist.place_id),
+    // This unit's rank is against its own type: a rural municipality ranked
+    // among metropolitan cities would be a meaningless comparison.
+    comparisonFor("population", place.place_type),
+    localUnitMapFor(dist.place_id),
+    // The sibling list mixes all four types, because a district contains
+    // whatever it contains. Ranking within the district is the honest
+    // comparison there.
+    comparisonFor("population", "municipality"),
+    comparisonFor("population", "rural_municipality"),
+    comparisonFor("population", "sub_metropolitan"),
+    comparisonFor("population", "metropolitan"),
+    localUnitsOf(dist.place_id).then((u) =>
+      compareFor(u, [
+        "population",
+        "households",
+        "literacy_rate",
+        "literate_population",
+        "population_5plus",
+      ]),
+    ),
+  ]);
 
   const siblingPop = new Map(
     [muni, rural, subMetro, metro]
@@ -145,6 +165,7 @@ export default async function LocalUnitPage({ params }: { params: Promise<Params
   const sections = [
     ...profileSections(profile),
     { id: "context", label: "In context" },
+    ...(compare ? [{ id: "compare", label: "Compare" }] : []),
     { id: "sources", label: "Sources" },
   ];
 
@@ -301,6 +322,22 @@ export default async function LocalUnitPage({ params }: { params: Promise<Params
           section for it appears above.
         </p>
       </AnchoredSection>
+
+      {compare && (
+        <AnchoredSection
+          id="compare"
+          title={`Compare with the rest of ${dist.name_en}`}
+          note="Every published census measure, side by side. This unit is highlighted; rank by any column, or select rows to compare a few."
+        >
+          <ComparePanel
+            places={compare.places}
+            metrics={compare.metrics}
+            subjectId={place.place_id}
+            peerLabel="local governments"
+            defaultMetricId="population"
+          />
+        </AnchoredSection>
+      )}
 
       <div id="sources" className="scroll-mt-20">
         <SourceNote tables={tables} sources={sourcesFor(tables)} />

@@ -115,10 +115,20 @@ export function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mb-14">
+    <section className="mb-11">
       <h2 className="text-heading text-ink font-semibold">{title}</h2>
-      {note && <p className="text-ink-faint mt-1 mb-5 text-[13px]">{note}</p>}
-      {!note && <div className="mb-5" />}
+      {/*
+        max-w-prose on the note, because it was missing and the consequence was
+        measurable: six notes on a district page ran past 1200px, one of them 176
+        characters on a single line. A section heading can span the page; a
+        sentence cannot.
+      */}
+      {note && (
+        <p className="text-ink-faint mt-1 mb-4 max-w-prose text-[13px] leading-relaxed">
+          {note}
+        </p>
+      )}
+      {!note && <div className="mb-4" />}
       {children}
     </section>
   );
@@ -396,10 +406,14 @@ export function AnchoredSection({
   children: React.ReactNode;
 }) {
   return (
-    <section id={id} className="mb-14 scroll-mt-20">
+    <section id={id} className="mb-11 scroll-mt-20">
       <h2 className="text-heading text-ink font-semibold">{title}</h2>
-      {note && <p className="text-ink-faint mt-1 mb-5 text-[13px]">{note}</p>}
-      {!note && <div className="mb-5" />}
+      {note && (
+        <p className="text-ink-faint mt-1 mb-4 max-w-prose text-[13px] leading-relaxed">
+          {note}
+        </p>
+      )}
+      {!note && <div className="mb-4" />}
       {children}
     </section>
   );

@@ -1322,3 +1322,94 @@ export async function spreadFor(
     .map(([id, rows]) => ({ id, value: pickHeadline(rows)?.value_numeric ?? null }))
     .filter((r): r is { id: string; value: number } => r.value !== null);
 }
+
+/* ------------------------------------------------------------- comparison */
+
+export type CompareData = {
+  places: {
+    placeId: string;
+    name: string;
+    href: string | null;
+    values: Record<string, number>;
+  }[];
+  metrics: { id: string; label: string; unit: Unit | undefined; isAdditive: boolean }[];
+};
+
+/**
+ * A set of peer places on a shared metric set.
+ *
+ * Level-agnostic on purpose: pass a province's districts, a district's local
+ * governments or the seven provinces and the shape of the answer is identical.
+ * That is what lets one comparison component serve every level of the hierarchy
+ * rather than each page growing its own.
+ *
+ * A metric with no coverage across the whole peer set is dropped, because an
+ * entirely empty column is furniture. A metric missing for *some* places is
+ * kept, with those cells absent so the interface can render a dash -- absence and
+ * zero must not look alike.
+ */
+export async function compareFor(
+  peers: Place[],
+  indicatorIds: string[],
+): Promise<CompareData | null> {
+  if (!peers.length) return null;
+  const [obs, inds, us, all] = await Promise.all([
+    observations(),
+    indicators(),
+    units(),
+    places(),
+  ]);
+  const byId = new Map(all.map((p) => [p.place_id, p]));
+  const peerIds = new Set(peers.map((p) => p.place_id));
+
+  const relevant = obs.filter(
+    (o) =>
+      o.place_id !== null &&
+      peerIds.has(o.place_id) &&
+      indicatorIds.includes(o.indicator_id) &&
+      o.value_numeric !== null,
+  );
+
+  const grouped = new Map<string, Map<string, Observation[]>>();
+  for (const o of relevant) {
+    let byIndicator = grouped.get(o.place_id!);
+    if (!byIndicator) grouped.set(o.place_id!, (byIndicator = new Map()));
+    byIndicator.set(o.indicator_id, [...(byIndicator.get(o.indicator_id) ?? []), o]);
+  }
+
+  const hrefFor = (p: Place): string | null => {
+    const parent = p.parent_place_id ? byId.get(p.parent_place_id) : undefined;
+    if (p.place_type === "province") return `/np/${p.slug}/`;
+    if (p.place_type === "district" && parent) return `/np/${parent.slug}/${p.slug}/`;
+    const gp = parent?.parent_place_id ? byId.get(parent.parent_place_id) : undefined;
+    if (parent && gp) return `/np/${gp.slug}/${parent.slug}/${p.slug}/`;
+    return null;
+  };
+
+  const placesOut = peers.map((p) => {
+    const values: Record<string, number> = {};
+    for (const [indicatorId, rows] of grouped.get(p.place_id) ?? []) {
+      const row = pickHeadline(rows);
+      if (row?.value_numeric != null) values[indicatorId] = row.value_numeric;
+    }
+    return { placeId: p.place_id, name: p.name_en, href: hrefFor(p), values };
+  });
+
+  const metrics = indicatorIds
+    .map((id) => {
+      const indicator = inds.find((i) => i.indicator_id === id);
+      if (!indicator) return null;
+      // An entirely empty column is furniture, not information.
+      if (!placesOut.some((p) => p.values[id] !== undefined)) return null;
+      return {
+        id,
+        label: indicator.name_en,
+        unit: us.find((u) => u.unit_id === indicator.default_unit_id),
+        isAdditive: indicator.is_additive,
+      };
+    })
+    .filter((m): m is NonNullable<typeof m> => m !== null);
+
+  if (!metrics.length) return null;
+  return { places: placesOut, metrics };
+}
