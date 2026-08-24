@@ -1,0 +1,3 @@
+# www serves a full duplicate of the site with no canonical tag, which splits
+# search authority between two hostnames and lets either be cited. One name.
+https://www.datanepal.org/* https://datanepal.org/:splat 301
