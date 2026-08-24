@@ -19,6 +19,7 @@ import dlt
 from ingestion.sources.hdx_admin import hdx_admin_source
 from ingestion.sources.hdx_boundaries import hdx_boundaries_source
 from ingestion.sources.hdx_population import hdx_population_source
+from ingestion.sources.nso_census import nso_census_source
 from ingestion.sources.wikidata_names import wikidata_names_source
 from ingestion.sources.worldbank import worldbank_source
 
@@ -32,6 +33,7 @@ SOURCES = {
     "hdx_admin": hdx_admin_source,
     "hdx_boundaries": hdx_boundaries_source,
     "hdx_population": hdx_population_source,
+    "nso_census": nso_census_source,
     "wikidata_names": wikidata_names_source,
     "worldbank": worldbank_source,
 }

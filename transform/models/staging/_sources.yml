@@ -54,9 +54,19 @@ sources:
       - name: indicators
         description: One row per indicator-year.
 
-  - name: raw_census
-    schema: raw_census
-    description: National Population and Housing Census, National Statistics Office.
+  - name: raw_nso_census
+    schema: raw_nso_census
+    description: >
+      Nepal National Population and Housing Census 2021, National Statistics
+      Office. The only authoritative source below district level. Carries no
+      P-codes, so it reaches the spine through a name-and-type match plus a
+      committed two-row crosswalk -- see stg_nso__census_places.
     tables:
-      - name: population
-        description: Population counts by geography, sex, and age band.
+      - name: census_population
+        description: >
+          Households and population by sex for every admin level, plus one
+          INSTITUTIONAL row per district for population not in a household.
+      - name: census_literacy
+        description: >
+          Literacy of the population aged 5 and over, by sex, for every admin
+          level. Only the all-ages aggregate is ingested.

@@ -19,5 +19,13 @@
 	{"dimension_id":"age_band","member_id":"65-69","name_en":"65–69","name_ne":"६५–६९","sort_order":14,"parent_member_id":null},
 	{"dimension_id":"age_band","member_id":"70-74","name_en":"70–74","name_ne":"७०–७४","sort_order":15,"parent_member_id":null},
 	{"dimension_id":"age_band","member_id":"75-79","name_en":"75–79","name_ne":"७५–७९","sort_order":16,"parent_member_id":null},
-	{"dimension_id":"age_band","member_id":"80+","name_en":"80 and over","name_ne":"८० र माथि","sort_order":17,"parent_member_id":null}
+	{"dimension_id":"age_band","member_id":"80+","name_en":"80 and over","name_ne":"८० र माथि","sort_order":17,"parent_member_id":null},
+	{"dimension_id":"literacy_status","member_id":"all","name_en":"All","name_ne":"सबै","sort_order":0,"parent_member_id":null},
+	{"dimension_id":"literacy_status","member_id":"can_read_and_write","name_en":"Can read and write","name_ne":"पढ्न र लेख्न सक्ने","sort_order":1,"parent_member_id":null},
+	{"dimension_id":"literacy_status","member_id":"can_read_only","name_en":"Can read only","name_ne":"पढ्न मात्र सक्ने","sort_order":2,"parent_member_id":null},
+	{"dimension_id":"literacy_status","member_id":"cannot_read_or_write","name_en":"Cannot read or write","name_ne":"पढ्न र लेख्न नसक्ने","sort_order":3,"parent_member_id":null},
+	{"dimension_id":"literacy_status","member_id":"not_stated","name_en":"Not stated","name_ne":"उल्लेख नभएको","sort_order":4,"parent_member_id":null},
+	{"dimension_id":"residence_type","member_id":"all","name_en":"All","name_ne":"सबै","sort_order":0,"parent_member_id":null},
+	{"dimension_id":"residence_type","member_id":"household","name_en":"In household","name_ne":"घरपरिवारमा","sort_order":1,"parent_member_id":null},
+	{"dimension_id":"residence_type","member_id":"institutional","name_en":"In institution","name_ne":"संस्थागत","sort_order":2,"parent_member_id":null}
 ]

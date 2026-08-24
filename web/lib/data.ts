@@ -328,20 +328,31 @@ export async function comparisonFor(
       o.indicator_id === indicatorId &&
       o.value_numeric !== null &&
       o.place_id !== null &&
-      byId.get(o.place_id)?.place_type === placeType &&
-      // Totals only. Summing across dimension members would double count.
-      (o.dimension_key === "none" ||
-        o.dimension_key === dimensionKey({ sex: "all", age_band: "all" })),
+      byId.get(o.place_id)?.place_type === placeType,
   );
   if (!relevant.length) {
     return { period: 0, unit: undefined, rows: [] };
   }
 
   const period = Math.max(...relevant.map((o) => Number(o.period_start.slice(0, 4))));
-  const rows = relevant
-    .filter((o) => o.period_start.startsWith(String(period)))
-    .map((o) => ({ place: byId.get(o.place_id!)!, value: o.value_numeric! }))
-    .filter((r) => r.place)
+  const current = relevant.filter((o) => o.period_start.startsWith(String(period)));
+
+  // One aggregate row per place, chosen by shape. Filtering on a literal
+  // dimension key here is what made every census figure invisible: local
+  // governments publish population as `residence_type=household|sex=all`, which
+  // no hardcoded key matched, and summing members instead would double count.
+  const perPlace = new Map<string, typeof current>();
+  for (const o of current) {
+    perPlace.set(o.place_id!, [...(perPlace.get(o.place_id!) ?? []), o]);
+  }
+  const rows = [...perPlace.entries()]
+    .map(([placeId, rowsForPlace]) => ({
+      place: byId.get(placeId)!,
+      value: pickAggregate(rowsForPlace)?.value_numeric ?? null,
+    }))
+    .filter(
+      (r): r is { place: Place; value: number } => Boolean(r.place) && r.value !== null,
+    )
     .sort((a, b) => b.value - a.value);
 
   return {
@@ -437,6 +448,63 @@ export function dimensionKey(members: Record<string, string>): string {
   return parts.sort().join("|");
 }
 
+/* ------------------------------------------------- dimension-key selection */
+
+/*
+  Choosing which observation represents an indicator, without knowing the
+  dimension vocabulary.
+
+  This matters more than it looks. The first version of these helpers matched
+  dimension keys literally -- `sex=all|age_band=all` -- which worked while
+  population was the only dimensioned dataset and broke silently the moment the
+  census arrived keyed `residence_type=household|sex=all`. Nothing errored: every
+  local government page simply showed a dash where its population should be.
+
+  So selection is by shape rather than by name: the aggregate is the row with
+  the fewest dimension members that are not a total. A new dimension therefore
+  costs nothing here, which is the property the canonical model is supposed to
+  have.
+*/
+
+/** Members of a dimension key that are not the '=all' total. */
+function specificMembers(dimensionKey: string): string[] {
+  if (dimensionKey === "none") return [];
+  return dimensionKey.split("|").filter((part) => !part.endsWith("=all"));
+}
+
+type Dimensioned = { dimension_key: string };
+
+/** The least specific row: the aggregate across every dimension. */
+export function pickAggregate<T extends Dimensioned>(rows: T[]): T | undefined {
+  return [...rows].sort(
+    (a, b) =>
+      specificMembers(a.dimension_key).length -
+        specificMembers(b.dimension_key).length ||
+      a.dimension_key.length - b.dimension_key.length,
+  )[0];
+}
+
+/**
+ * The row for one dimension member, aggregated over every other dimension.
+ *
+ * `pickMember(rows, 'sex', 'female')` finds female across all age bands and all
+ * residence types, whichever of those the source happens to publish.
+ */
+export function pickMember<T extends Dimensioned>(
+  rows: T[],
+  dimension: string,
+  member: string,
+): T | undefined {
+  const wanted = `${dimension}=${member}`;
+  const matching = rows.filter((r) => r.dimension_key.split("|").includes(wanted));
+  return [...matching].sort(
+    (a, b) =>
+      specificMembers(a.dimension_key).length -
+        specificMembers(b.dimension_key).length ||
+      a.dimension_key.length - b.dimension_key.length,
+  )[0];
+}
+
 export type PopulationSummary = {
   period: number;
   status: string;
@@ -458,14 +526,16 @@ export async function populationOf(place: Place): Promise<PopulationSummary | nu
   const period = Math.max(...rows.map((r) => Number(r.period_start.slice(0, 4))));
   const current = rows.filter((r) => r.period_start.startsWith(String(period)));
 
+  const total = pickAggregate(current)?.value_numeric ?? 0;
+  const female = pickMember(current, "sex", "female")?.value_numeric ?? 0;
+  const male = pickMember(current, "sex", "male")?.value_numeric ?? 0;
+
+  // Age bands only exist in the projection series; the census tables ingested
+  // here carry sex but not age, so this is empty for local governments and the
+  // age pyramid simply does not render.
   const at = (sex: string, band: string) =>
     current.find((r) => r.dimension_key === dimensionKey({ sex, age_band: band }))
       ?.value_numeric ?? 0;
-
-  const total = at("all", "all");
-  const female = at("female", "all");
-  const male = at("male", "all");
-
   const bands = AGE_BANDS.map((band) => ({
     band,
     female: at("female", band),
@@ -803,3 +873,178 @@ export const LOCAL_UNIT_TYPES = [
   { type: "municipality", label: "Municipality" },
   { type: "rural_municipality", label: "Rural municipality" },
 ] as const;
+
+/* ------------------------------------------------------- place profiles */
+
+export type ProfileMetric = {
+  indicatorId: string;
+  name: string;
+  nameNe: string | null;
+  definition: string | null;
+  value: number;
+  unit: Unit | undefined;
+  period: number;
+  periodType: string;
+  status: string;
+  datasetId: string;
+  isAdditive: boolean;
+  /** The same measure split by sex, where the source publishes it. */
+  bySex: { sex: string; value: number }[];
+};
+
+export type ProfileTopic = {
+  topic: Topic;
+  metrics: ProfileMetric[];
+};
+
+/**
+ * Count of dimension members that are not the total.
+ *
+ * Used to choose which row represents an indicator on a profile. Preferring the
+ * fewest non-total members finds the aggregate without hardcoding a dimension
+ * vocabulary — which matters because local units publish population as
+ * `residence_type=household|sex=all` while districts publish
+ * `residence_type=all|sex=all`, and a profile should show whichever the source
+ * actually has rather than know the difference.
+ */
+function specificity(dimensionKey: string): number {
+  if (dimensionKey === "none") return 0;
+  return dimensionKey.split("|").filter((part) => !part.endsWith("=all")).length;
+}
+
+function memberOf(dimensionKey: string, dimension: string): string | null {
+  if (dimensionKey === "none") return null;
+  const hit = dimensionKey.split("|").find((p) => p.startsWith(`${dimension}=`));
+  return hit ? hit.slice(dimension.length + 1) : null;
+}
+
+/**
+ * Every published measure for one place, grouped by topic.
+ *
+ * This is the whole point of the canonical observation model, and the reason a
+ * place page needs no per-dataset code. It reads observations, not sources: add
+ * a domain to the warehouse and it appears here, on every place that has it, in
+ * its own topic section. Nothing below knows that population comes from a census
+ * Excel file and literacy from a different sheet of the same workbook.
+ *
+ * For each indicator it takes the latest period, then the least specific
+ * dimension combination available — the aggregate — and carries the sex split
+ * alongside where the source publishes one.
+ */
+export async function placeProfile(place: Place): Promise<ProfileTopic[]> {
+  const [obs, inds, us, ts] = await Promise.all([
+    observations(),
+    indicators(),
+    units(),
+    topics(),
+  ]);
+
+  const mine = obs.filter(
+    (o) => o.place_id === place.place_id && o.value_numeric !== null,
+  );
+  if (!mine.length) return [];
+
+  const indicatorById = new Map(inds.map((i) => [i.indicator_id, i]));
+  const unitById = new Map(us.map((u) => [u.unit_id, u]));
+  const topicById = new Map(ts.map((t) => [t.topic_id, t]));
+
+  const byIndicator = new Map<string, Observation[]>();
+  for (const o of mine) {
+    byIndicator.set(o.indicator_id, [...(byIndicator.get(o.indicator_id) ?? []), o]);
+  }
+
+  const metrics: (ProfileMetric & { topicId: string; sortOrder: number })[] = [];
+
+  for (const [indicatorId, rows] of byIndicator) {
+    const indicator = indicatorById.get(indicatorId);
+    if (!indicator) continue;
+    const topic = topicById.get(indicator.topic_id);
+    if (!topic) continue;
+
+    const latest = Math.max(...rows.map((r) => Number(r.period_start.slice(0, 4))));
+    const current = rows.filter((r) => r.period_start.startsWith(String(latest)));
+
+    // The aggregate row: fewest non-total dimension members.
+    const headline = [...current].sort(
+      (a, b) =>
+        specificity(a.dimension_key) - specificity(b.dimension_key) ||
+        a.dimension_key.length - b.dimension_key.length,
+    )[0];
+    if (!headline || headline.value_numeric === null) continue;
+
+    // The same measure by sex, at the headline's other dimensions.
+    const bySex = current
+      .map((r) => ({ sex: memberOf(r.dimension_key, "sex"), row: r }))
+      .filter(
+        (x) =>
+          x.sex !== null &&
+          x.sex !== "all" &&
+          specificity(x.row.dimension_key) === specificity(headline.dimension_key) + 1,
+      )
+      .map((x) => ({ sex: x.sex!, value: x.row.value_numeric! }))
+      .sort((a, b) => a.sex.localeCompare(b.sex));
+
+    metrics.push({
+      indicatorId,
+      name: indicator.name_en,
+      nameNe: indicator.name_ne,
+      definition: indicator.definition,
+      value: headline.value_numeric,
+      unit: unitById.get(indicator.default_unit_id),
+      period: latest,
+      periodType: headline.period_type,
+      status: headline.status,
+      datasetId: headline.dataset_id,
+      isAdditive: indicator.is_additive,
+      bySex,
+      topicId: topic.topic_id,
+      sortOrder: topic.sort_order,
+    });
+  }
+
+  const grouped = new Map<string, ProfileMetric[]>();
+  for (const m of metrics) {
+    grouped.set(m.topicId, [...(grouped.get(m.topicId) ?? []), m]);
+  }
+
+  return [...grouped.entries()]
+    .map(([topicId, ms]) => ({
+      topic: topicById.get(topicId)!,
+      metrics: ms.sort((a, b) => a.name.localeCompare(b.name)),
+    }))
+    .filter((g) => g.topic)
+    .sort((a, b) => a.topic.sort_order - b.topic.sort_order);
+}
+
+/** Local units of a district, for routing and listing. */
+export async function localUnitBySlug(
+  districtPlaceId: string,
+  slug: string,
+): Promise<Place | undefined> {
+  return (await localUnitsOf(districtPlaceId)).find((p) => p.slug === slug);
+}
+
+/** Every (province, district, local) slug triple, for static generation. */
+export async function allLocalUnitPaths(): Promise<
+  { province: string; district: string; local: string }[]
+> {
+  const all = await places();
+  const byId = new Map(all.map((p) => [p.place_id, p]));
+  const LOCAL = new Set([
+    "metropolitan",
+    "sub_metropolitan",
+    "municipality",
+    "rural_municipality",
+  ]);
+  const out: { province: string; district: string; local: string }[] = [];
+  for (const p of all) {
+    if (!LOCAL.has(p.place_type) || !p.parent_place_id) continue;
+    const district = byId.get(p.parent_place_id);
+    const province = district?.parent_place_id
+      ? byId.get(district.parent_place_id)
+      : undefined;
+    if (!district || !province) continue;
+    out.push({ province: province.slug, district: district.slug, local: p.slug });
+  }
+  return out;
+}

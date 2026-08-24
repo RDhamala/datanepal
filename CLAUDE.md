@@ -65,7 +65,23 @@ excluded from the spine. That exclusion is what makes the count 753 rather
 than 775.
 
 Sources that are not P-coded reach the spine through **crosswalk tables**,
-never by name matching. Crosswalks must be tested 1:1 and total.
+never by fuzzy name matching. Crosswalks must be tested 1:1 and total.
+
+One source is matched on names, and the reasoning is worth knowing before you
+add another. The NSO census carries no P-codes at all — hierarchy is a sequence
+column and row position — and it is the only authoritative source below district
+level, so there is no alternative. It matches on **(district, base name, unit
+type)**, where the type comes from the name's own suffix and is *required to
+agree* with the spine's `place_type`. That reaches 751 of 753 with zero type
+disagreements; the last two are an explicit two-row seed
+(`transform/seeds/nso_name_fixes.csv`) with a written reason each.
+
+What makes that acceptable is the absence of cleverness. There is no edit
+distance and no phonetic matching. `assert_nso_census_join_is_total` fails the
+build if any area does not resolve. Open Knowledge Nepal's boundary release was
+rejected for exactly the opposite reason: no P-codes *and* an independent
+romanisation disagreeing with ours on 222 of 753 units, which only a guessing
+matcher could bridge.
 
 ## Testing discipline
 
@@ -99,18 +115,39 @@ and breaks at ward scale (6,743 wards × indicators × years).
 correctness: 22 local-unit names are shared across districts, and slugs are
 unique only within a parent.
 
-**Never present projections as census counts.** Population figures are 2023
-projections; Nepal's last census was 2021 (29,164,578). The distinction is
-exactly the kind of thing that destroys trust in a data platform.
+**Never present projections as census counts.** Both are published now: NSO's
+2021 census (29,164,578, `status = 'actual'`, `period_type = 'instant'`) and
+UNFPA's 2023 projections (`status = 'projection'`). Every figure carries its
+status and a place profile warns when one section mixes reference periods —
+dividing 2023 population by 2021 households gives 4.0 people per household
+instead of 3.75, and each figure is individually correct.
 
-**Read the `dataviz` skill before writing any chart code**, and run its palette
-validator rather than reasoning about colour contrast.
+**Local units are 753 pages, not a rounding error.** Census population and
+literacy are published for every one. A partial geography load is the failure
+this platform is most exposed to, so CI checks the local-government page count
+is *exactly* 753 rather than at least something.
+
+**Institutional population belongs to no local unit.** Each district reports
+239,098 people nationally who live in barracks, hostels, prisons and hospitals.
+It is carried as `residence_type = institutional` at district level. Local units
+therefore sum to 28,925,480, not to the national total, and
+`assert_census_local_units_reconcile` is what makes that an accounting identity
+rather than a silent shortfall.
+
+**Run `npm run palette` before changing any colour**, rather than reasoning
+about contrast. `web/scripts/check-palette.mjs` checks categorical slots for
+CVD separation, sequential ramps for lightness monotonicity, and grouping tints
+for label contrast. It is wired into `npm run check`, and it has already caught
+a blue-on-blue pair that landed on the Bagmati/Gandaki border.
 
 **Look at the rendered page.** Status codes and geometry checks do not tell you
 whether something looks right. Use the Chrome DevTools MCP.
 
 ## Adding a dataset
 
+0. Check `robots.txt`, and check whether the data is already inside a file you
+   download. Local-unit geometry sat in the COD archive we had been fetching
+   monthly; a crosswalk was nearly built before anyone looked.
 1. Connector in `ingestion/sources/`, registered in `ingestion/run.py`
 2. Declare raw tables in `transform/models/staging/_sources.yml`
 3. Staging model — rename, type, trim; no joins

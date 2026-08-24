@@ -1,0 +1,55 @@
+dataset_id: nso-nphc-2021
+title: Nepal — National Population and Housing Census 2021
+description: >
+  Official census results from Nepal's National Statistics Office, published as
+  per-province Excel tables covering every administrative level down to local
+  government. The only authoritative source of statistics below district level.
+publisher_org_id: nso
+acquired_from_org_id: nso
+acquisition_method: official_download
+source_tier: A
+url: https://censusresults.nsonepal.gov.np/
+licence_id: nso-official-statistics
+licence_statement_url: https://censusresults.nsonepal.gov.np/how-to-use
+commercial_reuse: permitted_with_attribution
+rights_review_status: reviewed_ok
+retrieved: '2026-08-23'
+vintage: '2021'
+time_coverage: '2021'
+geographic_granularity: local_unit
+update_frequency: decennial
+revises_published_values: false
+ingestion_difficulty: hard
+contains_personal_data: false
+caveats:
+  - >
+    NSO states "Copyright © National Statistics Office 2023. All rights reserved."
+    and publishes no open-licence grant. Recording this as reusable with
+    attribution is a deliberate DataNepal decision, not a term NSO has offered:
+    these are official state statistics published for public use, only
+    aggregates are republished, and every figure names NSO and links to source.
+    Anyone relying on these figures commercially should confirm terms with NSO.
+  - >
+    Each district carries an INSTITUTIONAL row for population not resident in a
+    household — barracks, hostels, prisons, hospitals. It is 239,098 people
+    nationally and belongs to no local government. Local-unit figures therefore
+    sum to 28,925,480, not to the national 29,164,578; the difference is carried
+    as residence_type = institutional at district level so the hierarchy still
+    reconciles.
+  - >
+    The census tables carry no P-codes. Local units are matched to the spine on
+    district, base name and unit type, which resolves 751 of 753 directly with
+    no type disagreements. The remaining two are corrected by an explicit,
+    committed crosswalk (transform/seeds/nso_name_fixes.csv) rather than by
+    fuzzy name matching.
+  - >
+    Literacy figures cover the population aged 5 and over, not the whole
+    population. Rates computed against total population would understate
+    literacy everywhere by the size of the under-five cohort.
+  - >
+    NSO spells the sub-metropolitan and metropolitan suffixes "Metropolitian"
+    throughout these files. Ingestion accepts both spellings.
+  - >
+    This is the 2021 census, an enumeration rather than a projection. It must
+    never be presented interchangeably with the UNFPA 2023 projections also
+    published here.

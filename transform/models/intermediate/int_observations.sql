@@ -105,10 +105,180 @@ economy as (
     inner join {{ ref('int_places') }} p on p.place_id = pi.place_id
 ),
 
+
+/* ------------------------------------------------------------ census 2021 */
+
+/*
+  NSO census population and households.
+
+  Two things make this structurally unlike the UNFPA series above, and both are
+  the point of adding it:
+
+  It reaches local government, which no other source does -- 753 places that
+  previously had geometry and a name but not a single statistic.
+
+  It carries a `residence_type` dimension. Local-unit figures are household
+  population; each district additionally reports institutional population
+  (barracks, hostels, prisons, hospitals) belonging to no local unit. Without
+  that dimension, districts would not equal the sum of their local units and
+  every per-capita figure below district level would be quietly wrong by
+  239,098 people nationally.
+*/
+census_population_long as (
+    select
+        pl.place_id,
+        pop.level,
+        -- The census reference date. A census is an enumeration on a date, not
+        -- a calendar-year average, but period_type 'year' keeps it comparable
+        -- with the annual series it sits beside.
+        case
+            when pop.level = 'institutional' then 'institutional'
+            when pop.level = 'local' then 'household'
+            else 'all'
+        end as residence_type,
+        sex_col.sex,
+        sex_col.value
+    from {{ ref('stg_nso__census_population') }} pop
+    inner join {{ ref('stg_nso__census_places') }} pl
+        on pl.level = pop.level
+       and coalesce(pl.district_name, '~') = coalesce(pop.district_name, '~')
+       and coalesce(pl.base_name, '~') = coalesce(pop.base_name, '~')
+       -- unit_type is part of the key, not decoration: without it, two
+       -- crosswalk rows differing only by type fan every observation out.
+       and coalesce(pl.unit_type, '~') = coalesce(pop.unit_type, '~')
+    cross join unnest([
+        struct_pack(sex := 'all',    value := pop.population_total),
+        struct_pack(sex := 'male',   value := pop.population_male),
+        struct_pack(sex := 'female', value := pop.population_female)
+    ]) as t(sex_col)
+    where sex_col.value is not null
+),
+
+census_population_shaped as (
+    select
+        'nso-nphc-2021'                as dataset_id,
+        'population'                   as indicator_id,
+        place_id,
+        date '2021-11-25'              as period_start,
+        date '2021-11-25'              as period_end,
+        'instant'                      as period_type,
+        cast(value as double)          as value_numeric,
+        cast(null as varchar)          as value_text,
+        'persons'                      as unit_id,
+        'actual'                       as status,
+        [
+            struct_pack(dimension_id := 'sex',            member_id := sex),
+            struct_pack(dimension_id := 'residence_type', member_id := residence_type)
+        ] as dimensions
+    from census_population_long
+),
+
+census_households as (
+    select
+        'nso-nphc-2021'                          as dataset_id,
+        'households'                             as indicator_id,
+        pl.place_id,
+        date '2021-11-25'                        as period_start,
+        date '2021-11-25'                        as period_end,
+        'instant'                                as period_type,
+        cast(pop.households as double)           as value_numeric,
+        cast(null as varchar)                    as value_text,
+        'households'                             as unit_id,
+        'actual'                                 as status,
+        [
+            struct_pack(
+                dimension_id := 'residence_type',
+                member_id := case
+                    when pop.level = 'institutional' then 'institutional'
+                    when pop.level = 'local' then 'household'
+                    else 'all'
+                end
+            )
+        ] as dimensions
+    from {{ ref('stg_nso__census_population') }} pop
+    inner join {{ ref('stg_nso__census_places') }} pl
+        on pl.level = pop.level
+       and coalesce(pl.district_name, '~') = coalesce(pop.district_name, '~')
+       and coalesce(pl.base_name, '~') = coalesce(pop.base_name, '~')
+       -- unit_type is part of the key, not decoration: without it, two
+       -- crosswalk rows differing only by type fan every observation out.
+       and coalesce(pl.unit_type, '~') = coalesce(pop.unit_type, '~')
+    where pop.households is not null
+),
+
+/*
+  Literacy. Published as three indicators rather than one, deliberately.
+
+  A rate on its own cannot be re-aggregated: averaging the literacy rates of two
+  local units of different sizes is wrong, and a consumer who only has the rate
+  has no way to do it correctly. So the numerator and the denominator are
+  published alongside it, both additive, and the rate is marked is_additive =
+  false. That is the difference between publishing a number and publishing data.
+*/
+census_literacy_base as (
+    select
+        pl.place_id,
+        lit.sex,
+        lit.population_5plus,
+        lit.can_read_and_write
+    from {{ ref('stg_nso__census_literacy') }} lit
+    inner join {{ ref('stg_nso__census_places') }} pl
+        on pl.level = lit.level
+       and coalesce(pl.district_name, '~') = coalesce(lit.district_name, '~')
+       and coalesce(pl.base_name, '~') = coalesce(lit.base_name, '~')
+       and coalesce(pl.unit_type, '~') = coalesce(lit.unit_type, '~')
+    where lit.level in ('province', 'district', 'local')
+),
+
+census_literacy_shaped as (
+    select
+        'nso-nphc-2021'       as dataset_id,
+        m.indicator_id,
+        b.place_id,
+        date '2021-11-25'     as period_start,
+        date '2021-11-25'     as period_end,
+        'instant'             as period_type,
+        m.value               as value_numeric,
+        cast(null as varchar) as value_text,
+        m.unit_id,
+        'actual'              as status,
+        [struct_pack(dimension_id := 'sex', member_id := b.sex)] as dimensions
+    from census_literacy_base b
+    cross join unnest([
+        struct_pack(
+            indicator_id := 'population_5plus',
+            unit_id := 'persons',
+            value := cast(b.population_5plus as double)
+        ),
+        struct_pack(
+            indicator_id := 'literate_population',
+            unit_id := 'persons',
+            value := cast(b.can_read_and_write as double)
+        ),
+        struct_pack(
+            indicator_id := 'literacy_rate',
+            unit_id := 'percent',
+            -- Percent, 0-100, to match the `percent` unit. Storing a 0-1 share
+            -- against a 0-100 unit is how "female share 0.5%" reached a page.
+            value := case
+                when b.population_5plus > 0
+                then 100.0 * b.can_read_and_write / b.population_5plus
+            end
+        )
+    ]) as t(m)
+    where m.value is not null
+),
+
 unioned as (
     select * from population_shaped
     union all by name
     select * from economy
+    union all by name
+    select * from census_population_shaped
+    union all by name
+    select * from census_households
+    union all by name
+    select * from census_literacy_shaped
 ),
 
 keyed as (

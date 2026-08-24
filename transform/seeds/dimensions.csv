@@ -1,3 +1,5 @@
 dimension_id,name_en,name_ne,description,is_hierarchical
 sex,Sex,लिङ्ग,"Sex as recorded by the source. 'all' is the total, not a third category.",false
 age_band,Age band,उमेर समूह,Five-year age bands with an open-ended top band.,false
+literacy_status,Literacy status,साक्षरता स्थिति,"Self-reported ability to read and write, for the population aged 5 and over. Members are exhaustive and disjoint, so they sum to the 5-plus population.",false
+residence_type,Residence type,बासस्थान प्रकार,"Whether population is resident in a household or in an institution such as a barracks, hostel, prison or hospital. NSO reports institutional population only at district level, and it belongs to no local unit.",false

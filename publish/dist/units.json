@@ -11,5 +11,6 @@
 	{"unit_id":"usd_constant_2015","unit_kind":"currency","symbol":"US$","name_en":"US dollars (constant 2015 prices)","currency_code":"USD","price_basis":"constant_2015","notes":"Real terms; comparable across periods."},
 	{"unit_id":"npr_current","unit_kind":"currency","symbol":"रू","name_en":"Nepalese rupees (current prices)","currency_code":"NPR","price_basis":"current","notes":null},
 	{"unit_id":"npr_constant","unit_kind":"currency","symbol":"रू","name_en":"Nepalese rupees (constant prices)","currency_code":"NPR","price_basis":"constant","notes":"Base year recorded in the indicator definition."},
-	{"unit_id":"years","unit_kind":"duration","symbol":"yr","name_en":"Years","currency_code":null,"price_basis":null,"notes":null}
+	{"unit_id":"years","unit_kind":"duration","symbol":"yr","name_en":"Years","currency_code":null,"price_basis":null,"notes":null},
+	{"unit_id":"households","unit_kind":"count","symbol":null,"name_en":"Households","currency_code":null,"price_basis":null,"notes":"Counted dwelling units. An institutional facility counts as one household in census tables."}
 ]

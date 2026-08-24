@@ -2,16 +2,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
+  comparisonFor,
   country,
   districtsOf,
   formatCompact,
   formatNumber,
   formatPercent,
-  indicatorSlug,
   localUnitMapFor,
   localUnitsOf,
   LOCAL_UNIT_TYPES,
   placeBySlug,
+  placeProfile,
   populationOf,
   provinces,
   sourcesFor,
@@ -20,6 +21,7 @@ import {
 } from "@/lib/data";
 import { AgePyramid } from "@/components/AgePyramid";
 import { ReferenceMap } from "@/components/ReferenceMap";
+import { PlaceProfile, profileSections } from "@/components/PlaceProfile";
 import {
   AnchoredSection,
   Crumbs,
@@ -84,12 +86,26 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
   const place = await placeBySlug("district", district, prov.place_id);
   if (!place) notFound();
 
-  const [pop, units, np, localMap] = await Promise.all([
-    populationOf(place),
-    localUnitsOf(place.place_id),
-    country(),
-    localUnitMapFor(place.place_id),
-  ]);
+  const [pop, units, np, localMap, muni, rural, subMetro, metro, profile] =
+    await Promise.all([
+      populationOf(place),
+      localUnitsOf(place.place_id),
+      country(),
+      localUnitMapFor(place.place_id),
+      comparisonFor("population", "municipality"),
+      comparisonFor("population", "rural_municipality"),
+      comparisonFor("population", "sub_metropolitan"),
+      comparisonFor("population", "metropolitan"),
+      placeProfile(place),
+    ]);
+
+  // One lookup across all four local-unit types: the census publishes them as
+  // separate place types, but a district list wants them together.
+  const localPop = new Map(
+    [muni, rural, subMetro, metro]
+      .flatMap((c) => c.rows)
+      .map((r) => [r.place.place_id, r.value] as const),
+  );
   const national = np ? await populationOf(np) : null;
   const provincePop = await populationOf(prov);
 
@@ -109,8 +125,13 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
     "rural_municipality",
   ].filter((t) => byType.has(t));
 
+  /*
+    Sections come from the data. The profile contributes one per topic this
+    district has, which is why adding the census put an Education section on
+    every province, district and local government at once with no change here.
+  */
   const sections = [
-    ...(pop ? [{ id: "population", label: "Population" }] : []),
+    ...profileSections(profile),
     ...(pop && pop.bands.length ? [{ id: "age-sex", label: "Age & sex" }] : []),
     ...(units.length ? [{ id: "local-governments", label: "Local governments" }] : []),
     { id: "sources", label: "Sources" },
@@ -169,52 +190,8 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
 
       <SectionNav sections={sections} />
 
-      {pop && (
-        <AnchoredSection
-          id="population"
-          title="Population"
-          note={`${pop.period} projection from UNFPA. Nepal's most recent census was 2021.`}
-        >
-          <div className="grid gap-8 sm:grid-cols-3">
-            <div>
-              <div className="text-label text-ink-faint uppercase">Total</div>
-              <div className="text-ink tabular mt-1 text-[1.75rem] leading-none font-semibold">
-                {formatNumber(pop.total)}
-              </div>
-            </div>
-            <div>
-              <div className="text-label text-ink-faint flex items-center gap-1.5 uppercase">
-                <span aria-hidden className="bg-series-1 size-2 rounded-[2px]" />
-                Female
-              </div>
-              <div className="text-ink tabular mt-1 text-[1.75rem] leading-none font-semibold">
-                {formatNumber(pop.female)}
-              </div>
-              <div className="text-ink-faint mt-1 text-[12px]">
-                {formatPercent(pop.femaleShare)}
-              </div>
-            </div>
-            <div>
-              <div className="text-label text-ink-faint flex items-center gap-1.5 uppercase">
-                <span aria-hidden className="bg-series-2 size-2 rounded-[2px]" />
-                Male
-              </div>
-              <div className="text-ink tabular mt-1 text-[1.75rem] leading-none font-semibold">
-                {formatNumber(pop.male)}
-              </div>
-              <div className="text-ink-faint mt-1 text-[12px]">
-                {formatPercent(1 - (pop.femaleShare ?? 0))}
-              </div>
-            </div>
-          </div>
-          <p className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-[13px]">
-            <Link href={`/indicators/${indicatorSlug("population")}/`}>
-              Population indicator →
-            </Link>
-            <Link href={`/np/${prov.slug}/`}>Compare within {prov.name_en} →</Link>
-          </p>
-        </AnchoredSection>
-      )}
+      {/* Every topic this district has data for, rendered generically. */}
+      <PlaceProfile profile={profile} placeName={place.name_en} />
 
       {pop && pop.bands.length > 0 && (
         <AnchoredSection
@@ -230,14 +207,15 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
         <AnchoredSection
           id="local-governments"
           title="Local governments"
-          note={`${units.length} in this district. Population at this level is not published by the source used here, which stops at district.`}
+          note={`${units.length} in this district, with 2021 census population. Each has its own page.`}
         >
           {/*
-            A reference map, not a choropleth. Nothing is published at this
-            level -- the population source stops at district -- so there is no
-            magnitude to shade by, and shading a map with data we do not have
-            would be worse than not drawing one. Fill carries unit type instead,
-            which is the same grouping the lists below already use.
+            A reference map rather than a choropleth, even though population is
+            now published at this level. Fill carries unit type, because on a
+            district page the question this map answers is "what is in here and
+            what kind of thing is it" -- the ranked list beside it answers "how
+            large". The population choropleth for these units belongs on a
+            comparison surface, not here.
           */}
           {localMap.units.length > 0 && (
             <div className="mb-8">
@@ -246,10 +224,10 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
                   placeId: u.placeId,
                   name: u.name,
                   nameNe: u.nameNe,
-                  // Local units have no pages of their own yet, so a link would
-                  // be a promise we cannot keep. Null renders a named shape
-                  // rather than a link, and keeps the caption honest.
-                  href: null,
+                  // These have their own pages now, so the shapes are links.
+                  href: `/np/${prov.slug}/${place.slug}/${
+                    units.find((x) => x.place_id === u.placeId)?.slug ?? ""
+                  }/`,
                   geometryGeoJson: u.geometryGeoJson,
                   group: u.placeType,
                 }))}
@@ -282,13 +260,20 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
                 <h3 className="text-label text-ink-faint mb-2 uppercase">
                   {TYPE_LABELS[type] ?? type} · {byType.get(type)!.length}
                 </h3>
-                <ul className="grid grid-cols-1 gap-x-8 gap-y-1 text-[13px] sm:grid-cols-2 lg:grid-cols-3">
+                <ul className="divide-line grid grid-cols-1 gap-x-10 text-[13px] sm:grid-cols-2 lg:grid-cols-3">
                   {byType.get(type)!.map((u) => (
-                    <li key={u.place_id}>
-                      <span className="text-ink">{u.name_en}</span>
-                      {u.name_ne && (
-                        <span className="text-ink-faint"> · {u.name_ne}</span>
-                      )}
+                    <li
+                      key={u.place_id}
+                      className="border-line flex items-baseline justify-between gap-3 border-b py-1.5"
+                    >
+                      <Link href={`/np/${prov.slug}/${place.slug}/${u.slug}/`}>
+                        {u.name_en}
+                      </Link>
+                      <span className="text-ink-faint tabular shrink-0">
+                        {localPop.has(u.place_id)
+                          ? formatNumber(localPop.get(u.place_id))
+                          : "—"}
+                      </span>
                     </li>
                   ))}
                 </ul>

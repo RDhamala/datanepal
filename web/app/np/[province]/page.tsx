@@ -8,10 +8,10 @@ import {
   formatCompact,
   formatNumber,
   formatPercent,
-  indicatorSlug,
   localUnitsOf,
   mapFor,
   placeBySlug,
+  placeProfile,
   populationOf,
   provinces,
   sourcesFor,
@@ -20,6 +20,7 @@ import {
 } from "@/lib/data";
 import { Choropleth } from "@/components/Choropleth";
 import { AgePyramid } from "@/components/AgePyramid";
+import { PlaceProfile, profileSections } from "@/components/PlaceProfile";
 import { RankedBars } from "@/components/charts";
 import {
   AnchoredSection,
@@ -71,10 +72,11 @@ export default async function ProvincePage({ params }: { params: Promise<Params>
   const place = await placeBySlug("province", province);
   if (!place) notFound();
 
-  const [pop, districtList, np] = await Promise.all([
+  const [pop, districtList, np, profile] = await Promise.all([
     populationOf(place),
     districtsOf(place.place_id),
     country(),
+    placeProfile(place),
   ]);
   const national = np ? await populationOf(np) : null;
   const share =
@@ -93,8 +95,14 @@ export default async function ProvincePage({ params }: { params: Promise<Params>
     await Promise.all(districtList.map((d) => localUnitsOf(d.place_id)))
   ).flat();
 
+  /*
+    Sections come from the data, not from a list maintained here. The profile
+    contributes one per topic the province has, so the census adding education
+    put an Education section on all 7 provinces, 77 districts and 753 local
+    governments at once, and nothing in this file changed.
+  */
   const sections = [
-    { id: "population", label: "Population" },
+    ...profileSections(profile),
     ...(pop && pop.bands.length ? [{ id: "age-sex", label: "Age & sex" }] : []),
     ...(districtRows.length ? [{ id: "districts", label: "Districts" }] : []),
     { id: "sources", label: "Sources" },
@@ -156,51 +164,8 @@ export default async function ProvincePage({ params }: { params: Promise<Params>
 
       <SectionNav sections={sections} />
 
-      {pop && (
-        <AnchoredSection
-          id="population"
-          title="Population"
-          note={`${pop.period} projection from UNFPA. Nepal's most recent census was 2021.`}
-        >
-          <div className="grid gap-8 sm:grid-cols-3">
-            <div>
-              <div className="text-label text-ink-faint uppercase">Total</div>
-              <div className="text-ink tabular mt-1 text-[1.75rem] leading-none font-semibold">
-                {formatNumber(pop.total)}
-              </div>
-            </div>
-            <div>
-              <div className="text-label text-ink-faint flex items-center gap-1.5 uppercase">
-                <span aria-hidden className="bg-series-1 size-2 rounded-[2px]" />
-                Female
-              </div>
-              <div className="text-ink tabular mt-1 text-[1.75rem] leading-none font-semibold">
-                {formatNumber(pop.female)}
-              </div>
-              <div className="text-ink-faint mt-1 text-[12px]">
-                {formatPercent(pop.femaleShare)}
-              </div>
-            </div>
-            <div>
-              <div className="text-label text-ink-faint flex items-center gap-1.5 uppercase">
-                <span aria-hidden className="bg-series-2 size-2 rounded-[2px]" />
-                Male
-              </div>
-              <div className="text-ink tabular mt-1 text-[1.75rem] leading-none font-semibold">
-                {formatNumber(pop.male)}
-              </div>
-              <div className="text-ink-faint mt-1 text-[12px]">
-                {formatPercent(1 - (pop.femaleShare ?? 0))}
-              </div>
-            </div>
-          </div>
-          <p className="mt-6 text-[13px]">
-            <Link href={`/indicators/${indicatorSlug("population")}/`}>
-              Population indicator, all places →
-            </Link>
-          </p>
-        </AnchoredSection>
-      )}
+      {/* Every topic this province has data for, rendered generically. */}
+      <PlaceProfile profile={profile} placeName={place.name_en} />
 
       {pop && pop.bands.length > 0 && (
         <AnchoredSection

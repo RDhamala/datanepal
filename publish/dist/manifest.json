@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-23T18:23:10.571024+00:00",
+  "generated_at": "2026-08-24T01:25:34.793424+00:00",
   "table_count": 16,
   "tables": [
     {
@@ -19,10 +19,10 @@
       ],
       "attribution": [],
       "caveats": [],
-      "row_count": 5,
+      "row_count": 6,
       "parquet": "datasets.parquet",
       "json": "datasets.json",
-      "bytes": 6861
+      "bytes": 7323
     },
     {
       "table": "dimension_members",
@@ -41,10 +41,10 @@
       ],
       "attribution": [],
       "caveats": [],
-      "row_count": 21,
+      "row_count": 29,
       "parquet": "dimension_members.parquet",
       "json": "dimension_members.json",
-      "bytes": 1554
+      "bytes": 2030
     },
     {
       "table": "dimensions",
@@ -63,10 +63,10 @@
       ],
       "attribution": [],
       "caveats": [],
-      "row_count": 2,
+      "row_count": 4,
       "parquet": "dimensions.parquet",
       "json": "dimensions.json",
-      "bytes": 1160
+      "bytes": 1961
     },
     {
       "table": "geography",
@@ -115,10 +115,10 @@
       ],
       "attribution": [],
       "caveats": [],
-      "row_count": 5,
+      "row_count": 9,
       "parquet": "indicators.parquet",
       "json": "indicators.json",
-      "bytes": 3562
+      "bytes": 3943
     },
     {
       "table": "licences",
@@ -137,10 +137,10 @@
       ],
       "attribution": [],
       "caveats": [],
-      "row_count": 7,
+      "row_count": 8,
       "parquet": "licences.parquet",
       "json": "licences.json",
-      "bytes": 2596
+      "bytes": 3016
     },
     {
       "table": "observation_dimensions",
@@ -166,10 +166,10 @@
       "caveats": [
         "An observation with no dimensions has no rows here. That is normal for scalar indicators like national inflation.\n"
       ],
-      "row_count": 9180,
+      "row_count": 23118,
       "parquet": "observation_dimensions.parquet",
-      "json": "observation_dimensions.json",
-      "bytes": 95882
+      "json": null,
+      "bytes": 296270
     },
     {
       "table": "observations",
@@ -180,17 +180,20 @@
       "geography_level": "mixed",
       "sources": [
         "cod-ps-npl",
-        "worldbank-npl"
+        "worldbank-npl",
+        "nso-nphc-2021"
       ],
-      "effective_licence": "cc-by-igo-3.0",
+      "effective_licence": "nso-official-statistics",
       "share_alike": false,
       "contributing_licences": [
         "cc-by-4.0",
-        "cc-by-igo-3.0"
+        "cc-by-igo-3.0",
+        "nso-official-statistics"
       ],
       "attribution": [
         "United Nations Population Fund",
-        "World Bank"
+        "World Bank",
+        "National Statistics Office"
       ],
       "caveats": [
         "Dimensions are not columns. They live in observation_dimensions, keyed by dimension_key, so a new dataset introduces dimension members rather than schema changes.\n",
@@ -198,10 +201,10 @@
         "Check the indicator's is_additive flag before aggregating. Rates and ratios (inflation, GDP per capita, density) must not be summed or unweighted-averaged.\n",
         "A NULL value with status 'suppressed' or 'not_collected' is meaningful and distinct from zero.\n"
       ],
-      "row_count": 4781,
+      "row_count": 15974,
       "parquet": "observations.parquet",
       "json": "observations.json",
-      "bytes": 110539
+      "bytes": 389538
     },
     {
       "table": "organisations",
@@ -362,10 +365,10 @@
       ],
       "attribution": [],
       "caveats": [],
-      "row_count": 21,
+      "row_count": 22,
       "parquet": "table_sources.parquet",
       "json": "table_sources.json",
-      "bytes": 698
+      "bytes": 714
     },
     {
       "table": "topics",
@@ -389,7 +392,7 @@
       "row_count": 12,
       "parquet": "topics.parquet",
       "json": "topics.json",
-      "bytes": 3015
+      "bytes": 3044
     },
     {
       "table": "units",
@@ -408,19 +411,19 @@
       ],
       "attribution": [],
       "caveats": [],
-      "row_count": 13,
+      "row_count": 14,
       "parquet": "units.parquet",
       "json": "units.json",
-      "bytes": 1972
+      "bytes": 2095
     }
   ],
   "history": {
     "table": "observation_history",
     "title": "Observation revision history",
     "description": "Append-only history of every published observation. One row per revision; is_current marks the present value. A superseded row keeps its original value and records when it was replaced.",
-    "row_count": 4781,
+    "row_count": 15974,
     "parquet": "observation_history.parquet",
-    "bytes": 111505
+    "bytes": 389704
   },
   "sources": [
     {
@@ -485,6 +488,40 @@
         "Coverage stops at district level; there is no local-unit breakdown.",
         "The open-ended top age band is spelled '80Plus' in current files and '80PL' in others. Ingestion accepts both and asserts the measure count per place.\n",
         "Published by UNFPA; DataNepal obtained this copy via the hdx platform. Attribute the publisher, not the platform."
+      ]
+    },
+    {
+      "dataset_id": "nso-nphc-2021",
+      "title": "Nepal — National Population and Housing Census 2021",
+      "publisher": "National Statistics Office",
+      "publisher_org_id": "nso",
+      "publisher_name_ne": "राष्ट्रिय तथ्याङ्क कार्यालय",
+      "publisher_homepage": "https://nsonepal.gov.np",
+      "source_tier": "A",
+      "acquired_from": "National Statistics Office",
+      "acquired_from_org_id": "nso",
+      "acquisition_method": "official_download",
+      "acquisition_url": null,
+      "acquired_indirectly": false,
+      "url": "https://censusresults.nsonepal.gov.np/",
+      "licence": "nso-official-statistics",
+      "licence_statement_url": "https://censusresults.nsonepal.gov.np/how-to-use",
+      "commercial_reuse": "permitted_with_attribution",
+      "rights_review_status": "reviewed_ok",
+      "retrieved": "2026-08-23",
+      "vintage": "2021",
+      "time_coverage": "2021",
+      "geographic_granularity": "local_unit",
+      "methodology_url": null,
+      "update_frequency": "decennial",
+      "revises_published_values": false,
+      "caveats": [
+        "NSO states \"Copyright © National Statistics Office 2023. All rights reserved.\" and publishes no open-licence grant. Recording this as reusable with attribution is a deliberate DataNepal decision, not a term NSO has offered: these are official state statistics published for public use, only aggregates are republished, and every figure names NSO and links to source. Anyone relying on these figures commercially should confirm terms with NSO.\n",
+        "Each district carries an INSTITUTIONAL row for population not resident in a household — barracks, hostels, prisons, hospitals. It is 239,098 people nationally and belongs to no local government. Local-unit figures therefore sum to 28,925,480, not to the national 29,164,578; the difference is carried as residence_type = institutional at district level so the hierarchy still reconciles.\n",
+        "The census tables carry no P-codes. Local units are matched to the spine on district, base name and unit type, which resolves 751 of 753 directly with no type disagreements. The remaining two are corrected by an explicit, committed crosswalk (transform/seeds/nso_name_fixes.csv) rather than by fuzzy name matching.\n",
+        "Literacy figures cover the population aged 5 and over, not the whole population. Rates computed against total population would understate literacy everywhere by the size of the under-five cohort.\n",
+        "NSO spells the sub-metropolitan and metropolitan suffixes \"Metropolitian\" throughout these files. Ingestion accepts both spellings.\n",
+        "This is the 2021 census, an enumeration rather than a projection. It must never be presented interchangeably with the UNFPA 2023 projections also published here.\n"
       ]
     },
     {

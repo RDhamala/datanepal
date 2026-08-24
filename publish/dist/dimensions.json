@@ -1,4 +1,6 @@
 [
 	{"dimension_id":"sex","name_en":"Sex","name_ne":"लिङ्ग","description":"Sex as recorded by the source. 'all' is the total, not a third category.","is_hierarchical":false},
-	{"dimension_id":"age_band","name_en":"Age band","name_ne":"उमेर समूह","description":"Five-year age bands with an open-ended top band.","is_hierarchical":false}
+	{"dimension_id":"age_band","name_en":"Age band","name_ne":"उमेर समूह","description":"Five-year age bands with an open-ended top band.","is_hierarchical":false},
+	{"dimension_id":"literacy_status","name_en":"Literacy status","name_ne":"साक्षरता स्थिति","description":"Self-reported ability to read and write, for the population aged 5 and over. Members are exhaustive and disjoint, so they sum to the 5-plus population.","is_hierarchical":false},
+	{"dimension_id":"residence_type","name_en":"Residence type","name_ne":"बासस्थान प्रकार","description":"Whether population is resident in a household or in an institution such as a barracks, hostel, prison or hospital. NSO reports institutional population only at district level, and it belongs to no local unit.","is_hierarchical":false}
 ]

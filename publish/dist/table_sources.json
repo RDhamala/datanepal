@@ -9,6 +9,7 @@
 	{"table_name":"observation_dimensions","dataset_id":"cod-ps-npl"},
 	{"table_name":"observation_dimensions","dataset_id":"worldbank-npl"},
 	{"table_name":"observations","dataset_id":"cod-ps-npl"},
+	{"table_name":"observations","dataset_id":"nso-nphc-2021"},
 	{"table_name":"observations","dataset_id":"worldbank-npl"},
 	{"table_name":"organisations","dataset_id":"datanepal-internal"},
 	{"table_name":"place_boundaries","dataset_id":"cod-ab-npl"},

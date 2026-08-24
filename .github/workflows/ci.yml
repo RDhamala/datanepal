@@ -144,11 +144,20 @@ jobs:
       - name: Verify page count
         run: |
           COUNT=$(find web/out -name index.html | wc -l | tr -d ' ')
-          echo "generated $COUNT pages"
-          # 1 home + 7 provinces + 77 districts + 404. A collapse to a handful
-          # means generateStaticParams saw no data, which would otherwise ship
-          # silently as an almost-empty site.
-          if [ "$COUNT" -lt 80 ]; then
-            echo "::error::Only $COUNT pages generated; expected at least 80"
+          LOCAL=$(find web/out/np -mindepth 4 -maxdepth 4 -name index.html | wc -l | tr -d ' ')
+          echo "generated $COUNT pages, of which $LOCAL are local governments"
+          # 1 home + 7 provinces + 77 districts + 753 local governments + the
+          # browse and topic pages. A collapse to a handful means
+          # generateStaticParams saw no data, which would otherwise ship silently
+          # as an almost-empty site.
+          if [ "$COUNT" -lt 800 ]; then
+            echo "::error::Only $COUNT pages generated; expected at least 800"
+            exit 1
+          fi
+          # Checked exactly, not as a floor: 753 is an externally known count,
+          # and a partial geography load is the failure this platform is most
+          # exposed to. 752 pages would look fine and be wrong.
+          if [ "$LOCAL" -ne 753 ]; then
+            echo "::error::Generated $LOCAL local government pages; expected exactly 753"
             exit 1
           fi

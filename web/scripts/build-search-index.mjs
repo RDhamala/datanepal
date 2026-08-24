@@ -84,12 +84,13 @@ for (const p of places) {
       context = `District · ${prov.name_en}`;
     }
   } else if (LOCAL_TYPES.has(p.place_type)) {
-    // Local units have no page of their own yet; point at their district so the
-    // result is still useful rather than absent.
+    // These have their own pages now. Until they did, search pointed at the
+    // district and an anchor -- useful, but it meant the 753 places closest to
+    // where public money is spent had no destination of their own.
     const district = p.parent_place_id ? byId.get(p.parent_place_id) : null;
     const prov = district?.parent_place_id ? byId.get(district.parent_place_id) : null;
     if (district && prov) {
-      href = `/np/${prov.slug}/${district.slug}/#local-governments`;
+      href = `/np/${prov.slug}/${district.slug}/${p.slug}/`;
       context = `${TYPE_LABEL[p.place_type]} · ${district.name_en}`;
     }
   }

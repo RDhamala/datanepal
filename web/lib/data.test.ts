@@ -276,9 +276,53 @@ describe("observations — population", () => {
     expect(pop!.status).toBe("projection");
   });
 
-  it("returns null for local units, where the source has no coverage", async () => {
-    const local = (await places()).find((p) => LOCAL_TYPES.has(p.place_type))!;
-    expect(await populationOf(local)).toBeNull();
+  /*
+    This block previously asserted that local units had no population at all,
+    which was true while the only source stopped at district. The NSO census
+    closed that gap, so the test now guards the thing that replaced it -- and
+    guards it by shape rather than by a hardcoded dimension key, because a
+    literal key is exactly what made every census figure invisible at first.
+  */
+  it("reads census population for local units", async () => {
+    const all = await places();
+    const local = all.filter((p) => LOCAL_TYPES.has(p.place_type));
+    expect(local.length).toBe(753);
+
+    const summary = await populationOf(local[0]);
+    expect(summary).not.toBeNull();
+    expect(summary!.total).toBeGreaterThan(0);
+    // An enumeration, not a projection. Presenting one as the other is the
+    // error this platform most needs to avoid.
+    expect(summary!.status).toBe("actual");
+    expect(summary!.period).toBe(2021);
+    // Sex splits, but no age detail: the ingested census tables carry sex and
+    // not age at this level, so the age pyramid correctly does not render.
+    expect(summary!.female + summary!.male).toBe(summary!.total);
+    expect(summary!.bands).toEqual([]);
+  });
+
+  it("gives every local unit a population, not just most of them", async () => {
+    // A partial load is the failure mode to fear: it raises no error and
+    // produces no obviously wrong row count. 752 would look fine.
+    const local = (await places()).filter((p) => LOCAL_TYPES.has(p.place_type));
+    const withPopulation = await Promise.all(
+      local.map(async (p) => ((await populationOf(p))?.total ?? 0) > 0),
+    );
+    expect(withPopulation.filter(Boolean).length).toBe(753);
+  });
+
+  it("keeps local units summing to the national census total", async () => {
+    // Local units carry household population; institutional population is
+    // reported per district and belongs to no local unit. The two together are
+    // the census total, and that is the arithmetic the residence_type
+    // dimension exists to make checkable.
+    const local = (await places()).filter((p) => LOCAL_TYPES.has(p.place_type));
+    const totals = await Promise.all(
+      local.map(async (p) => (await populationOf(p))?.total ?? 0),
+    );
+    const householdPopulation = totals.reduce((a, b) => a + b, 0);
+    expect(householdPopulation).toBe(28_925_480);
+    expect(householdPopulation + 239_098).toBe(29_164_578);
   });
 });
 
@@ -348,9 +392,21 @@ describe("manifest — provenance and licensing", () => {
     const obs = manifest().tables.find((t) => t.table === "observations")!;
     expect(obs.sources).toContain("cod-ps-npl");
     expect(obs.sources).toContain("worldbank-npl");
-    // Most restrictive of CC BY 4.0 and CC BY-IGO 3.0.
-    expect(obs.effective_licence).toBe("cc-by-igo-3.0");
-    expect(obs.contributing_licences).toEqual(["cc-by-4.0", "cc-by-igo-3.0"]);
+    expect(obs.sources).toContain("nso-nphc-2021");
+    /*
+      The census changed this answer, which is the computation working rather
+      than a regression. NSO states copyright and no open grant, so its terms
+      are recorded as a deliberate project assertion and rank as the most
+      conservative of the three -- and the whole observations table inherits it.
+      That is the contamination rule doing its job: if a reader may only reuse
+      the census with attribution to NSO, they may only reuse the table with it.
+    */
+    expect(obs.effective_licence).toBe("nso-official-statistics");
+    expect(obs.contributing_licences).toEqual([
+      "cc-by-4.0",
+      "cc-by-igo-3.0",
+      "nso-official-statistics",
+    ]);
   });
 
   it("publishes nothing under a share-alike licence", () => {
