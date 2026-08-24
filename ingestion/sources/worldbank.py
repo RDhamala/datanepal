@@ -59,6 +59,12 @@ INDICATORS: dict[str, tuple[str, str]] = {
     "AG.LND.AGRI.ZS": ("agricultural_land_pct", "percent"),
     "AG.YLD.CREL.KG": ("cereal_yield_kg_per_ha", "kg_per_hectare"),
     "AG.PRD.FOOD.XD": ("food_production_index", "index"),
+    # Infrastructure topic's first indicators -- IEA/ITU-compiled access
+    # measures, same aggregator pattern again.
+    "EG.ELC.ACCS.ZS": ("electricity_access_pct", "percent"),
+    "IT.NET.USER.ZS": ("internet_users_pct", "percent"),
+    "IT.CEL.SETS.P2": ("mobile_subscriptions_per100", "per_100_people"),
+    "EG.CFT.ACCS.ZS": ("clean_cooking_fuel_access_pct", "percent"),
 }
 
 # The API is generous but paginated; one page per indicator is plenty for a

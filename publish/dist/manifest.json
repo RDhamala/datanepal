@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-24T20:26:08.016594+00:00",
+  "generated_at": "2026-08-24T20:38:44.883556+00:00",
   "table_count": 16,
   "tables": [
     {
@@ -115,10 +115,10 @@
       ],
       "attribution": [],
       "caveats": [],
-      "row_count": 17,
+      "row_count": 21,
       "parquet": "indicators.parquet",
       "json": "indicators.json",
-      "bytes": 5459
+      "bytes": 6123
     },
     {
       "table": "licences",
@@ -169,7 +169,7 @@
       "row_count": 43239,
       "parquet": "observation_dimensions.parquet",
       "json": null,
-      "bytes": 503454
+      "bytes": 503516
     },
     {
       "table": "observations",
@@ -201,10 +201,10 @@
         "Check the indicator's is_additive flag before aggregating. Rates and ratios (inflation, GDP per capita, density) must not be summed or unweighted-averaged.\n",
         "A NULL value with status 'suppressed' or 'not_collected' is meaningful and distinct from zero.\n"
       ],
-      "row_count": 26502,
+      "row_count": 26643,
       "parquet": "observations.parquet",
       "json": null,
-      "bytes": 608350
+      "bytes": 612127
     },
     {
       "table": "organisations",
@@ -392,7 +392,7 @@
       "row_count": 12,
       "parquet": "topics.parquet",
       "json": "topics.json",
-      "bytes": 3055
+      "bytes": 3060
     },
     {
       "table": "units",
@@ -411,19 +411,19 @@
       ],
       "attribution": [],
       "caveats": [],
-      "row_count": 17,
+      "row_count": 18,
       "parquet": "units.parquet",
       "json": "units.json",
-      "bytes": 2344
+      "bytes": 2442
     }
   ],
   "history": {
     "table": "observation_history",
     "title": "Observation revision history",
     "description": "Append-only history of every published observation. One row per revision; is_current marks the present value. A superseded row keeps its original value and records when it was replaced.",
-    "row_count": 26502,
+    "row_count": 26643,
     "parquet": "observation_history.parquet",
-    "bytes": 611587
+    "bytes": 614797
   },
   "sources": [
     {

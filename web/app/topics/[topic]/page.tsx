@@ -87,6 +87,13 @@ const TOPIC_VIEW: Record<
     // figure that means less without the macro context first.
     headline: "agriculture_value_added_pct_gdp",
   },
+  infrastructure: {
+    // Electricity access is the indicator the topic's own description leads
+    // with, and at 97.9% it is also the most complete-feeling entry point --
+    // internet use (46%) or mobile subscriptions would read as a smaller,
+    // less finished story to open on.
+    headline: "electricity_access_pct",
+  },
   education: {
     headline: "literacy_rate",
     mapIndicator: "literacy_rate",

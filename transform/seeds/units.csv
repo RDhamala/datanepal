@@ -16,3 +16,4 @@ households,count,,Households,,,Counted dwelling units. An institutional facility
 per_1000_live_births,ratio,/1000 live births,Per 1000 live births,,,Not additive across places or periods.
 per_100000_live_births,ratio,/100000 live births,Per 100000 live births,,,Not additive across places or periods.
 kg_per_hectare,ratio,kg/ha,Kilograms per hectare,,,Not additive across places.
+per_100_people,ratio,/100 people,Per 100 people,,,"Not additive across places. Can exceed 100 for a subscription count, e.g. multiple SIMs per person."

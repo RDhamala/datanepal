@@ -15,5 +15,6 @@
 	{"unit_id":"households","unit_kind":"count","symbol":null,"name_en":"Households","currency_code":null,"price_basis":null,"notes":"Counted dwelling units. An institutional facility counts as one household in census tables."},
 	{"unit_id":"per_1000_live_births","unit_kind":"ratio","symbol":"/1000 live births","name_en":"Per 1000 live births","currency_code":null,"price_basis":null,"notes":"Not additive across places or periods."},
 	{"unit_id":"per_100000_live_births","unit_kind":"ratio","symbol":"/100000 live births","name_en":"Per 100000 live births","currency_code":null,"price_basis":null,"notes":"Not additive across places or periods."},
-	{"unit_id":"kg_per_hectare","unit_kind":"ratio","symbol":"kg/ha","name_en":"Kilograms per hectare","currency_code":null,"price_basis":null,"notes":"Not additive across places."}
+	{"unit_id":"kg_per_hectare","unit_kind":"ratio","symbol":"kg/ha","name_en":"Kilograms per hectare","currency_code":null,"price_basis":null,"notes":"Not additive across places."},
+	{"unit_id":"per_100_people","unit_kind":"ratio","symbol":"/100 people","name_en":"Per 100 people","currency_code":null,"price_basis":null,"notes":"Not additive across places. Can exceed 100 for a subscription count, e.g. multiple SIMs per person."}
 ]
