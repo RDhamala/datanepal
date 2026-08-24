@@ -1,5 +1,11 @@
 import Link from "next/link";
-import { formatChange, formatCompact, formatNumber, type Unit } from "@/lib/data";
+import {
+  formatChange,
+  formatCompact,
+  formatNumber,
+  formatWithUnit,
+  type Unit,
+} from "@/lib/data";
 
 /*
   The visualization system.
@@ -139,7 +145,7 @@ export function TrendChart({
         viewBox={`0 0 ${W} ${height}`}
         className="h-auto w-full"
         role="img"
-        aria-label={`${label}, ${minYear} to ${maxYear}. Latest value ${formatNumber(last.value)}.`}
+        aria-label={`${label}, ${minYear} to ${maxYear}. Latest value ${formatWithUnit(last.value, unit)}.`}
       >
         {ticks.map((t, i) => (
           <g key={i}>
