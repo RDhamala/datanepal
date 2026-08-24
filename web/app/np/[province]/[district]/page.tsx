@@ -8,9 +8,8 @@ import {
   formatCompact,
   formatNumber,
   formatPercent,
-  localUnitMapFor,
+  metricMapFor,
   localUnitsOf,
-  LOCAL_UNIT_TYPES,
   placeBySlug,
   placeProfile,
   populationOf,
@@ -20,7 +19,7 @@ import {
   tablesFor,
 } from "@/lib/data";
 import { AgePyramid } from "@/components/AgePyramid";
-import { ReferenceMap } from "@/components/ReferenceMap";
+import { MetricMap } from "@/components/MetricMap";
 import { PlaceProfile, profileSections } from "@/components/PlaceProfile";
 import {
   AnchoredSection,
@@ -104,7 +103,21 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
       populationOf(place),
       localUnitsOf(place.place_id),
       country(),
-      localUnitMapFor(place.place_id),
+      // Local governments, with every census measure published for them. The
+      // geometry and labels are laid out here; the browser only recolours.
+      localUnitsOf(place.place_id).then((units) =>
+        metricMapFor(
+          units,
+          [
+            "population",
+            "households",
+            "literacy_rate",
+            "literate_population",
+            "population_5plus",
+          ],
+          { maxWidth: 760, maxHeight: 560 },
+        ),
+      ),
       comparisonFor("population", "municipality"),
       comparisonFor("population", "rural_municipality"),
       comparisonFor("population", "sub_metropolitan"),
@@ -223,46 +236,23 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
           note={`${units.length} in this district, with 2021 census population. Each has its own page.`}
         >
           {/*
-            A reference map rather than a choropleth, even though population is
-            now published at this level. Fill carries unit type, because on a
-            district page the question this map answers is "what is in here and
-            what kind of thing is it" -- the ranked list beside it answers "how
-            large". The population choropleth for these units belongs on a
-            comparison surface, not here.
-          */}
-          {localMap.units.length > 0 && (
-            <div className="mb-8">
-              <ReferenceMap
-                shapes={localMap.units.map((u) => ({
-                  placeId: u.placeId,
-                  name: u.name,
-                  nameNe: u.nameNe,
-                  // These have their own pages now, so the shapes are links.
-                  href: `/np/${prov.slug}/${place.slug}/${
-                    units.find((x) => x.place_id === u.placeId)?.slug ?? ""
-                  }/`,
-                  geometryGeoJson: u.geometryGeoJson,
-                  group: u.placeType,
-                }))}
-                /*
-                  No district outline, deliberately.
+            An interactive map, because there is now more than one thing to see.
 
-                  The local units tile the district exactly, so their outer edge
-                  *is* the district border and an outline adds nothing. Drawing
-                  the admin-2 boundary over them looked wrong for a real reason:
-                  each admin level is simplified independently, admin 2 at
-                  tolerance 0.006 and admin 3 at 0.0015, so the same border
-                  carries different vertices at each level and the heavier
-                  stroke visibly missed the fill beneath it.
-                */
-                outlines={[]}
-                groupOrder={LOCAL_UNIT_TYPES.map((t) => t.type)}
-                legend={LOCAL_UNIT_TYPES.filter((t) =>
-                  localMap.units.some((u) => u.placeType === t.type),
-                ).map((t) => ({ group: t.type, label: t.label }))}
-                maxWidth={760}
-                maxHeight={520}
-                caption={`${localMap.units.length} local governments of ${place.name_en}, shaded by type.`}
+            Until the census there was one statistic below district level, so a
+            static map shaded by the only measure available was the whole truth.
+            There are five now, and a reader who can only see one has to take the
+            rest on faith from a table. Shapes, projection and labels are still
+            computed at build time -- none of them depend on the metric -- so the
+            client work is recolouring and nothing more.
+          */}
+          {localMap && (
+            <div className="mb-8">
+              <MetricMap
+                features={localMap.features}
+                metrics={localMap.metrics}
+                width={localMap.width}
+                height={localMap.height}
+                caption={`${localMap.features.length} local governments of ${place.name_en}, 2021 census.`}
               />
             </div>
           )}

@@ -215,8 +215,14 @@
   /* Map and chart geometry inherits stroke from the surface so borders between
      shapes read as separation rather than as data. */
   .geo-shape {
-    stroke: var(--color-surface);
-    stroke-width: 0.6;
+    /*
+      A surface-coloured hairline reads as separation against a saturated fill
+      and disappears against a pale one -- the lightest class of a sequential
+      ramp is very nearly the page. Mixing a little ink in keeps the border
+      present at both ends of the ramp.
+    */
+    stroke: color-mix(in srgb, var(--color-ink-faint) 45%, var(--color-surface));
+    stroke-width: 0.7;
     vector-effect: non-scaling-stroke;
     transition: fill 120ms ease;
   }
@@ -232,9 +238,20 @@
     "these belong together", and it survives greyscale, colour-vision
     deficiency, and the palest possible fills.
   */
+  /*
+    Local-unit borders carry the structure of this map, so they have to be
+    visible. They were --color-line-strong at 0.5, which against fills chosen to
+    be near-white left a district of eleven local governments reading as one
+    grey blob: the shapes were there and the divisions between them were not.
+
+    Now ink-faint at 0.8. Still clearly subordinate to the provincial outline
+    below, which is ink-soft at 1.6 -- the hierarchy is weight, and both ends of
+    it need to be legible for that to mean anything.
+  */
   .geo-district {
-    stroke: var(--color-line-strong);
-    stroke-width: 0.5;
+    stroke: var(--color-ink-faint);
+    stroke-width: 0.8;
+    stroke-linejoin: round;
     vector-effect: non-scaling-stroke;
     transition: fill 120ms ease;
   }
@@ -242,7 +259,7 @@
   a:focus-visible > .geo-district {
     fill: var(--color-selected);
     stroke: var(--color-ink);
-    stroke-width: 1.4;
+    stroke-width: 2;
   }
   .geo-province-outline {
     fill: none;

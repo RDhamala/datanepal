@@ -12,20 +12,22 @@
  * labels outside the frame pulled the eye away from the country and made a map
  * of 77 districts look like a map with a list stapled underneath it.
  *
- * No abbreviation is invented, and that is a researched position rather than a
- * cautious one. Nepal publishes no standard set of English short names for its
- * districts: OCHA's COD carries `adm2_name1/2/3` alternate-name fields and all
- * 77 are empty; Wikidata has zero P1813 "short name" values across all 79
- * district items; NSO's own census tables use full names throughout. What Nepal
- * does standardise is *numeric* -- three-digit district codes, postal codes,
- * ISO 3166-2 province codes -- none of which is a short name.
+ * Abbreviations come from a reviewed list, never from a rule.
  *
- * So an earlier version of this file was wrong to shorten "Nawalparasi East" to
- * "Nawalparasi E" and to truncate "Rukum West" to "Ruk…". Both were inventions,
- * and the truncation was worse than that: "Nawal…" was drawn beside
- * "Nawalparasi E" and is a prefix of two different districts.
+ * Nepal publishes no standard set of English short names for its districts:
+ * OCHA's COD carries `adm2_name1/2/3` alternate-name fields and all 77 are
+ * empty; Wikidata has zero P1813 "short name" values across all 79 district
+ * items; NSO's census tables use full names throughout. What Nepal standardises
+ * is *numeric* -- three-digit district codes, postal codes, ISO 3166-2 province
+ * codes -- none of which is a short name.
  *
- * What remains changes the *rendering* and never the name:
+ * That is why SHORT_NAMES is a table and not an algorithm. An earlier version
+ * generated abbreviations, which produced "Nawal…" drawn beside "Nawalparasi E"
+ * -- a prefix of two different districts with different populations. Every entry
+ * in the table is a decision someone made and can be argued with; a generated
+ * form is a decision nobody made.
+ *
+ * Otherwise the rendering changes and the name does not:
  *
  *   1. Full name, at each size down to a legibility floor.
  *   2. The administrative type word dropped -- "Phungling Municipality" ->
@@ -78,11 +80,39 @@ export type LabelLayout<T> = {
   borderline label rather than letting it spill across a border.
 */
 export function textWidth(text: string, fontPx: number): number {
-  return text.length * fontPx * 0.53;
+  // 0.56, not 0.53. The lower figure underestimated slightly, which is harmless
+  // in the middle of a map and clips a label placed against the frame:
+  // "Palungtar" rendered as "alungtar" on the Gorkha map. Erring high costs an
+  // occasional label its in-shape placement; erring low cuts letters off.
+  return text.length * fontPx * 0.56;
 }
 
 /*
-  The one permitted change to a name, and it is not an abbreviation.
+  Reviewed abbreviations, used only when the full name will not fit.
+
+  Curated, not generated. Keyed on the exact place name, so an entry applies to
+  both the district and the local government of the same name -- Kathmandu
+  district and Kathmandu Metropolitan City both become KTM, which is what a
+  reader of a Kathmandu-valley map wants.
+
+  KTM is the strongest of these: it is Tribhuvan International's IATA code and
+  is used for Kathmandu in ordinary Nepali writing. BKT and LTP are common
+  rather than official. "Nawal E" and "Nawal W" stand for the two halves of the
+  split Nawalparasi district, whose official Nepali names are Bardaghat Susta
+  Purba and Paschim.
+
+  Add to this list rather than making the engine cleverer.
+*/
+const SHORT_NAMES: Record<string, string> = {
+  Kathmandu: "KTM",
+  Bhaktapur: "BKT",
+  Lalitpur: "LTP",
+  "Nawalparasi East": "Nawal E",
+  "Nawalparasi West": "Nawal W",
+};
+
+/*
+  The one *derived* change to a name, and it is not an abbreviation.
 
   The spine stores a place's name and its place_type in separate fields --
   "Phungling" and "municipality" -- and the census happens to concatenate them.
@@ -133,6 +163,8 @@ export function wrapName(name: string): string[] | null {
  * Progressively shorter forms of a name, longest first, ending with the name
  * itself if nothing can safely be shortened.
  */
+export { SHORT_NAMES };
+
 export function shortForms(name: string): string[] {
   const forms = [name];
   const words = name.split(/\s+/);
@@ -142,6 +174,16 @@ export function shortForms(name: string): string[] {
   const withoutGeneric = words.filter((w) => !GENERIC_WORDS.has(w));
   if (withoutGeneric.length && withoutGeneric.length < words.length) {
     forms.push(withoutGeneric.join(" "));
+  }
+
+  // The reviewed abbreviation, last: it is offered only after the full name and
+  // the name-without-its-type have both been tried and failed to fit.
+  for (const candidate of [name, withoutGeneric.join(" ")]) {
+    const short = SHORT_NAMES[candidate];
+    if (short) {
+      forms.push(short);
+      break;
+    }
   }
 
   return [...new Set(forms)];
@@ -227,14 +269,19 @@ export function layoutLabels<T>(
       of concession before moving to the next, so a name is shrunk before it is
       shortened and shortened before it is cut.
     */
+    /*
+      Forms outer, sizes inner, so a form is exhausted at every legible size
+      before the next concession is made. The full name shrunk to the floor is
+      preferred over an abbreviation at full size -- an abbreviation is a last
+      resort, and for Kathmandu, Bhaktapur and Lalitpur it genuinely is one,
+      since none of the three has a shape that will hold its own name.
+    */
     const candidates: { lines: string[]; size: number }[] = [];
-    for (const size of SIZES) {
-      for (const form of shortForms(full)) candidates.push({ lines: [form], size });
-    }
-    for (const size of SIZES) {
-      for (const form of shortForms(full)) {
-        const wrapped = wrapName(form);
-        if (wrapped) candidates.push({ lines: wrapped, size });
+    for (const form of shortForms(full)) {
+      for (const size of SIZES) candidates.push({ lines: [form], size });
+      const wrapped = wrapName(form);
+      if (wrapped) {
+        for (const size of SIZES) candidates.push({ lines: wrapped, size });
       }
     }
 
@@ -300,8 +347,9 @@ export function layoutLabels<T>(
               top: cy - h / 2,
               bottom: cy + h / 2,
             };
-            if (rect.left < 1 || rect.right > opts.width - 1) continue;
-            if (rect.top < 1 || rect.bottom > opts.height - 1) continue;
+            // A 3-unit margin, because the width estimate is an estimate.
+            if (rect.left < 3 || rect.right > opts.width - 3) continue;
+            if (rect.top < 3 || rect.bottom > opts.height - 3) continue;
             if (placedRects.some((q) => overlaps(rect, q))) continue;
             placedRects.push(rect);
             chosen = {
