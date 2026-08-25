@@ -135,7 +135,8 @@ const TOPIC_VIEW: Record<
     headline: "hor_fptp_seats_won",
     partyRanking: {
       indicator: "hor_fptp_seats_won",
-      label: "House of Representatives, 2026 — seats won by party (first-past-the-post)",
+      label:
+        "House of Representatives, 2026 — seats won by party (first-past-the-post)",
       valueLabel: "Seats",
     },
   },
@@ -177,7 +178,9 @@ export default async function TopicPage({ params }: { params: Promise<Params> })
     view?.mapIndicator
       ? comparisonFor(view.mapIndicator, "district")
       : Promise.resolve(null),
-    view?.partyRanking ? partyResultsFor(view.partyRanking.indicator) : Promise.resolve([]),
+    view?.partyRanking
+      ? partyResultsFor(view.partyRanking.indicator)
+      : Promise.resolve([]),
   ]);
   const winner = partyResults[0] ?? null;
 
