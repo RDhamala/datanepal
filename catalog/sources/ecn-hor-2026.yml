@@ -1,0 +1,61 @@
+dataset_id: ecn-hor-2026
+title: Nepal — House of Representatives Election Results, 2082 BS (2026)
+description: >
+  Party-level results of the 5 March 2026 House of Representatives election
+  from the Election Commission of Nepal's live results site: seats won in the
+  165 first-past-the-post constituencies, and votes received in the
+  proportional-representation ballot. Constituency- and candidate-level
+  results are not included in this dataset.
+publisher_org_id: ecn
+acquired_from_org_id: ecn
+acquisition_method: undocumented_endpoint
+source_tier: A
+url: https://result.election.gov.np/
+licence_id: gov-open
+commercial_reuse: permitted_with_attribution
+rights_review_status: reviewed_ok
+retrieved: '2026-08-24'
+vintage: '2026'
+time_coverage: '2026'
+geographic_granularity: country
+update_frequency: one-off
+revises_published_values: false
+ingestion_difficulty: hard
+contains_personal_data: false
+caveats:
+  - >
+    Reached through a JSON handler the results site's own front end calls
+    (Handlers/SecureJson.ashx), found by inspecting its network requests --
+    there is no published API or documentation. The handler is gated by a
+    same-origin CSRF check, not real authentication: fetching the homepage
+    once to receive a CsrfToken cookie and echoing it back is sufficient. See
+    ingestion/sources/ecn_hor.py.
+  - >
+    Nepal's House of Representatives is a mixed system: 165 first-past-the-post
+    (FPTP) seats plus 110 proportional-representation (PR) seats, 275 total.
+    This dataset publishes FPTP seats won (complete, verified to sum to 165 at
+    ingestion) and PR votes received / vote share. It does NOT publish PR
+    seats: the Election Commission's site does not expose the seat allocation
+    directly through this endpoint, and Nepal's PR formula (a 3% national
+    threshold plus a remainder-based allocation) is not reimplemented here to
+    derive one. A party's total seats in the House is FPTP seats plus a PR
+    allocation not present in this dataset.
+  - >
+    Independent FPTP winners have no party list and so no PR entry. They are
+    carried under a fixed `independent` party in the dimension, not dropped.
+  - >
+    National totals only. No constituency-, district-, or candidate-level
+    results are ingested in this dataset -- deliberately, both to keep scope
+    bounded and because candidate-level data approaches the personal-data
+    boundary this project treats carefully (see CLAUDE.md). Aggregate
+    party-level totals only are published.
+  - >
+    Scoped to one election. A future election's results would be a new
+    dataset_id (e.g. ecn-hor-2031), not a revision of this one -- an election
+    result is a historical fact, not a series that gets restated.
+  - >
+    The Election Commission publishes no explicit reuse licence. `gov-open` on
+    this source is the same standing project decision already recorded against
+    the `ecn` organisation (see transform/seeds/organisations.csv): official
+    state election results, republished as aggregates with attribution, not a
+    term ECN has offered in writing.

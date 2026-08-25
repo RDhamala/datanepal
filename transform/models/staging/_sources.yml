@@ -3,6 +3,17 @@ version: 2
 sources:
   # Tables written by dlt. Schema names match the dlt dataset names in
   # ingestion/run.py; dlt owns these, dbt only reads them.
+  - name: raw_ecn_hor
+    schema: raw_ecn_hor
+    description: >
+      Nepal House of Representatives election results, 2082 BS (2026),
+      Election Commission Nepal. gov-open. FPTP seats per party (complete,
+      165 total) and PR vote counts/shares per party -- not PR seats, which
+      this project does not compute; see ingestion/sources/ecn_hor.py.
+    tables:
+      - name: hor_2026
+        description: One row per (party, result_type).
+
   - name: raw_hdx_admin
     schema: raw_hdx_admin
     description: >

@@ -11,6 +11,7 @@ observation_dimensions,worldbank-npl
 observations,cod-ps-npl
 observations,worldbank-npl
 observations,nso-nphc-2021
+observations,ecn-hor-2026
 organisations,datanepal-internal
 place_boundaries,cod-ab-npl
 place_identifiers,cod-ab-npl

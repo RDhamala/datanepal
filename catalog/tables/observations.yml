@@ -6,7 +6,7 @@ description: >
   place, a period, a set of dimension members, and a value. Every dataset on the
   platform lands in this shape, which is what lets one component render any
   indicator without dataset-specific code.
-sources: [cod-ps-npl, worldbank-npl, nso-nphc-2021]
+sources: [cod-ps-npl, worldbank-npl, nso-nphc-2021, ecn-hor-2026]
 grain: >
   One row per (dataset, indicator, place, period, dimension combination,
   revision). Only rows with is_current = true are the present truth.

@@ -11,6 +11,7 @@ import {
   indicatorsOfTopic,
   liveTopics,
   metricMapFor,
+  partyResultsFor,
   places,
   placeProfile,
   populationOf,
@@ -23,7 +24,7 @@ import {
   units,
 } from "@/lib/data";
 import { AgePyramid } from "@/components/AgePyramid";
-import { TrendChart } from "@/components/charts";
+import { RankedBars, TrendChart } from "@/components/charts";
 import { MetricMap } from "@/components/MetricMap";
 import { Composition } from "@/components/viz/Composition";
 import { Figure, FigureCell, FigureRow, FigureTable } from "@/components/viz/Figure";
@@ -68,6 +69,16 @@ const TOPIC_VIEW: Record<
     mapIndicator?: string;
     composition?: { indicator: string; dimension: string; label: string };
     pyramid?: boolean;
+    /**
+     * For an indicator dimensioned by a leaderboard with no natural "all"
+     * member -- a party, a candidate -- rather than a category that sums to
+     * a whole. `placeProfile`'s headline picker has no concept of "highest"
+     * because nothing else on the site needs one; every other dimensioned
+     * indicator either has an aggregate member to prefer or doesn't need
+     * picking a winner at all. Without this, the headline was an arbitrary
+     * minor party rather than the actual result.
+     */
+    partyRanking?: { indicator: string; label: string; valueLabel: string };
   }
 > = {
   population: {
@@ -120,6 +131,14 @@ const TOPIC_VIEW: Record<
       label: "Literacy status of the population aged 5 and over",
     },
   },
+  elections: {
+    headline: "hor_fptp_seats_won",
+    partyRanking: {
+      indicator: "hor_fptp_seats_won",
+      label: "House of Representatives, 2026 — seats won by party (first-past-the-post)",
+      valueLabel: "Seats",
+    },
+  },
 };
 
 export async function generateMetadata({
@@ -151,18 +170,27 @@ export default async function TopicPage({ params }: { params: Promise<Params> })
   if (!np) notFound();
   const unitOf = (id: string) => us.find((u) => u.unit_id === id);
 
-  const [profile, pop, series, districtCmp] = await Promise.all([
+  const [profile, pop, series, districtCmp, partyResults] = await Promise.all([
     placeProfile(np),
     populationOf(np),
     seriesFor(np),
     view?.mapIndicator
       ? comparisonFor(view.mapIndicator, "district")
       : Promise.resolve(null),
+    view?.partyRanking ? partyResultsFor(view.partyRanking.indicator) : Promise.resolve([]),
   ]);
+  const winner = partyResults[0] ?? null;
 
   const metrics = profile.find((p) => p.topic.topic_id === t.topic_id)?.metrics ?? [];
-  const headline =
+  const rawHeadline =
     metrics.find((m) => m.indicatorId === view?.headline) ?? metrics[0] ?? null;
+  // placeProfile picks one row per indicator with no concept of "highest" --
+  // fine for a rate with an "all" aggregate, wrong for a leaderboard. Swap in
+  // the actual winner's value and name once partyResultsFor has it.
+  const headline =
+    winner && rawHeadline && view?.partyRanking?.indicator === rawHeadline.indicatorId
+      ? { ...rawHeadline, value: winner.value }
+      : rawHeadline;
   const supporting = metrics.filter((m) => m.indicatorId !== headline?.indicatorId);
 
   const composition = view?.composition
@@ -207,7 +235,16 @@ export default async function TopicPage({ params }: { params: Promise<Params> })
         <Section
           title={`Nepal: ${headline.name.toLowerCase()}`}
           note={`${headline.period}${
-            headline.periodType === "instant" ? " census" : ""
+            // "instant" covers both a census enumeration and an election --
+            // two different real-world events that happen to share a period
+            // shape (a single date, not a range). Naming the dataset rather
+            // than assuming "census" is what actually keeps this correct as
+            // a second instant-period source exists.
+            headline.periodType === "instant"
+              ? headline.datasetId === "ecn-hor-2026"
+                ? " election"
+                : " census"
+              : ""
           }${statusLabel(headline.status) ? ` ${statusLabel(headline.status)}` : ""}.`}
         >
           <div className="grid gap-x-12 gap-y-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
@@ -215,6 +252,12 @@ export default async function TopicPage({ params }: { params: Promise<Params> })
               <p className="text-ink tabular text-[2.6rem] leading-none font-semibold tracking-[-0.04em]">
                 {formatWithUnit(headline.value, headline.unit)}
               </p>
+              {winner && (
+                <p className="text-ink-soft mt-2" style={{ fontSize: TYPE.body }}>
+                  {winner.name}
+                  {winner.nameNe && <span className="ne ml-1.5">{winner.nameNe}</span>}
+                </p>
+              )}
               {headline.definition && (
                 <p
                   className="text-ink-soft mt-3 max-w-prose leading-relaxed"
@@ -263,6 +306,25 @@ export default async function TopicPage({ params }: { params: Promise<Params> })
               </Figure>
             )}
           </div>
+        </Section>
+      )}
+
+      {/* A leaderboard, not a rate: every party that won at least one seat,
+          not just the winner the headline already named. */}
+      {view?.partyRanking && partyResults.length > 0 && (
+        <Section
+          title="By party"
+          note={`${view.partyRanking.label}. ${partyResults.length} parties.`}
+        >
+          <RankedBars
+            label={view.partyRanking.label}
+            valueLabel={view.partyRanking.valueLabel}
+            rows={partyResults.map((r) => ({
+              name: r.name,
+              nameNe: r.nameNe,
+              value: r.value,
+            }))}
+          />
         </Section>
       )}
 

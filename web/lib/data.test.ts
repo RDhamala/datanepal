@@ -439,18 +439,23 @@ describe("manifest — provenance and licensing", () => {
     expect(obs.sources).toContain("cod-ps-npl");
     expect(obs.sources).toContain("worldbank-npl");
     expect(obs.sources).toContain("nso-nphc-2021");
+    expect(obs.sources).toContain("ecn-hor-2026");
     /*
       The census changed this answer, which is the computation working rather
       than a regression. NSO states copyright and no open grant, so its terms
       are recorded as a deliberate project assertion and rank as the most
-      conservative of the three -- and the whole observations table inherits it.
+      conservative of the four -- and the whole observations table inherits it.
       That is the contamination rule doing its job: if a reader may only reuse
       the census with attribution to NSO, they may only reuse the table with it.
+      Adding the election results (gov-open) does not change that -- gov-open
+      is less restrictive than the NSO project decision, so it just joins the
+      contributing list without moving the effective licence.
     */
     expect(obs.effective_licence).toBe("nso-official-statistics");
     expect(obs.contributing_licences).toEqual([
       "cc-by-4.0",
       "cc-by-igo-3.0",
+      "gov-open",
       "nso-official-statistics",
     ]);
   });

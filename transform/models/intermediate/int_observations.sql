@@ -441,10 +441,56 @@ census_literacy_composition_national as (
     where b.value is not null
 ),
 
+/* -------------------------------------------------------------- elections */
+
+/*
+  House of Representatives results, 2082 BS (2026).
+
+  National only, dimensioned by party -- no constituency-level place, no
+  crosswalk, the same shape as the economy series above except that every
+  observation carries a dimension where economy's carry none.
+
+  Three indicators, not one, because FPTP seats and PR votes answer different
+  questions and are not interchangeable: fptp_seats_won is a seat count from
+  a completed count (validated at ingestion to sum to 165); pr_votes_received
+  and pr_vote_share_pct describe the proportional ballot, which is a vote
+  count, not the seat allocation Nepal's PR formula would produce from it --
+  see ingestion/sources/ecn_hor.py for why that formula is not reimplemented
+  here.
+*/
+election_hor_2026 as (
+    select
+        'ecn-hor-2026'                              as dataset_id,
+        case s.result_type
+            when 'fptp_seats'       then 'hor_fptp_seats_won'
+            when 'pr_votes'         then 'hor_pr_votes_received'
+            when 'pr_vote_share_pct' then 'hor_pr_vote_share_pct'
+        end                                          as indicator_id,
+        c.place_id,
+        date '2026-03-05'                           as period_start,
+        date '2026-03-05'                           as period_end,
+        'instant'                                   as period_type,
+        s.value                                     as value_numeric,
+        cast(null as varchar)                       as value_text,
+        case s.result_type
+            when 'fptp_seats' then 'count'
+            when 'pr_votes'   then 'count'
+            else 'percent'
+        end                                          as unit_id,
+        'actual'                                    as status,
+        [struct_pack(dimension_id := 'party', member_id := s.party_id)] as dimensions
+    from {{ ref('stg_ecn__hor_2026') }} s
+    cross join (
+        select place_id from {{ ref('int_places') }} where place_type = 'country'
+    ) c
+),
+
 unioned as (
     select * from population_shaped
     union all by name
     select * from economy
+    union all by name
+    select * from election_hor_2026
     union all by name
     select * from census_population_shaped
     union all by name

@@ -16,6 +16,7 @@ from pathlib import Path
 
 import dlt
 
+from ingestion.sources.ecn_hor import ecn_hor_source
 from ingestion.sources.hdx_admin import hdx_admin_source
 from ingestion.sources.hdx_boundaries import hdx_boundaries_source
 from ingestion.sources.hdx_population import hdx_population_source
@@ -30,6 +31,7 @@ WAREHOUSE = Path(__file__).resolve().parent.parent / "warehouse" / "datanepal.du
 
 # Adding a source means adding one entry here and one module in sources/.
 SOURCES = {
+    "ecn_hor": ecn_hor_source,
     "hdx_admin": hdx_admin_source,
     "hdx_boundaries": hdx_boundaries_source,
     "hdx_population": hdx_population_source,

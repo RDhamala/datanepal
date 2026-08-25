@@ -1370,6 +1370,69 @@ export async function compositionFor(
   return { total: slices.reduce((sum, s) => sum + s.value, 0), slices };
 }
 
+/**
+ * National results for a party-dimensioned indicator, ranked highest first.
+ *
+ * Built for the 2026 House of Representatives results specifically, not as a
+ * generic "any dimension breakdown" API -- there is one election's worth of
+ * data, the catalog itself declares a future election is a new indicator_id
+ * rather than a new period on this one, and `compositionFor` already covers
+ * the shape where a second dimension (sex) needs excluding. A party
+ * breakdown has no such companion dimension, and no generic "all" member to
+ * prefer, which is exactly why the ordinary placeProfile headline picked an
+ * arbitrary party rather than the actual winner: nothing in that path knows
+ * "highest" is the question here, because for every other dimensioned
+ * indicator on the site it isn't.
+ */
+export async function partyResultsFor(
+  indicatorId: string,
+): Promise<{ partyId: string; name: string; nameNe: string | null; value: number }[]> {
+  const [obs, dims, members, np] = await Promise.all([
+    observations(),
+    table<{ observation_id: string; dimension_id: string; member_id: string }>(
+      "observation_dimensions.parquet",
+    ),
+    table<{
+      dimension_id: string;
+      member_id: string;
+      name_en: string;
+      name_ne: string | null;
+    }>("dimension_members.parquet"),
+    country(),
+  ]);
+  if (!np) return [];
+
+  const partyOf = new Map<string, string>();
+  for (const d of dims) {
+    if (d.dimension_id === "party") partyOf.set(d.observation_id, d.member_id);
+  }
+  const nameOf = new Map(
+    members.filter((m) => m.dimension_id === "party").map((m) => [m.member_id, m]),
+  );
+
+  return obs
+    .filter(
+      (o) =>
+        o.place_id === np.place_id &&
+        o.indicator_id === indicatorId &&
+        o.value_numeric !== null,
+    )
+    .map((o) => {
+      const partyId = partyOf.get(o.observation_id);
+      const info = partyId ? nameOf.get(partyId) : undefined;
+      return partyId
+        ? {
+            partyId,
+            name: info?.name_en || info?.name_ne || partyId,
+            nameNe: info?.name_ne ?? null,
+            value: o.value_numeric!,
+          }
+        : null;
+    })
+    .filter((r): r is NonNullable<typeof r> => r !== null)
+    .sort((a, b) => b.value - a.value);
+}
+
 /** Every peer value for an indicator, for locating one place in a distribution. */
 export async function spreadFor(
   placeType: string,

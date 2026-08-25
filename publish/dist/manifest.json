@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-24T21:30:29.419105+00:00",
+  "generated_at": "2026-08-24T22:30:07.907152+00:00",
   "table_count": 16,
   "tables": [
     {
@@ -19,10 +19,10 @@
       ],
       "attribution": [],
       "caveats": [],
-      "row_count": 6,
+      "row_count": 7,
       "parquet": "datasets.parquet",
       "json": "datasets.json",
-      "bytes": 7323
+      "bytes": 7517
     },
     {
       "table": "dimension_members",
@@ -41,10 +41,10 @@
       ],
       "attribution": [],
       "caveats": [],
-      "row_count": 29,
+      "row_count": 87,
       "parquet": "dimension_members.parquet",
       "json": "dimension_members.json",
-      "bytes": 2030
+      "bytes": 5217
     },
     {
       "table": "dimensions",
@@ -63,10 +63,10 @@
       ],
       "attribution": [],
       "caveats": [],
-      "row_count": 4,
+      "row_count": 5,
       "parquet": "dimensions.parquet",
       "json": "dimensions.json",
-      "bytes": 1961
+      "bytes": 2512
     },
     {
       "table": "geography",
@@ -115,10 +115,10 @@
       ],
       "attribution": [],
       "caveats": [],
-      "row_count": 33,
+      "row_count": 36,
       "parquet": "indicators.parquet",
       "json": "indicators.json",
-      "bytes": 7627
+      "bytes": 8589
     },
     {
       "table": "licences",
@@ -166,10 +166,10 @@
       "caveats": [
         "An observation with no dimensions has no rows here. That is normal for scalar indicators like national inflation.\n"
       ],
-      "row_count": 43239,
+      "row_count": 43360,
       "parquet": "observation_dimensions.parquet",
       "json": null,
-      "bytes": 503467
+      "bytes": 506675
     },
     {
       "table": "observations",
@@ -181,19 +181,22 @@
       "sources": [
         "cod-ps-npl",
         "worldbank-npl",
-        "nso-nphc-2021"
+        "nso-nphc-2021",
+        "ecn-hor-2026"
       ],
       "effective_licence": "nso-official-statistics",
       "share_alike": false,
       "contributing_licences": [
         "cc-by-4.0",
         "cc-by-igo-3.0",
+        "gov-open",
         "nso-official-statistics"
       ],
       "attribution": [
         "United Nations Population Fund",
         "World Bank",
-        "National Statistics Office"
+        "National Statistics Office",
+        "Election Commission Nepal"
       ],
       "caveats": [
         "Dimensions are not columns. They live in observation_dimensions, keyed by dimension_key, so a new dataset introduces dimension members rather than schema changes.\n",
@@ -201,10 +204,10 @@
         "Check the indicator's is_additive flag before aggregating. Rates and ratios (inflation, GDP per capita, density) must not be summed or unweighted-averaged.\n",
         "A NULL value with status 'suppressed' or 'not_collected' is meaningful and distinct from zero.\n"
       ],
-      "row_count": 27061,
+      "row_count": 27182,
       "parquet": "observations.parquet",
       "json": null,
-      "bytes": 624150
+      "bytes": 627054
     },
     {
       "table": "organisations",
@@ -365,10 +368,10 @@
       ],
       "attribution": [],
       "caveats": [],
-      "row_count": 22,
+      "row_count": 23,
       "parquet": "table_sources.parquet",
       "json": "table_sources.json",
-      "bytes": 714
+      "bytes": 736
     },
     {
       "table": "topics",
@@ -392,7 +395,7 @@
       "row_count": 12,
       "parquet": "topics.parquet",
       "json": "topics.json",
-      "bytes": 3103
+      "bytes": 3108
     },
     {
       "table": "units",
@@ -421,9 +424,9 @@
     "table": "observation_history",
     "title": "Observation revision history",
     "description": "Append-only history of every published observation. One row per revision; is_current marks the present value. A superseded row keeps its original value and records when it was replaced.",
-    "row_count": 27061,
+    "row_count": 27182,
     "parquet": "observation_history.parquet",
-    "bytes": 625538
+    "bytes": 628553
   },
   "sources": [
     {
@@ -488,6 +491,40 @@
         "Coverage stops at district level; there is no local-unit breakdown.",
         "The open-ended top age band is spelled '80Plus' in current files and '80PL' in others. Ingestion accepts both and asserts the measure count per place.\n",
         "Published by UNFPA; DataNepal obtained this copy via the hdx platform. Attribute the publisher, not the platform."
+      ]
+    },
+    {
+      "dataset_id": "ecn-hor-2026",
+      "title": "Nepal — House of Representatives Election Results, 2082 BS (2026)",
+      "publisher": "Election Commission Nepal",
+      "publisher_org_id": "ecn",
+      "publisher_name_ne": "निर्वाचन आयोग नेपाल",
+      "publisher_homepage": "https://election.gov.np",
+      "source_tier": "A",
+      "acquired_from": "Election Commission Nepal",
+      "acquired_from_org_id": "ecn",
+      "acquisition_method": "undocumented_endpoint",
+      "acquisition_url": null,
+      "acquired_indirectly": false,
+      "url": "https://result.election.gov.np/",
+      "licence": "gov-open",
+      "licence_statement_url": null,
+      "commercial_reuse": "permitted_with_attribution",
+      "rights_review_status": "reviewed_ok",
+      "retrieved": "2026-08-24",
+      "vintage": "2026",
+      "time_coverage": "2026",
+      "geographic_granularity": "country",
+      "methodology_url": null,
+      "update_frequency": "one-off",
+      "revises_published_values": false,
+      "caveats": [
+        "Reached through a JSON handler the results site's own front end calls (Handlers/SecureJson.ashx), found by inspecting its network requests -- there is no published API or documentation. The handler is gated by a same-origin CSRF check, not real authentication: fetching the homepage once to receive a CsrfToken cookie and echoing it back is sufficient. See ingestion/sources/ecn_hor.py.\n",
+        "Nepal's House of Representatives is a mixed system: 165 first-past-the-post (FPTP) seats plus 110 proportional-representation (PR) seats, 275 total. This dataset publishes FPTP seats won (complete, verified to sum to 165 at ingestion) and PR votes received / vote share. It does NOT publish PR seats: the Election Commission's site does not expose the seat allocation directly through this endpoint, and Nepal's PR formula (a 3% national threshold plus a remainder-based allocation) is not reimplemented here to derive one. A party's total seats in the House is FPTP seats plus a PR allocation not present in this dataset.\n",
+        "Independent FPTP winners have no party list and so no PR entry. They are carried under a fixed `independent` party in the dimension, not dropped.\n",
+        "National totals only. No constituency-, district-, or candidate-level results are ingested in this dataset -- deliberately, both to keep scope bounded and because candidate-level data approaches the personal-data boundary this project treats carefully (see CLAUDE.md). Aggregate party-level totals only are published.\n",
+        "Scoped to one election. A future election's results would be a new dataset_id (e.g. ecn-hor-2031), not a revision of this one -- an election result is a historical fact, not a series that gets restated.\n",
+        "The Election Commission publishes no explicit reuse licence. `gov-open` on this source is the same standing project decision already recorded against the `ecn` organisation (see transform/seeds/organisations.csv): official state election results, republished as aggregates with attribution, not a term ECN has offered in writing.\n"
       ]
     },
     {
