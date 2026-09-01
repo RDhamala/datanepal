@@ -238,6 +238,7 @@ export function RankedBars({
   unit,
   label,
   valueLabel = "Value",
+  rowLabel = "Place",
   max: maxOverride,
   compact = false,
 }: {
@@ -245,6 +246,13 @@ export function RankedBars({
   unit?: Unit;
   label: string;
   valueLabel?: string;
+  /**
+   * Header for the name column in the data table. Defaults to "Place" because
+   * most leaderboards here rank places — but the elections page ranks parties,
+   * and a table heading that misnames its own rows is served only to the reader
+   * who cannot check it against the chart.
+   */
+  rowLabel?: string;
   max?: number;
   /** Narrow column beside a map: tighter grid, no duplicate table. */
   compact?: boolean;
@@ -291,7 +299,7 @@ export function RankedBars({
       {!compact && (
         <DataDisclosure
           caption={label}
-          columns={["Place", "नेपाली", valueLabel]}
+          columns={[rowLabel, "नेपाली", valueLabel]}
           rows={rows.map((r) => [r.name, r.nameNe ?? "—", fmt(r.value)])}
         />
       )}

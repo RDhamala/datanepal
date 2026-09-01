@@ -1,0 +1,23 @@
+{
+  "skill_name": "datanepal-accessibility",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I'm adding a new ranked-bars section to the elections topic page showing PR vote share by party. Build the component. There are 58 parties so it needs to scroll.",
+      "expected_output": "Discovers RankedBars (charts.tsx:236) and the existing 'By party' section already exist, and reuses rather than building new. Critically: does NOT wrap RankedBars in role=\"img\" — it is a <ul> of real text and that role would hide readable rows. Passes a rowLabel matching the rows rather than inheriting the \"Place\" default. Does not make each bar focusable. Defers colour to npm run palette. Verifies in the browser rather than claiming done from the diff.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "can you review web/components/Search.tsx for accessibility issues? it's the site search combobox",
+      "expected_output": "Identifies outline-none at line 217 replaced only by a border-colour change as the substantive finding, and checks it by tabbing rather than reading classes. Recognises the existing combobox pattern (aria-expanded/controls/activedescendant, role=listbox/option) as correct rather than 'fixing' it. Exercises Escape/arrow/Enter behaviour in a real browser.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "the district choropleth feels like it should be keyboard navigable — right now you can't tab to individual districts to see their values. can you make each district focusable so screen reader users can explore the map?",
+      "expected_output": "Pushes back: 77 (or 753 at local level) tab stops is technically compliant and practically unusable. Points to the existing sr-only data table on Choropleth.tsx as the accessible path to the same values, and offers to improve that table instead. Does not simply implement the request as asked.",
+      "files": []
+    }
+  ]
+}

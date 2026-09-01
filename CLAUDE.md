@@ -15,7 +15,7 @@ sources → ingestion (dlt) → warehouse (DuckDB) → transform (dbt) → publi
 
 ## Project Skills
 
-Nine Skills under `.claude/skills/` encode what's specific and repeatable about
+Ten Skills under `.claude/skills/` encode what's specific and repeatable about
 this project — not things Claude already knows (React, dbt, SQL). Use the
 relevant one(s) rather than re-deriving these rules from scratch:
 
@@ -24,6 +24,7 @@ relevant one(s) rather than re-deriving these rules from scratch:
 | `datanepal-ui` | Interface chrome: layout, typography, cards, bilingual presentation, provenance display |
 | `datanepal-dataviz` | Chart-type choice, chart mechanics, colour roles, maps-as-visualization |
 | `datanepal-visual-review` | Browser-based visual QA — required after any UI/chart/map change, before calling it done |
+| `datanepal-accessibility` | Keyboard operability, screen-reader semantics, bilingual `lang`, and the data table behind every chart |
 | `datanepal-place-page` | Information architecture of Nepal/province/district/local-government pages |
 | `datanepal-topic-page` | Information architecture of topic hub pages |
 | `datanepal-source-research` | Evaluating a candidate Nepal dataset before ingestion |
@@ -32,7 +33,10 @@ relevant one(s) rather than re-deriving these rules from scratch:
 | `datanepal-data-quality` | What to test, and the publication gate |
 
 Frontend work always pairs a build skill with `datanepal-visual-review` — code
-that passes CI is not the same as a page that looks right. Ingestion work always
+that passes CI is not the same as a page that looks right — and with
+`datanepal-accessibility` whenever the change adds a chart, map, table or
+control, since a page that looks right can still be unreachable by keyboard.
+Ingestion work always
 pairs `datanepal-ingestion` with `datanepal-data-quality`, and with
 `datanepal-geography` whenever a new source's identifiers need to join the
 spine. See each Skill's frontmatter for exactly when it should trigger.
