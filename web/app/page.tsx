@@ -175,7 +175,15 @@ export default async function Home() {
             for every province and district. Every figure names its publisher, its
             reference period, and when we retrieved it.
           </p>
-          <div className="mt-8 max-w-2xl">
+          {/*
+            No width cap: the paragraph above is prose and stops at its measure,
+            but a search field is a control, not something you read a line of.
+            Capping both at 2xl left the text column ending 248px short of its
+            own grid track, so the hero read as a hole rather than a margin.
+            Letting the field span the track is what makes the column look
+            intentional; the short paragraph then reads as a measure.
+          */}
+          <div className="mt-8">
             <Search
               size="large"
               placeholder="Search places, indicators, datasets…"
