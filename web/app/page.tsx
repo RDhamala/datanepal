@@ -10,6 +10,7 @@ import {
   indicatorSlug,
   manifest,
   nationalHeadline,
+  partyResultsFor,
   places,
   populationOf,
   seriesFor,
@@ -22,6 +23,7 @@ import {
 } from "@/lib/data";
 import { RankedBars, TrendChart } from "@/components/charts";
 import { MetricStrip, Sparkline } from "@/components/viz/MetricStrip";
+import { BAR, COLOR } from "@/lib/viz";
 import { Choropleth } from "@/components/Choropleth";
 import { Search } from "@/components/Search";
 import { Section, SourceNote } from "@/components/ui";
@@ -164,6 +166,30 @@ export default async function Home() {
           : formatWithUnit(h.value, h.unit),
       period: `${h.period}${h.status ? ` ${h.status}` : ""}`.trim(),
       points: points.map((p) => ({ year: p.year, value: p.value })),
+    };
+  }
+
+  /*
+    Elections has no entry above, and could not have one.
+
+    Its headline indicator is dimensioned by party, so nationalHeadline -- which
+    has no concept of "highest" -- returns an arbitrary minor party. That is the
+    same trap the topic page hit, and it is why /topics/elections carries a
+    partyRanking override. Without this the card rendered as a name and an
+    indicator count while the other nine carried a figure, which reads as a
+    broken cell rather than as a topic with nothing to say.
+
+    Seats, not vote share: seats are what the source states directly and what
+    decides a parliament. PR seats stay uncomputed here for the same reason they
+    are uncomputed everywhere else in this project.
+  */
+  const winner = (await partyResultsFor("hor_fptp_seats_won"))[0] ?? null;
+  if (winner && liveTopicList.some((t) => t.topic_id === "elections")) {
+    topicHeadline.elections = {
+      label: `Largest party, ${winner.name}`,
+      value: `${formatNumber(winner.value)} seats`,
+      period: "2026 · first-past-the-post",
+      points: [],
     };
   }
 
@@ -463,6 +489,17 @@ export default async function Home() {
         is already heading.
       */}
       <Section title="Latest updates" note={`Site data built ${updates.generated}.`}>
+        {/*
+          The sentences stay; a bar joins them.
+
+          The counts run from 121 to 21,258 -- two orders of magnitude that
+          prose cannot convey, because "21,258" and "1,213" are the same size on
+          the page and the reader has to divide to learn that one source is most
+          of this site. The bar is the share of all published figures, on one
+          scale across the rows, which is the ranked-bar question the grammar
+          already answers everywhere else. It is not the cadence-and-revision
+          table this section deliberately stopped being: one measure, no columns.
+        */}
         <ul className="divide-line border-line max-w-3xl divide-y border-t">
           {updates.datasets.map((u) => (
             <li key={u.source.dataset_id} className="py-3">
@@ -478,6 +515,24 @@ export default async function Home() {
                   : ""}
                 {u.revised > 0 && `, ${formatNumber(u.revised)} figures revised since`}.
               </p>
+              <span
+                aria-hidden
+                className="mt-1.5 block overflow-hidden"
+                style={{
+                  height: BAR.thicknessCompact - 2,
+                  background: COLOR.track,
+                  borderRadius: BAR.radius,
+                }}
+              >
+                <span
+                  className="block h-full"
+                  style={{
+                    width: `${updates.totalCurrent > 0 ? (u.current / updates.totalCurrent) * 100 : 0}%`,
+                    background: COLOR.series,
+                    borderRadius: BAR.radius,
+                  }}
+                />
+              </span>
             </li>
           ))}
         </ul>
