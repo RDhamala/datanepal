@@ -99,9 +99,19 @@
   --text-title: 1.875rem;
   --text-title--line-height: 1.15;
   --text-title--letter-spacing: -0.025em;
-  --text-heading: 1.0625rem;
-  --text-heading--line-height: 1.35;
-  --text-heading--letter-spacing: -0.011em;
+  /*
+    Section headings scale with the viewport, the same way the homepage h1 does.
+
+    A fixed 17px against 15px body is a 1.13x ratio. On a phone the column edge
+    does the separating and that reads fine; across the 84rem container there is
+    nothing else doing that work, so every section title -- "Explore Nepal",
+    "Long-run trends", "Latest updates" -- sat at almost exactly body weight and
+    the page read as one undifferentiated column. Ramps 17px -> 22px between
+    768px and 1280px, which keeps clear water below --text-title (30px).
+  */
+  --text-heading: clamp(1.0625rem, 0.594rem + 0.977vw, 1.375rem);
+  --text-heading--line-height: 1.3;
+  --text-heading--letter-spacing: -0.014em;
   --text-stat: 2rem;
   --text-stat--line-height: 1;
   --text-stat--letter-spacing: -0.03em;

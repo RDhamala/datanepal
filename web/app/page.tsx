@@ -10,6 +10,7 @@ import {
   indicatorSlug,
   manifest,
   nationalHeadline,
+  partyResultsFor,
   places,
   populationOf,
   seriesFor,
@@ -21,7 +22,8 @@ import {
   updateLog,
 } from "@/lib/data";
 import { RankedBars, TrendChart } from "@/components/charts";
-import { MetricStrip } from "@/components/viz/MetricStrip";
+import { MetricStrip, Sparkline } from "@/components/viz/MetricStrip";
+import { BAR, COLOR } from "@/lib/viz";
 import { Choropleth } from "@/components/Choropleth";
 import { Search } from "@/components/Search";
 import { Section, SourceNote } from "@/components/ui";
@@ -116,7 +118,13 @@ export default async function Home() {
   };
   const topicHeadline: Record<
     string,
-    { label: string; value: string; period: string } | undefined
+    | {
+        label: string;
+        value: string;
+        period: string;
+        points: { year: number; value: number }[];
+      }
+    | undefined
   > = {};
   for (const t of liveTopicList) {
     const indicatorId = HEADLINE_INDICATOR[t.topic_id];
@@ -138,6 +146,18 @@ export default async function Home() {
             .flatMap((p) => p.metrics)
             .find((m) => m.indicatorId === indicatorId)?.name ??
           "");
+    /*
+      The card's shape, where one exists. Only the World Bank indicators carry a
+      real run of years; the census ones do not -- literacy is a single 2021
+      observation and national population spans 2021-2023, part census and part
+      projection. Drawing a line through three points of mixed status would
+      invent a trend and blur exactly the distinction this project refuses to
+      blur elsewhere, so those cards get the number alone. Sparkline's own
+      >= 3-point guard is the backstop.
+    */
+    const points =
+      series.find((s) => s.indicator.indicator_id === indicatorId)?.points ?? [];
+
     topicHeadline[t.topic_id] = {
       label,
       value:
@@ -145,6 +165,31 @@ export default async function Home() {
           ? formatCompact(h.value)
           : formatWithUnit(h.value, h.unit),
       period: `${h.period}${h.status ? ` ${h.status}` : ""}`.trim(),
+      points: points.map((p) => ({ year: p.year, value: p.value })),
+    };
+  }
+
+  /*
+    Elections has no entry above, and could not have one.
+
+    Its headline indicator is dimensioned by party, so nationalHeadline -- which
+    has no concept of "highest" -- returns an arbitrary minor party. That is the
+    same trap the topic page hit, and it is why /topics/elections carries a
+    partyRanking override. Without this the card rendered as a name and an
+    indicator count while the other nine carried a figure, which reads as a
+    broken cell rather than as a topic with nothing to say.
+
+    Seats, not vote share: seats are what the source states directly and what
+    decides a parliament. PR seats stay uncomputed here for the same reason they
+    are uncomputed everywhere else in this project.
+  */
+  const winner = (await partyResultsFor("hor_fptp_seats_won"))[0] ?? null;
+  if (winner && liveTopicList.some((t) => t.topic_id === "elections")) {
+    topicHeadline.elections = {
+      label: `Largest party, ${winner.name}`,
+      value: `${formatNumber(winner.value)} seats`,
+      period: "2026 · first-past-the-post",
+      points: [],
     };
   }
 
@@ -175,7 +220,15 @@ export default async function Home() {
             for every province and district. Every figure names its publisher, its
             reference period, and when we retrieved it.
           </p>
-          <div className="mt-8 max-w-2xl">
+          {/*
+            No width cap: the paragraph above is prose and stops at its measure,
+            but a search field is a control, not something you read a line of.
+            Capping both at 2xl left the text column ending 248px short of its
+            own grid track, so the hero read as a hole rather than a margin.
+            Letting the field span the track is what makes the column look
+            intentional; the short paragraph then reads as a measure.
+          */}
+          <div className="mt-8">
             <Search
               size="large"
               placeholder="Search places, indicators, datasets…"
@@ -364,6 +417,21 @@ export default async function Home() {
                       {h.value}
                     </div>
                     <div className="text-ink-faint mt-1 text-[12px]">{h.period}</div>
+                    {/*
+                      The slot keeps its height whether or not a line is drawn,
+                      so the ten cards stay on a common baseline. A card with no
+                      published series then reads as "nothing to plot" rather
+                      than as a broken cell -- the same reason a place page omits
+                      a section instead of rendering it empty.
+                    */}
+                    <div className="mt-3 aspect-[400/34]">
+                      <Sparkline
+                        points={h.points}
+                        width={400}
+                        height={34}
+                        className="h-full w-full overflow-visible"
+                      />
+                    </div>
                   </div>
                 )}
                 {/*
@@ -421,6 +489,17 @@ export default async function Home() {
         is already heading.
       */}
       <Section title="Latest updates" note={`Site data built ${updates.generated}.`}>
+        {/*
+          The sentences stay; a bar joins them.
+
+          The counts run from 121 to 21,258 -- two orders of magnitude that
+          prose cannot convey, because "21,258" and "1,213" are the same size on
+          the page and the reader has to divide to learn that one source is most
+          of this site. The bar is the share of all published figures, on one
+          scale across the rows, which is the ranked-bar question the grammar
+          already answers everywhere else. It is not the cadence-and-revision
+          table this section deliberately stopped being: one measure, no columns.
+        */}
         <ul className="divide-line border-line max-w-3xl divide-y border-t">
           {updates.datasets.map((u) => (
             <li key={u.source.dataset_id} className="py-3">
@@ -436,6 +515,24 @@ export default async function Home() {
                   : ""}
                 {u.revised > 0 && `, ${formatNumber(u.revised)} figures revised since`}.
               </p>
+              <span
+                aria-hidden
+                className="mt-1.5 block overflow-hidden"
+                style={{
+                  height: BAR.thicknessCompact - 2,
+                  background: COLOR.track,
+                  borderRadius: BAR.radius,
+                }}
+              >
+                <span
+                  className="block h-full"
+                  style={{
+                    width: `${updates.totalCurrent > 0 ? (u.current / updates.totalCurrent) * 100 : 0}%`,
+                    background: COLOR.series,
+                    borderRadius: BAR.radius,
+                  }}
+                />
+              </span>
             </li>
           ))}
         </ul>

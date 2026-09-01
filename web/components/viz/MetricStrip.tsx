@@ -135,10 +135,17 @@ export function Sparkline({
   points,
   width = 60,
   height = 14,
+  className = "shrink-0 overflow-visible",
 }: {
   points: { year: number; value: number }[];
   width?: number;
   height?: number;
+  /**
+   * Defaults to a fixed inline mark, which is what a KPI tile wants. Pass
+   * "w-full h-auto overflow-visible" to let it scale to its container instead --
+   * width/height then act as the viewBox aspect rather than a pixel size.
+   */
+  className?: string;
 }) {
   if (points.length < 3) return null;
   const values = points.map((p) => p.value);
@@ -157,7 +164,7 @@ export function Sparkline({
       height={height}
       viewBox={`0 0 ${width} ${height}`}
       aria-hidden
-      className="shrink-0 overflow-visible"
+      className={className}
     >
       <path
         d={path}
