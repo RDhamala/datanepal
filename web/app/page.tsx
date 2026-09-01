@@ -21,7 +21,7 @@ import {
   updateLog,
 } from "@/lib/data";
 import { RankedBars, TrendChart } from "@/components/charts";
-import { MetricStrip } from "@/components/viz/MetricStrip";
+import { MetricStrip, Sparkline } from "@/components/viz/MetricStrip";
 import { Choropleth } from "@/components/Choropleth";
 import { Search } from "@/components/Search";
 import { Section, SourceNote } from "@/components/ui";
@@ -116,7 +116,13 @@ export default async function Home() {
   };
   const topicHeadline: Record<
     string,
-    { label: string; value: string; period: string } | undefined
+    | {
+        label: string;
+        value: string;
+        period: string;
+        points: { year: number; value: number }[];
+      }
+    | undefined
   > = {};
   for (const t of liveTopicList) {
     const indicatorId = HEADLINE_INDICATOR[t.topic_id];
@@ -138,6 +144,18 @@ export default async function Home() {
             .flatMap((p) => p.metrics)
             .find((m) => m.indicatorId === indicatorId)?.name ??
           "");
+    /*
+      The card's shape, where one exists. Only the World Bank indicators carry a
+      real run of years; the census ones do not -- literacy is a single 2021
+      observation and national population spans 2021-2023, part census and part
+      projection. Drawing a line through three points of mixed status would
+      invent a trend and blur exactly the distinction this project refuses to
+      blur elsewhere, so those cards get the number alone. Sparkline's own
+      >= 3-point guard is the backstop.
+    */
+    const points =
+      series.find((s) => s.indicator.indicator_id === indicatorId)?.points ?? [];
+
     topicHeadline[t.topic_id] = {
       label,
       value:
@@ -145,6 +163,7 @@ export default async function Home() {
           ? formatCompact(h.value)
           : formatWithUnit(h.value, h.unit),
       period: `${h.period}${h.status ? ` ${h.status}` : ""}`.trim(),
+      points: points.map((p) => ({ year: p.year, value: p.value })),
     };
   }
 
@@ -372,6 +391,21 @@ export default async function Home() {
                       {h.value}
                     </div>
                     <div className="text-ink-faint mt-1 text-[12px]">{h.period}</div>
+                    {/*
+                      The slot keeps its height whether or not a line is drawn,
+                      so the ten cards stay on a common baseline. A card with no
+                      published series then reads as "nothing to plot" rather
+                      than as a broken cell -- the same reason a place page omits
+                      a section instead of rendering it empty.
+                    */}
+                    <div className="mt-3 aspect-[400/34]">
+                      <Sparkline
+                        points={h.points}
+                        width={400}
+                        height={34}
+                        className="h-full w-full overflow-visible"
+                      />
+                    </div>
                   </div>
                 )}
                 {/*
