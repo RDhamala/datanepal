@@ -188,7 +188,14 @@ export function Choropleth({
           font size means the same thing on every map.
         */
         style={{ width: `${width}px`, maxWidth: "100%", height: "auto" }}
-        role="img"
+        /*
+          A group, not an image. `role="img"` makes every descendant
+          presentational, so the real <a> links inside this map were focusable
+          but absent from the accessibility tree -- a keyboard user could tab
+          into shapes a screen reader never announced. The label below still
+          names the whole map; it just no longer deletes its own contents.
+        */
+        role="group"
         aria-label={`Map of Nepal showing ${label}${period ? `, ${period}` : ""}. ${
           sorted.length
         } areas. Highest ${sorted[0]?.name} at ${formatNumber(sorted[0]?.value ?? 0)}; lowest ${

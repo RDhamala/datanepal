@@ -24,7 +24,14 @@ export function MapLabels<T>({
   ink?: (item: T) => string;
 }) {
   return (
-    <>
+    /*
+      Hidden from assistive tech on purpose. These are *layout* strings, not
+      names: long ones are abbreviated from the reviewed SHORT_NAMES table, so a
+      screen reader would read "BKT" and "Nawal W" over the real names already
+      carried by each shape's link and by the table beneath the map. They were
+      invisible to AT while the map was role="img"; the group role exposes them.
+    */
+    <g aria-hidden="true">
       {/* Anchor dots for labels that spill over a neighbour, so which shape a
           name belongs to is never in doubt. */}
       {layout.placed
@@ -74,7 +81,7 @@ export function MapLabels<T>({
           </text>
         );
       })}
-    </>
+    </g>
   );
 }
 

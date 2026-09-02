@@ -17,7 +17,8 @@ what a reader actually gets.
 | Watch the focus ring the whole way | An `outline-none` with no replacement. `Search.tsx:217` is the known one; a border-colour swap is thin. |
 | Operate every control by keyboard | A `div` with `onClick` and no key handler. Grep `onClick` and confirm each is on a real `<button>`/`<a>`. |
 | Open and close the search combobox | Arrow keys, Enter, Escape. `aria-activedescendant` must track the highlighted option. |
-| Tab across a map | Should be **one** stop, not 753. Focusable polygons are a regression, not an improvement. |
+| Tab across a map | One stop per shape, each a real link — the invariant in `docs/visualization.md:164`. Zero stops means the anchors are missing; check `hrefFor` resolved against the *full* place list, not just the drawn ones. |
+| Read the map in the a11y tree, not just the DOM | `role="img"` prunes the subtree, so focusable anchors can be entirely absent from it while the DOM looks correct. Count link nodes, don't count `<a>` elements. |
 | Open a `<details>` data table | Summary reachable and labelled; table not a focus trap. |
 
 ## Pass 2 — the accessibility tree

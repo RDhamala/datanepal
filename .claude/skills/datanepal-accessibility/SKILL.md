@@ -58,11 +58,35 @@ header; it is served only to the person who cannot check it against the chart.
 When you reuse a ranked or tabular component for a new kind of row, pass a
 matching header rather than inheriting the default.
 
-**Do not make 753 polygons focusable.** `Choropleth` is one `role="img"` with a
-single label and an `sr-only` table (`components/Choropleth.tsx:191`). Tabbing
-through every local unit is technically "keyboard accessible" and practically
-unusable. Geography is the illustration; the table is the accessible path to the
-same data. Keep it that way.
+**Every map shape is a real link, and that is deliberate.** `docs/visualization.md:164`
+and `datanepal-dataviz` both state it: a shape is a navigation target, not
+decoration. Do not add `tabIndex` to a `<path>` to "make it focusable" — the
+shapes are already wrapped in `<Link>`, and doing so stacks a second tab stop on
+top of an anchor that is already there. If a map is not reachable, the anchors
+are missing or hidden; find out which before adding anything.
+
+The first draft of this skill said the opposite — that geography is an
+illustration and 753 tab stops are unusable, so the table should be the only
+path. That was wrong, it contradicted the project's own stated invariant, and it
+would have entrenched the bug below. A rule that sounds sensible in the abstract
+is worth nothing if it disagrees with what the codebase already decided.
+
+**Never put `role="img"` on an SVG that contains links.** It makes the whole
+subtree presentational, so the anchors stay focusable but vanish from the
+accessibility tree: a sighted keyboard user tabs through shapes that a screen
+reader announces as nothing. `Choropleth`, `MetricMap` and `ReferenceMap` all
+shipped that way. Use `role="group"` with the same summary `aria-label` — the
+label still names the map, it just stops deleting the map's contents.
+
+`role="img"` remains correct for a chart with no interactive children, which is
+why `AgePyramid` and `TrendChart` keep it. The test is whether anything inside
+can be focused, not whether the thing is a picture.
+
+**When you expose a map subtree, hide the label layer.** The in-shape names are
+*layout* strings abbreviated from `SHORT_NAMES` — "BKT", "Nawal W". They were
+invisible while the map was `role="img"`; the moment it becomes a group they
+leak as orphan text over the real names. `MapLabels` wraps itself in
+`aria-hidden`, and `MetricMap` marks its own `<text>` the same way.
 
 **Nepali text carries `lang="ne"`.** Without it a screen reader pronounces
 Devanagari with an English voice and produces noise. `SiteHeader.tsx:51` and

@@ -228,7 +228,14 @@ export function ReferenceMap({
           font size means the same thing on every map.
         */
         style={{ width: `${width}px`, maxWidth: "100%", height: "auto" }}
-        role="img"
+        /*
+          A group, not an image. `role="img"` makes every descendant
+          presentational, so the real <a> links inside this map were focusable
+          but absent from the accessibility tree -- a keyboard user could tab
+          into shapes a screen reader never announced. The label below still
+          names the whole map; it just no longer deletes its own contents.
+        */
+        role="group"
         aria-label={`Administrative reference map: ${dis.length} areas in ${provs.length} groups. Every area is named, either on the map or in the leader labels below it.`}
       >
         <g>
