@@ -151,7 +151,14 @@ export function MetricMap({
       <svg
         viewBox={`0 0 ${width} ${height}`}
         style={{ width: `${width}px`, maxWidth: "100%", height: "auto" }}
-        role="img"
+        /*
+          A group, not an image. `role="img"` makes every descendant
+          presentational, so the real <a> links inside this map were focusable
+          but absent from the accessibility tree -- a keyboard user could tab
+          into shapes a screen reader never announced. The label below still
+          names the whole map; it just no longer deletes its own contents.
+        */
+        role="group"
         aria-label={`Map shaded by ${metric.label}. ${features.length} areas. Values are in the table below.`}
       >
         {features.map((f) => {
@@ -172,6 +179,13 @@ export function MetricMap({
               key={f.placeId}
               onMouseEnter={() => setHovered(f.placeId)}
               onMouseLeave={() => setHovered((h) => (h === f.placeId ? null : h))}
+              // The readout below says "Hover or focus"; only hover was wired,
+              // so a keyboard user tabbing the map watched an empty slot. Focus
+              // events bubble (unlike focusin's absence on React's synthetic
+              // system, onFocus here *is* focusin), so listening on the group
+              // catches the link inside it.
+              onFocus={() => setHovered(f.placeId)}
+              onBlur={() => setHovered((h) => (h === f.placeId ? null : h))}
             >
               {f.href ? <Link href={f.href}>{shape}</Link> : shape}
             </g>
@@ -206,6 +220,9 @@ export function MetricMap({
           return (
             <text
               key={`label-${f.placeId}`}
+              // Layout string, not a name -- see MapLabels. The shape's own
+              // link and the table below carry the real one.
+              aria-hidden="true"
               x={f.label.x}
               y={top + f.label.fontSize * 0.35}
               textAnchor="middle"

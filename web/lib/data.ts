@@ -1040,7 +1040,7 @@ import type { Metric, MetricMapFeature } from "@/components/MetricMap";
  * hope".
  */
 export async function metricMapFor(
-  places: Place[],
+  shown: Place[],
   indicatorIds: string[],
   frame: { maxWidth: number; maxHeight: number },
 ): Promise<{
@@ -1049,14 +1049,26 @@ export async function metricMapFor(
   width: number;
   height: number;
 } | null> {
-  const [geo, obs, inds, us] = await Promise.all([
+  const [geo, obs, inds, us, allPlaces] = await Promise.all([
     boundaries(),
     observations(),
     indicators(),
     units(),
+    places(),
   ]);
 
-  const wanted = new Map(places.map((p) => [p.place_id, p]));
+  const wanted = new Map(shown.map((p) => [p.place_id, p]));
+  /*
+    Hrefs resolve against every place, not just the ones being drawn.
+    `wanted` is one sibling set -- callers pass districts, or local units -- so
+    a district's parent province was never in it and hrefFor returned null for
+    all 77. Every MetricMap therefore rendered zero links, silently breaking the
+    invariant in docs/visualization.md:164 that every map shape is a real,
+    keyboard-reachable link. Choropleth was unaffected because mapFor already
+    resolves against the full list, which is why /places had links and every
+    topic, indicator and district map did not.
+  */
+  const byId = new Map(allPlaces.map((p) => [p.place_id, p]));
   const shapes = geo
     .filter((g) => wanted.has(g.place_id))
     .map((g) => ({
@@ -1093,7 +1105,7 @@ export async function metricMapFor(
     return {
       placeId: s.place.place_id,
       name: s.place.name_en,
-      href: hrefFor(s.place, wanted),
+      href: hrefFor(s.place, byId),
       path: toPath(s.rings, project),
       label: placed
         ? {
@@ -1113,7 +1125,7 @@ export async function metricMapFor(
       const indicator = inds.find((i) => i.indicator_id === indicatorId);
       if (!indicator) return null;
       const values: Record<string, number> = {};
-      for (const place of places) {
+      for (const place of shown) {
         const rows = obs.filter(
           (o) =>
             o.place_id === place.place_id &&
@@ -1139,11 +1151,30 @@ export async function metricMapFor(
 }
 
 /** Page for a place, given the set of places on this map. */
+/**
+ * A place's page URL, or null where it has no page.
+ *
+ * `all` must be the full place list: URLs are hierarchical, so a district needs
+ * its province and a local unit needs its district *and* province. Passing only
+ * the places being drawn resolves nothing below province level.
+ *
+ * Local units were missing entirely, which is why district maps of their own
+ * local governments drew eleven shapes and no links, while all eleven had
+ * published pages.
+ */
 function hrefFor(place: Place, all: Map<string, Place>): string | null {
   if (place.place_type === "province") return `/np/${place.slug}/`;
+
+  const parent = place.parent_place_id ? all.get(place.parent_place_id) : undefined;
   if (place.place_type === "district") {
-    const prov = place.parent_place_id ? all.get(place.parent_place_id) : undefined;
-    return prov ? `/np/${prov.slug}/${place.slug}/` : null;
+    return parent ? `/np/${parent.slug}/${place.slug}/` : null;
+  }
+
+  const grandparent = parent?.parent_place_id
+    ? all.get(parent.parent_place_id)
+    : undefined;
+  if (parent && grandparent) {
+    return `/np/${grandparent.slug}/${parent.slug}/${place.slug}/`;
   }
   return null;
 }
