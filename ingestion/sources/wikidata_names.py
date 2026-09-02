@@ -23,12 +23,12 @@ unit.
 from __future__ import annotations
 
 import logging
-import os
 from collections.abc import Iterator
 from typing import Any
 
 import dlt
-import httpx
+
+from ingestion import http
 
 logger = logging.getLogger(__name__)
 
@@ -60,15 +60,6 @@ SELECT ?item ?en ?ne ?typeLabel ?districtLabel ?coord WHERE {{
 """
 
 
-def _verify() -> str | bool:
-    """Honour conventional CA env vars; httpx ignores them by default."""
-    for var in ("REQUESTS_CA_BUNDLE", "SSL_CERT_FILE"):
-        path = os.getenv(var)
-        if path and os.path.exists(path):
-            return path
-    return True
-
-
 def _parse_point(wkt: str | None) -> tuple[float | None, float | None]:
     """Parse a WKT Point literal, e.g. 'Point(85.324 27.7172)'."""
     if not wkt or not wkt.startswith("Point("):
@@ -88,21 +79,20 @@ def place_names() -> Iterator[dict[str, Any]]:
     Filtering belongs downstream where the spine can arbitrate; discarding here
     would hide coverage gaps that the transformation layer should report.
     """
-    response = httpx.get(
+    # Parsed inside the retry, not after it. This endpoint's failure mode is a
+    # body that stops mid-string rather than a connection that drops -- the
+    # request "succeeds" and json() is what raises. Retrying only the transport
+    # would not have caught it.
+    payload = http.get_json(
         SPARQL_ENDPOINT,
+        what="Wikidata SPARQL place names",
         params={"query": QUERY},
-        headers={
-            "Accept": "application/sparql-results+json",
-            # Wikidata asks clients to identify themselves and will throttle
-            # or block generic agents.
-            "User-Agent": "datanepal-bot/0.1 (+https://github.com/RDhamala/datanepal)",
-        },
+        # Wikidata asks clients to identify themselves and will throttle or
+        # block generic agents; http.USER_AGENT carries that identity.
+        headers={"Accept": "application/sparql-results+json"},
         timeout=180,
-        follow_redirects=True,
-        verify=_verify(),
     )
-    response.raise_for_status()
-    bindings = response.json()["results"]["bindings"]
+    bindings = payload["results"]["bindings"]
     logger.info("Wikidata returned %d candidate items", len(bindings))
 
     emitted = 0
