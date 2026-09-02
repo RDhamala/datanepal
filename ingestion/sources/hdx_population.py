@@ -23,13 +23,13 @@ from __future__ import annotations
 import csv
 import io
 import logging
-import os
 import re
 from collections.abc import Iterator
 from typing import Any
 
 import dlt
-import httpx
+
+from ingestion import http
 
 logger = logging.getLogger(__name__)
 
@@ -52,19 +52,10 @@ EXPECTED_PLACES = {0: 1, 1: 7, 2: 77}
 EXPECTED_MEASURES_PER_PLACE = 54
 
 
-def _verify() -> str | bool:
-    for var in ("REQUESTS_CA_BUNDLE", "SSL_CERT_FILE"):
-        path = os.getenv(var)
-        if path and os.path.exists(path):
-            return path
-    return True
-
 
 def _resources() -> dict[int, str]:
     """Map admin level -> CSV download URL for the latest year available."""
-    response = httpx.get(HDX_PACKAGE_API, timeout=60, follow_redirects=True, verify=_verify())
-    response.raise_for_status()
-    payload = response.json()
+    payload = http.get_json(HDX_PACKAGE_API, what="HDX population package_show", timeout=60)
     if not payload.get("success"):
         raise RuntimeError("HDX package_show returned success=false")
 
@@ -106,8 +97,7 @@ def population() -> Iterator[dict[str, Any]]:
 
     for level, url in sorted(_resources().items()):
         logger.info("Fetching COD-PS admin level %d", level)
-        response = httpx.get(url, timeout=120, follow_redirects=True, verify=_verify())
-        response.raise_for_status()
+        response = http.get(url, what=f"COD-PS admin level {level}", timeout=120)
 
         # The files carry a UTF-8 BOM, which otherwise corrupts the first header.
         text = response.content.decode("utf-8-sig")

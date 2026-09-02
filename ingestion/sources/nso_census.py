@@ -51,7 +51,6 @@ from __future__ import annotations
 
 import io
 import logging
-import os
 import time
 from collections.abc import Iterator
 from typing import Any
@@ -59,6 +58,8 @@ from typing import Any
 import dlt
 import httpx
 import openpyxl
+
+from ingestion import http
 
 logger = logging.getLogger(__name__)
 
@@ -112,14 +113,6 @@ TYPE_SUFFIXES: list[tuple[str, str]] = [
 ]
 
 
-def _verify() -> str | bool:
-    """httpx ignores the CA-bundle environment variables; honour them here."""
-    for var in ("REQUESTS_CA_BUNDLE", "SSL_CERT_FILE"):
-        path = os.getenv(var)
-        if path and os.path.exists(path):
-            return path
-    return True
-
 
 def _split_type(name: str) -> tuple[str, str | None]:
     """Split a local-unit name into its base name and unit type."""
@@ -132,8 +125,11 @@ def _split_type(name: str) -> tuple[str, str | None]:
 
 def _fetch(province: int, table: str, session: httpx.Client) -> openpyxl.Workbook:
     url = BASE.format(province=province, table=table)
-    response = session.get(url)
-    response.raise_for_status()
+    # 7 provinces x 2 tables = 14 workbook downloads per run; each one is an
+    # independent chance for the census portal to drop a connection.
+    response = http.client_get(
+        session, url, what=f"NSO census {table} province {province}"
+    )
     # read_only would be faster but reports merged cells inconsistently, and the
     # area hierarchy in these files is expressed through merged cells.
     return openpyxl.load_workbook(io.BytesIO(response.content), data_only=True)
@@ -173,7 +169,7 @@ def census_population() -> Iterator[dict[str, Any]]:
     with httpx.Client(
         timeout=120,
         follow_redirects=True,
-        verify=_verify(),
+        verify=http.verify(),
         headers={"User-Agent": "DataNepalBot/1.0 (+https://datanepal.org)"},
     ) as session:
         for province_no, province_name in PROVINCES.items():
@@ -342,7 +338,7 @@ def census_literacy() -> Iterator[dict[str, Any]]:
     with httpx.Client(
         timeout=180,
         follow_redirects=True,
-        verify=_verify(),
+        verify=http.verify(),
         headers={"User-Agent": "DataNepalBot/1.0 (+https://datanepal.org)"},
     ) as session:
         for province_no, province_name in PROVINCES.items():

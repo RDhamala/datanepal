@@ -42,12 +42,13 @@ winners, carried under a fixed `independent` party id rather than dropped.
 from __future__ import annotations
 
 import logging
-import os
 from collections.abc import Iterator
 from typing import Any
 
 import dlt
 import httpx
+
+from ingestion import http
 
 logger = logging.getLogger(__name__)
 
@@ -60,13 +61,6 @@ PR_FILE = "JSONFiles/Election2082/Common/PRHoRPartyTop5.txt"
 # residual category, which the source itself marks with SymbolID 0.
 INDEPENDENT_PARTY_ID = "independent"
 
-
-def _verify() -> str | bool:
-    for var in ("REQUESTS_CA_BUNDLE", "SSL_CERT_FILE"):
-        path = os.getenv(var)
-        if path and os.path.exists(path):
-            return path
-    return True
 
 
 def _party_id(symbol_id: int) -> str:
@@ -82,8 +76,7 @@ def _session(client: httpx.Client) -> str:
     """Load the results homepage once to receive the CSRF cookie the JSON
     handler checks against. Not authentication -- a same-origin check the
     client-side JS satisfies by reading its own cookie back."""
-    response = client.get(BASE + "/", headers={"User-Agent": _UA})
-    response.raise_for_status()
+    http.client_get(client, BASE + "/", what="ECN results homepage (CSRF)")
     token = client.cookies.get("CsrfToken")
     if not token:
         raise ValueError("No CsrfToken cookie set by the results homepage; page may have changed.")
@@ -91,18 +84,20 @@ def _session(client: httpx.Client) -> str:
 
 
 def _fetch_json(client: httpx.Client, token: str, file: str) -> list[dict[str, Any]]:
-    response = client.get(
+    # A retry re-sends the same CSRF token. If the token has expired the source
+    # answers 4xx, which is not retryable here and surfaces as a real failure
+    # rather than being masked by attempts that cannot succeed.
+    payload = http.client_get_json(
+        client,
         HANDLER,
+        what=f"ECN {file}",
         params={"file": file},
         headers={
-            "User-Agent": _UA,
             "x-csrf-token": token,
             "x-requested-with": "XMLHttpRequest",
             "referer": BASE + "/",
         },
     )
-    response.raise_for_status()
-    payload = response.json()
     if not isinstance(payload, list):
         raise ValueError(f"Unexpected response shape for {file}: {payload!r}")
     return payload
@@ -111,7 +106,7 @@ def _fetch_json(client: httpx.Client, token: str, file: str) -> list[dict[str, A
 @dlt.resource(name="hor_2026", write_disposition="replace")
 def hor_2026() -> Iterator[dict[str, Any]]:
     """Yield one row per (party, result_type)."""
-    with httpx.Client(timeout=30, follow_redirects=True, verify=_verify()) as client:
+    with httpx.Client(timeout=30, follow_redirects=True, verify=http.verify()) as client:
         token = _session(client)
         fptp = _fetch_json(client, token, FPTP_FILE)
         pr = _fetch_json(client, token, PR_FILE)
