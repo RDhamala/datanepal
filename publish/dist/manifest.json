@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-24T22:30:07.907152+00:00",
+  "generated_at": "2026-09-03T08:08:55.161827+00:00",
   "table_count": 16,
   "tables": [
     {
@@ -22,7 +22,7 @@
       "row_count": 7,
       "parquet": "datasets.parquet",
       "json": "datasets.json",
-      "bytes": 7517
+      "bytes": 7526
     },
     {
       "table": "dimension_members",
@@ -44,7 +44,7 @@
       "row_count": 87,
       "parquet": "dimension_members.parquet",
       "json": "dimension_members.json",
-      "bytes": 5217
+      "bytes": 5202
     },
     {
       "table": "dimensions",
@@ -96,7 +96,7 @@
       "row_count": 753,
       "parquet": "geography.parquet",
       "json": "geography.json",
-      "bytes": 53286
+      "bytes": 53276
     },
     {
       "table": "indicators",
@@ -118,7 +118,7 @@
       "row_count": 36,
       "parquet": "indicators.parquet",
       "json": "indicators.json",
-      "bytes": 8589
+      "bytes": 8560
     },
     {
       "table": "licences",
@@ -140,7 +140,7 @@
       "row_count": 8,
       "parquet": "licences.parquet",
       "json": "licences.json",
-      "bytes": 3016
+      "bytes": 3019
     },
     {
       "table": "observation_dimensions",
@@ -169,7 +169,7 @@
       "row_count": 43360,
       "parquet": "observation_dimensions.parquet",
       "json": null,
-      "bytes": 506675
+      "bytes": 509380
     },
     {
       "table": "observations",
@@ -207,7 +207,7 @@
       "row_count": 27182,
       "parquet": "observations.parquet",
       "json": null,
-      "bytes": 627054
+      "bytes": 631819
     },
     {
       "table": "organisations",
@@ -232,7 +232,7 @@
       "row_count": 24,
       "parquet": "organisations.parquet",
       "json": "organisations.json",
-      "bytes": 5522
+      "bytes": 5510
     },
     {
       "table": "place_boundaries",
@@ -262,7 +262,7 @@
       "row_count": 859,
       "parquet": "place_boundaries.parquet",
       "json": "place_boundaries.json",
-      "bytes": 649869
+      "bytes": 661926
     },
     {
       "table": "place_identifiers",
@@ -291,7 +291,7 @@
       "row_count": 1351,
       "parquet": "place_identifiers.parquet",
       "json": "place_identifiers.json",
-      "bytes": 21355
+      "bytes": 21627
     },
     {
       "table": "places",
@@ -322,7 +322,7 @@
       "row_count": 860,
       "parquet": "places.parquet",
       "json": "places.json",
-      "bytes": 65160
+      "bytes": 65095
     },
     {
       "table": "protected_areas",
@@ -349,7 +349,7 @@
       "row_count": 22,
       "parquet": "protected_areas.parquet",
       "json": "protected_areas.json",
-      "bytes": 2873
+      "bytes": 2879
     },
     {
       "table": "table_sources",
@@ -371,7 +371,7 @@
       "row_count": 23,
       "parquet": "table_sources.parquet",
       "json": "table_sources.json",
-      "bytes": 736
+      "bytes": 737
     },
     {
       "table": "topics",
@@ -395,7 +395,7 @@
       "row_count": 12,
       "parquet": "topics.parquet",
       "json": "topics.json",
-      "bytes": 3108
+      "bytes": 3103
     },
     {
       "table": "units",
@@ -417,7 +417,7 @@
       "row_count": 20,
       "parquet": "units.parquet",
       "json": "units.json",
-      "bytes": 2561
+      "bytes": 2553
     }
   ],
   "history": {
@@ -426,7 +426,7 @@
     "description": "Append-only history of every published observation. One row per revision; is_current marks the present value. A superseded row keeps its original value and records when it was replaced.",
     "row_count": 27182,
     "parquet": "observation_history.parquet",
-    "bytes": 628553
+    "bytes": 633414
   },
   "sources": [
     {
