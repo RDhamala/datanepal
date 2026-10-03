@@ -8,6 +8,14 @@ export const metadata: Metadata = {
   robots: prototypeRobots,
 };
 
+const UNIFIED = {
+  name: "Unified — approved synthesis",
+  idea: "Direction A's visual system and brand, with Direction B's linked map/ranking restyled to belong to it.",
+  home: "/design-reset/unified/home/",
+  place: "/design-reset/unified/dhading/",
+  look: "Light editorial shell, serif for masthead/titles/lead figures only, hairline rules, no cards. The GeoExplorer reads as a figure, not a dashboard panel.",
+};
+
 const ROUTES = [
   {
     key: "A",
@@ -97,12 +105,47 @@ export default function DesignResetIndex() {
           Two directions for DataNepal
         </h1>
         <p className="text-ink-soft mt-4 max-w-[62ch] text-[16px] leading-relaxed">
-          Same real data, same content requirements, two different compositions. Compare
-          them on the homepage and the Dhading page — not on the summary below.
+          Same real data, same content requirements. A and B were the two originals; the
+          unified direction is the approved synthesis. Compare them on the homepage and
+          the Dhading page — not on the summary below.
         </p>
 
+        {/* ------------------------------------------------- the synthesis */}
+        <section className="border-ink mt-9 border-t-2 pt-6">
+          <p className="text-ink-faint text-[11px]" style={{ letterSpacing: "0.07em" }}>
+            APPROVED DIRECTION
+          </p>
+          <h2 className="text-ink mt-1 text-[24px] leading-tight font-semibold tracking-[-0.02em]">
+            {UNIFIED.name}
+          </h2>
+          <p className="text-ink-soft mt-3 max-w-[70ch] text-[15px] leading-relaxed">
+            {UNIFIED.idea}
+          </p>
+          <p className="text-ink-faint mt-2 max-w-[70ch] text-[13px] leading-relaxed">
+            {UNIFIED.look}
+          </p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Link
+              href={UNIFIED.home}
+              className="border-ink bg-ink text-surface rounded-md border px-4 py-2 text-[13px] no-underline"
+            >
+              Unified homepage →
+            </Link>
+            <Link
+              href={UNIFIED.place}
+              className="border-ink rounded-md border px-4 py-2 text-[13px] no-underline"
+            >
+              Unified Dhading →
+            </Link>
+          </div>
+        </section>
+
+        <h2 className="text-ink mt-14 text-[19px] font-semibold tracking-[-0.015em]">
+          The two originals
+        </h2>
+
         {/* --------------------------------------------------- the two cards */}
-        <div className="mt-10 grid gap-6 md:grid-cols-2">
+        <div className="mt-4 grid gap-6 md:grid-cols-2">
           {ROUTES.map((r) => (
             <section key={r.key} className="border-line rounded-lg border p-6">
               <p

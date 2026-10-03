@@ -1,20 +1,92 @@
-# Design reset — two directions
+# Design reset — directions, and the approved synthesis
 
-Two high-fidelity prototypes, same real data, same content requirements,
-different compositions. Built to be chosen between, not merged.
+Three prototypes on the same real data. A and B were the originals, built to be
+chosen between. The **unified** direction is the approved outcome: Direction A's
+visual and brand system with Direction B's geographic behaviour restyled into
+it.
 
 **Nothing here is implemented in production.** The routes exist only in `next
 dev` and in a Cloudflare branch preview; `next.config.mjs` keeps them out of the
 public build entirely, which is verified on both sides below.
 
-| | Direction A | Direction B |
-|---|---|---|
-| Name | Editorial Statistical Publication | Geographic Civic Atlas |
-| Homepage | `/design-reset/editorial/home/` | `/design-reset/atlas/home/` |
-| Dhading | `/design-reset/editorial/dhading/` | `/design-reset/atlas/dhading/` |
-| Index | `/design-reset/` | — |
+| | Direction A | Direction B | **Unified (approved)** |
+|---|---|---|---|
+| Name | Editorial Statistical Publication | Geographic Civic Atlas | A's system, B's geography |
+| Homepage | `/design-reset/editorial/home/` | `/design-reset/atlas/home/` | `/design-reset/unified/home/` |
+| Dhading | `/design-reset/editorial/dhading/` | `/design-reset/atlas/dhading/` | `/design-reset/unified/dhading/` |
 
-Screenshots: `docs/design/references/design-reset/`.
+Index at `/design-reset/`. Screenshots in `docs/design/references/design-reset/`.
+
+---
+
+## Unified — the approved synthesis
+
+Direction A is the visual and brand system. Direction B contributes behaviour
+only, restyled to belong to A. One design, not two systems on different pages.
+
+### Retained from A
+
+Brand identity and the light shell. Bilingual masthead. Editorial serif for
+masthead, page title, section headings and standalone lead figures. Numbered
+section rhythm with hairline rules and no cards. Prose width. Source treatment.
+The rule-separated national snapshot. The benchmark number line. The reading
+order: country now → how it divides → domains → what moved → how to take it.
+
+### Retained from B
+
+The linked map and ranking as one control — hover *and* focus on either
+highlight both. Metric switching. Every map shape a real link. The ranked list
+beside the map, which is how a reader finds a specific place.
+
+### Deliberately removed
+
+B's dark application chrome and its sticky dark header. The rounded-card grid.
+Black pill controls, replaced by underlined text tabs. B's compact KPI tiles,
+replaced by A's rule-separated row. The dashboard framing generally: the
+GeoExplorer is a `<figure>` with a caption and a source line, not a panel.
+
+### Resolved by measurement, not taste
+
+**Type roles.** Digit metrics at 48px/600: the serif resolves to Iowan Old
+Style with every digit 28.52px wide — lining and tabular already. The sans
+(`ui-sans-serif`) is *proportional*: "1" is 21.6px against "0" at 29.5px. So the
+first instinct, that the serif is the risky one in a column, is backwards on
+macOS. Two rules came out of it: every columnar number carries `.tabular`
+(which equalises the sans to 29.37px), and the serif stays restricted to
+figures that stand alone, because the stack falls back to Georgia off macOS and
+Georgia *does* set old-style figures.
+
+**Mobile map labels.** At 390px the Dhading map renders 350px wide from a
+700px frame, putting a 14px label at 5.7px. Labels are now hidden below 640px
+and the ranking moves above the map, so the names arrive in full before the
+shape does. Verified: touch targets 44px on both the tabs and the ranking rows.
+
+**Ranking bars.** The ranking started as a bare list of numbers. It now carries
+a zero-based bar per row, which is Direction A's ranked-bar richness inside
+Direction B's linked control — and the bar turns ink when its shape is
+highlighted.
+
+### Page length
+
+| | A | B | Unified |
+|---|---|---|---|
+| Homepage, 1440px | 4,423px | 1,988px | **3,051px** |
+| Dhading, 1440px | 3,923px | 2,766px | **3,371px** |
+
+The homepage is 31% shorter than A. It sits ~50px above the 2,500–3,000 target
+band, and the reason is a deliberate late change: topic descriptions were cut
+and then restored, at a cost of about 156px, after the reviewer said they liked
+how substantial A's domain list felt. Cutting them again returns it to 2,895px.
+That is a content call, not a layout constraint.
+
+### Against the three questions
+
+- **Shorter than A?** Yes — 31% on the homepage, 14% on Dhading.
+- **More distinctive than B?** Yes. The serif masthead, Devanagari at title
+  scale and the absence of cards are all A's, and none of them survive in B.
+- **Map as usable as B?** Yes, and better on mobile. Same linked behaviour and
+  the same 13 real links, plus the ranking-first reflow and the hidden-label
+  threshold, neither of which B has.
 
 ---
 
@@ -201,19 +273,24 @@ forbidden from touching production components. It is worth its own change.
 
 ---
 
-## The decision
+## The decision, and what is left of it
 
-Both are credible. The choice is not which looks better — it is which job the
-homepage has:
+**Decided.** A as the global visual and brand system, with B's geographic
+behaviour integrated and restyled to belong to it. Built and prototyped above.
+A and B remain in the repository as the record of what was compared.
 
-- If DataNepal's homepage should **explain the country**, choose A.
-- If it should **be a way into the country**, choose B.
+**Still open, and needing a human call:**
 
-A third option exists and is not prototyped: A's homepage with B's place pages.
-The editorial sequence is strongest where there is an argument to make (the
-nation), and the linked map is strongest where there is a set to explore (a
-district's local governments). That hybrid carries B's implementation risk only
-on the pages that need it.
+1. **Topic descriptions on the homepage.** Restored on request; they cost about
+   156px and put the page ~50px over the length target. Keep or cut.
+2. **The serif.** A system stack today, so it renders as Iowan Old Style on
+   macOS, Palatino or Georgia elsewhere. Shipping it properly means committing a
+   second font file — the same decision that was just made for the Devanagari
+   face.
+3. **Nepali district names.** `name_ne` is NULL for all 77. Both the unified
+   Dhading page and its predecessors say so rather than transliterate. This is
+   the largest content gap behind the bilingual design and sits upstream of any
+   layout work.
 
-Once a direction is chosen, the next prototypes are topic, indicator,
-local-government and the map explorer — before any production rollout.
+Nothing here is in production. The next prototypes — topic, indicator,
+local-government, map explorer — come before any rollout.
