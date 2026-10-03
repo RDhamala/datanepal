@@ -230,7 +230,7 @@ export default async function Home() {
 
           <p className="mt-7 flex flex-wrap gap-x-5 gap-y-2 text-[14px]">
             <Link href="/places/">Explore places</Link>
-            <Link href="/topics/">Browse topics</Link>
+            <Link href="/indicators/">Browse indicators</Link>
             <Link href="/datasets/">Dataset catalogue</Link>
           </p>
         </div>

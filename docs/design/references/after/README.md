@@ -46,6 +46,9 @@ design, and the baseline still describes them.
 | `compare-desktop-four-districts.png` | Four districts under four different provinces |
 | `compare-desktop-five.png` | The five-place maximum, input disabled with a reason |
 | `compare-tablet.png` · `compare-mobile.png` · `compare-mobile-table.png` | 834px and 390px |
+| `indicators-desktop-filters.png` | The merged index: topic and coverage as controls |
+| `indicators-desktop-filtered.png` | "To local government" — 5 of 36, two topics left |
+| `indicators-mobile-filtered.png` | 390px, nav down to five items |
 
 **What to look for against `../current/`.** The fact strip's figures went from
 22px — the same size as the section headings above them — to the `stat` role.
@@ -59,6 +62,17 @@ survives. Every disclosure says the same kind of thing in the same place.
 **Measured, not eyeballed.** No horizontal overflow at 390, 834, 1440 or 1920
 on any of the three pages. Type at 1440: h1 52 · stat 30 · heading 22 ·
 body 15. At 834: 45 · 27 · 18. At 390: 36 · 24 · 17. Dhading 4,970 → 4,858.
+
+**Seventh stage.** Audit §4: `/topics/` and `/indicators/` listed the same ten
+topics with the same indicators and the same headline values, and held two of
+six nav slots to do it. Topic is a filter on `/indicators/` now and the topics
+*index* redirects there; the topic *pages* are untouched, because they carry
+charts and a ranking a list cannot and every place page links to one.
+
+The second filter closes §3: coverage, derived rather than declared, so "does
+this exist for my district" is one control instead of 36 clicks. Worth
+comparing `indicators-desktop-filters.png` with `../current/indicators-desktop.png`
+— same page, with the question it most owed an answer to now answerable.
 
 **Sixth stage.** `/compare`, the audit's §8 and the one route on the redesign
 proposal's list that adds a capability rather than removing duplication.

@@ -5,9 +5,10 @@ data build 24 August 2026, using the baselines in `references/current/` plus
 the source and the published Parquet. Every figure below was measured or
 computed, not estimated; the commands are in §11.
 
-Findings §1, §2, §3, §6 and §9 were resolved on 3 October 2026; §6 and §9
-carry corrections, because measuring them in the browser showed the original
-diagnosis was wrong in both cases. The rest stand.
+Findings §1, §2, §3, §4, §6, §8 and §9 are resolved; §6 and §9 carry
+corrections, because measuring them in the browser showed the original
+diagnosis was wrong in both cases. §5 and §7 stand. §10 is partly addressed —
+every figure now carries a period chip, but provenance still has one weight.
 
 These are **system-level defects** — defaults, contracts and missing
 abstractions. Each one would reappear in the next feature if only its current
@@ -82,32 +83,45 @@ finds a page with no Karnali in it and concludes the data does not exist, when
 in fact it exists nationally and the interface has no way to say so. Every new
 national-only source makes this worse, and 31 of 36 is not an edge case.
 
-**Fix the contract.** Lowest-available-level becomes a first-class attribute
-of an indicator — `National` / `To district` / `To local unit` — rendered
-everywhere an indicator is listed and filterable on `/indicators/`. An empty
-section on a place page then states what *does* exist and links to it, rather
-than vanishing.
+**Resolved.** Lowest-available-level is a first-class attribute, derived in
+`lib/coverage.ts` rather than declared: `National` / `To province` /
+`To district` / `To local government`, plus whether a time series exists. It
+is rendered on every indicator row and is **filterable** on `/indicators/`, so
+"does this exist for my district" is now one control rather than 36 clicks.
+Place pages state coverage once beside their sources rather than omitting a
+topic silently.
+
+`/indicators/` also had its own second implementation of this — a private
+`DEPTH` ladder with its own vocabulary ("To local unit" against the shared
+"To local government") — which is now deleted. Two derivations of the same
+fact drift, and this one was about to become a filter rather than a caption.
 
 **Touches.** `lib/data.ts` (derive the level), `app/indicators/page.tsx`,
 place-page section rendering.
 
-## 4. `/topics/` and `/indicators/` answer the same question
+## 4. `/topics/` and `/indicators/` answered the same question — resolved
 
-**Evidence.** Both list the same ten topics with their indicators and a
-headline national value. `/indicators/` adds unit, definition and geographic
-level; `/topics/` adds an observation count and the Nepali topic name. They
-hold two of five top-level nav slots.
+**Evidence.** Both listed the same ten topics with the same indicators under
+each and the same headline national value. `/indicators/` added the unit, the
+definition and the geographic depth; `/topics/` added an observation count.
+They held two of six nav slots between them.
 
-**Why it is system-level.** It is a routing decision, not a page defect: as
-long as both exist, every new topic feature must be built or duplicated twice,
-and neither page can develop a distinct job. It is also what blocks the nav
-slot that a comparison route needs.
+**Why it was system-level.** A routing decision, not a page defect: while both
+existed, every new topic feature had to be built or duplicated twice, and
+neither page could develop a distinct job.
 
-**Fix the contract.** Topic becomes a grouping *within* indicators — a filter,
-not a destination. Topic URLs stay (place pages link to them and they are good
-landing pages), but they stop competing for the same reader.
+**Resolved.** Topic is a filter on `/indicators/`, in the URL so a filtered
+view can be linked to. `/topics/` redirects there — a 301 in
+`public/_redirects` for production, and a canonical tag plus meta refresh on
+the page itself for anywhere that file is not honoured. Individual topic pages
+are untouched: `/topics/health/` is a hub with charts and a ranking that a
+list cannot carry, every place page links to one, and they are good landing
+pages. It was the *index* that was the duplicate.
 
-**Touches.** `app/topics/`, `app/indicators/`, `components/SiteHeader.tsx`.
+The nav is five items. Only three things linked to the old index — the nav,
+the homepage's "Browse topics", and the 404 page — against eight linking to
+individual topic pages, which is the ratio that decided which one absorbed
+the other.
 
 ## 5. Index routes have no length budget
 

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { Suspense } from "react";
 import {
   country,
   distributionsFor,
@@ -15,7 +15,12 @@ import {
   topics,
   units,
 } from "@/lib/data";
-import { Sparkline } from "@/components/charts";
+import {
+  IndicatorIndex,
+  type IndicatorRow,
+  type TopicOption,
+} from "@/components/IndicatorIndex";
+import { coverageByIndicator } from "@/lib/coverage";
 import { Crumbs, PageHeader } from "@/components/ui";
 
 export const metadata: Metadata = {
@@ -47,23 +52,6 @@ const PUBLISHER: Record<string, string> = {
   population_density: "UNFPA / OCHA",
 };
 
-const LOCAL_TYPES = new Set([
-  "metropolitan",
-  "sub_metropolitan",
-  "municipality",
-  "rural_municipality",
-]);
-
-const GRAIN_LABEL: Record<string, string> = {
-  country: "National",
-  province: "To province",
-  district: "To district",
-  metropolitan: "To local unit",
-  sub_metropolitan: "To local unit",
-  municipality: "To local unit",
-  rural_municipality: "To local unit",
-};
-
 export default async function IndicatorsIndex() {
   const [inds, allTopics, us, np, obs, all] = await Promise.all([
     indicators(),
@@ -82,28 +70,64 @@ export default async function IndicatorsIndex() {
   // first, as a national figure.
   const distributions = np ? await distributionsFor(np.place_id) : [];
 
-  // Deepest place type each indicator reaches. A reader comparing districts
-  // needs to know which indicators actually go that far before clicking.
-  // Observations carry only place_id, so this joins through places.
-  const DEPTH = ["country", "province", "district", "local"];
-  const typeOf = new Map(all.map((p) => [p.place_id, p.place_type]));
-  const rank = (t: string) => {
-    const i = DEPTH.indexOf(LOCAL_TYPES.has(t) ? "local" : t);
-    return i === -1 ? 0 : i;
-  };
-  const depthOf = new Map<string, string>();
-  for (const o of obs) {
-    if (!o.place_id) continue;
-    const t = typeOf.get(o.place_id);
-    if (!t) continue;
-    const current = depthOf.get(o.indicator_id);
-    if (!current || rank(t) > rank(current)) depthOf.set(o.indicator_id, t);
-  }
+  /*
+    Coverage comes from lib/coverage now, not from a scan written here.
 
+    This page had its own DEPTH ladder and its own rank() -- a second
+    implementation of "how far down does this indicator go", with its own
+    vocabulary ("To local unit" against the shared "To local government").
+    Two derivations of the same fact drift, and this one was about to become
+    a filter rather than a caption, which is a worse thing to be wrong about.
+  */
   const byTopic = new Map<string, typeof inds>();
   for (const i of inds) {
     byTopic.set(i.topic_id, [...(byTopic.get(i.topic_id) ?? []), i]);
   }
+
+  const coverage = coverageByIndicator(obs, all);
+
+  const rows: IndicatorRow[] = inds.map((i) => {
+    const h = nationalHeadline(i.indicator_id, {
+      pop,
+      series,
+      profile,
+      units: us,
+      distributions,
+    });
+    const c = coverage.get(i.indicator_id);
+    return {
+      id: i.indicator_id,
+      slug: indicatorSlug(i.indicator_id),
+      name: i.name_en,
+      nameNe: i.name_ne,
+      definition: i.definition,
+      unitName: unitOf(i.default_unit_id)?.name_en ?? null,
+      additive: i.is_additive,
+      publisher: PUBLISHER[i.indicator_id] ?? null,
+      topicId: i.topic_id,
+      coverageLabel: c?.label ?? "National",
+      coverageLevel: c?.level ?? "national",
+      hasTimeSeries: c?.hasTimeSeries ?? false,
+      value: h
+        ? { text: formatWithUnit(h.value, h.unit), period: h.period, status: h.status }
+        : null,
+      leading: h?.leading
+        ? { memberName: h.leading.memberName, memberCount: h.leading.memberCount }
+        : null,
+      points: h ? h.points.map((pt) => ({ year: pt.year, value: pt.value })) : [],
+    };
+  });
+
+  const topicOptions: TopicOption[] = allTopics
+    .filter((t) => byTopic.has(t.topic_id))
+    .map((t) => ({
+      id: t.topic_id,
+      slug: t.slug,
+      name: t.name_en,
+      nameNe: t.name_ne,
+    }));
+
+  const subNational = rows.filter((r) => r.coverageLevel !== "national").length;
 
   return (
     <>
@@ -112,111 +136,17 @@ export default async function IndicatorsIndex() {
         eyebrow="Browse"
         title="Indicators"
         native="सूचकहरू"
-        meta={`${inds.length} indicators across ${byTopic.size} topics. Values shown are national, latest available period.`}
+        meta={`${inds.length} indicators across ${topicOptions.length} topics, ${subNational} of them published below the national level. Values shown are national, latest available period.`}
       />
 
-      {allTopics
-        .filter((t) => byTopic.has(t.topic_id))
-        .map((t) => (
-          <section key={t.topic_id} className="mb-14">
-            <h2 className="text-heading text-ink font-semibold">
-              <Link href={`/topics/${t.slug}/`}>{t.name_en}</Link>
-              {t.name_ne && (
-                <span className="text-ink-faint ne ml-2 font-normal">{t.name_ne}</span>
-              )}
-            </h2>
-
-            <ul className="divide-line border-line mt-4 divide-y border-t">
-              {byTopic.get(t.topic_id)!.map((i) => {
-                const unit = unitOf(i.default_unit_id);
-                // One shared lookup for "what is this indicator's current
-                // national figure" -- whether it lives in a plain series, the
-                // population cube, or a dimensioned placeProfile metric. Before
-                // this, only the population and plain-series cases were
-                // handled here, so literacy rate, literate population,
-                // population aged 5+ and households all rendered a bare dash.
-                const h = nationalHeadline(i.indicator_id, {
-                  pop,
-                  series,
-                  profile,
-                  units: us,
-                  distributions,
-                });
-                const value = h
-                  ? { text: formatWithUnit(h.value, h.unit), period: h.period }
-                  : null;
-                const status = h?.status ?? null;
-
-                return (
-                  <li
-                    key={i.indicator_id}
-                    className="grid grid-cols-1 items-baseline gap-x-8 gap-y-3 py-5 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto]"
-                  >
-                    <div>
-                      <Link
-                        href={`/indicators/${indicatorSlug(i.indicator_id)}/`}
-                        className="text-[15px] font-medium"
-                      >
-                        {i.name_en}
-                      </Link>
-                      {i.name_ne && (
-                        <span className="text-ink-faint ne ml-2 text-[13px]">
-                          {i.name_ne}
-                        </span>
-                      )}
-                      {i.definition && (
-                        <p className="text-ink-faint mt-1 max-w-prose text-[12px] leading-relaxed">
-                          {i.definition}
-                        </p>
-                      )}
-                      <p className="text-ink-faint mt-1.5 text-[11px]">
-                        {unit?.name_en}
-                        {" · "}
-                        {GRAIN_LABEL[depthOf.get(i.indicator_id) ?? "country"] ??
-                          "National"}
-                        {!i.is_additive && " · not additive"}
-                        {PUBLISHER[i.indicator_id] && ` · ${PUBLISHER[i.indicator_id]}`}
-                      </p>
-                    </div>
-
-                    {/* Latest value, right-aligned so the column scans as a
-                        column of numbers rather than as prose. */}
-                    <div className="sm:text-right">
-                      {value ? (
-                        <>
-                          <div className="text-ink tabular text-[1.25rem] leading-none font-semibold tracking-[-0.025em]">
-                            {value.text}
-                          </div>
-                          {/* A distribution has no national total. Name the
-                              member the figure belongs to, in the same breath
-                              as the figure, so the column cannot be read as
-                              one of national totals. */}
-                          {h?.leading && (
-                            <div className="text-ink-muted mt-1 text-[11px]">
-                              largest of {h.leading.memberCount}: {h.leading.memberName}
-                            </div>
-                          )}
-                          <div className="text-ink-faint tabular mt-1 text-[11px]">
-                            {value.period}
-                            {status && ` ${status}`}
-                          </div>
-                        </>
-                      ) : (
-                        <span className="text-ink-faint text-[13px]">—</span>
-                      )}
-                    </div>
-
-                    <div className="sm:w-33">
-                      {h && h.points.length >= 3 && (
-                        <Sparkline points={h.points.slice(-30)} />
-                      )}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        ))}
+      {/*
+        Filtering is client-side and lives in the address, so a filtered view
+        can be linked to. The data is already on the page: this is a static
+        export and there is nothing to fetch.
+      */}
+      <Suspense fallback={null}>
+        <IndicatorIndex rows={rows} topics={topicOptions} />
+      </Suspense>
     </>
   );
 }

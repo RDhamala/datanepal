@@ -1,187 +1,56 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import {
-  country,
-  formatNumber,
-  formatWithUnit,
-  indicatorSlug,
-  indicatorsOfTopic,
-  distributionsFor,
-  nationalHeadline,
-  placeProfile,
-  populationOf,
-  seriesFor,
-  topics,
-  units,
-  type Topic,
-} from "@/lib/data";
-import { Sparkline } from "@/components/charts";
-import { Crumbs, PageHeader, Section } from "@/components/ui";
+import { Crumbs, PageHeader } from "@/components/ui";
+
+/*
+  /topics/ is now /indicators/.
+
+  The two indexes listed the same ten topics, the same indicators under each,
+  and the same headline national value, and held two of six nav slots between
+  them. /indicators/ added the unit, the definition and the geographic depth;
+  /topics/ added an observation count. There was no question one answered that
+  the other did not, and a reader who found both had to work out which was
+  canonical.
+
+  Topic is a filter on /indicators/ now, so the grouping survives and the
+  duplicate destination does not. Individual topic pages are untouched --
+  /topics/health/ is a hub with charts and a ranking, and every place page
+  links to one.
+
+  public/_redirects makes this a 301 in production. This page is what serves
+  anywhere that file is not honoured -- a local `npx serve out`, a preview on
+  a different host -- so the route never dead-ends. The canonical tag points
+  at the destination either way.
+*/
 
 export const metadata: Metadata = {
   title: "Topics",
-  description: "Subject areas covered by DataNepal, and those planned.",
+  description: "Browse DataNepal indicators by topic.",
+  alternates: { canonical: "/indicators/" },
+  robots: { index: false, follow: true },
 };
 
-/*
-  Topics index: a discovery surface, not a table of contents.
-
-  The old version listed topic names with observation counts. A reader browsing
-  topics wants to know what is *in* one before opening it, so each live topic now
-  leads with a real headline figure from its own data, its indicator list, and a
-  trend where a long series exists. "4 indicators · 191 observations" describes
-  our warehouse; "Inflation 2.7%, 2025" describes Nepal.
-
-  Planned topics stay listed and stay clearly planned. Naming the roadmap is
-  more useful than hiding it, and far better than a page of empty topic cards.
-*/
-
-/** The figure that best represents a topic at a glance. */
-const HEADLINE: Record<string, string> = {
-  population: "population",
-  economy: "cpi_inflation_annual",
-  education: "literacy_rate",
-  health: "life_expectancy_at_birth",
-  agriculture: "agriculture_value_added_pct_gdp",
-  infrastructure: "electricity_access_pct",
-  environment: "protected_areas_pct",
-  labour: "unemployment_rate",
-  government: "government_revenue_pct_gdp",
-};
-
-type Headline = {
-  name: string;
-  value: string;
-  period: string;
-  note: string;
-  points: { year: number; value: number }[];
-};
-
-export default async function TopicsIndex() {
-  const [all, np, us] = await Promise.all([topics(), country(), units()]);
-  const live = all.filter((t) => t.status === "live" && t.observation_count > 0);
-  const planned = all.filter((t) => !(t.status === "live" && t.observation_count > 0));
-  const series = np ? await seriesFor(np) : [];
-  const pop = np ? await populationOf(np) : null;
-  const profile = np ? await placeProfile(np) : [];
-  // Fourth caller of the shared headline path. Elections falls through to
-  // inds[0] here, which is an indicator with no total, so without this the
-  // card printed a single party's seats as the topic's national figure.
-  const distributions = np ? await distributionsFor(np.place_id) : [];
-
-  const detail = await Promise.all(
-    live.map(async (t: Topic) => {
-      const inds = await indicatorsOfTopic(t.topic_id);
-      const headlineId = HEADLINE[t.slug] ?? inds[0]?.indicator_id;
-      const ind = inds.find((i) => i.indicator_id === headlineId);
-
-      const h = nationalHeadline(headlineId, {
-        pop,
-        series,
-        profile,
-        units: us,
-        distributions,
-      });
-      const headline: Headline | null = h
-        ? {
-            name: h.leading
-              ? `${ind?.name_en ?? ""} — largest ${h.leading.dimensionName.toLowerCase()}, ${h.leading.memberName}`
-              : (ind?.name_en ?? ""),
-            value: formatWithUnit(h.value, h.unit),
-            period: h.period,
-            note:
-              h.points.length > 1
-                ? `${h.points.length} years of data`
-                : (h.status ?? ""),
-            points: h.points,
-          }
-        : null;
-
-      return { topic: t, indicators: inds, headline };
-    }),
-  );
-
+export default function TopicsIndexMoved() {
   return (
     <>
+      {/* A meta refresh rather than a script: this has to work with no
+          JavaScript, and a crawler that ignores it still finds the canonical
+          tag and the link below. */}
+      <meta httpEquiv="refresh" content="0; url=/indicators/" />
+
       <Crumbs trail={[{ href: "/", label: "Nepal" }, { label: "Topics" }]} />
+
       <PageHeader
-        eyebrow="Browse"
-        title="Topics"
-        native="विषयहरू"
-        meta={`${live.length} topics with published data · ${planned.length} planned`}
+        eyebrow="Moved"
+        title="Topics are part of Indicators"
+        meta="Browsing by topic is a filter on the indicators index rather than a page of its own."
       />
 
-      <div className="mb-16 grid gap-x-12 gap-y-12 lg:grid-cols-2">
-        {detail.map(({ topic, indicators, headline }) => (
-          <section key={topic.topic_id} className="border-line border-t pt-6">
-            <h2 className="text-[1.25rem] leading-tight font-semibold tracking-[-0.02em]">
-              <Link href={`/topics/${topic.slug}/`}>{topic.name_en}</Link>
-            </h2>
-            {topic.name_ne && (
-              <p className="text-ink-soft ne mt-0.5 text-[15px]">{topic.name_ne}</p>
-            )}
-            {topic.description && (
-              <p className="text-ink-soft mt-3 max-w-prose text-[13px] leading-relaxed">
-                {topic.description}
-              </p>
-            )}
-
-            {/* A figure from the topic's own data, so the card says something
-                about Nepal rather than about our row counts. */}
-            {headline && (
-              <div className="border-line mt-5 flex items-end justify-between gap-6 border-t pt-4">
-                <div>
-                  <div className="text-label text-ink-faint uppercase">
-                    {headline.name}
-                  </div>
-                  <div className="text-ink tabular mt-1.5 text-[1.75rem] leading-none font-semibold tracking-[-0.03em]">
-                    {headline.value}
-                  </div>
-                  <div className="text-ink-faint mt-1.5 text-[12px]">
-                    {headline.period}
-                    {headline.note && ` · ${headline.note}`}
-                  </div>
-                </div>
-                {headline.points.length >= 3 && (
-                  <Sparkline points={headline.points.slice(-30)} />
-                )}
-              </div>
-            )}
-
-            <ul className="mt-5 flex flex-wrap gap-x-4 gap-y-1.5 text-[13px]">
-              {indicators.map((i) => (
-                <li key={i.indicator_id}>
-                  <Link href={`/indicators/${indicatorSlug(i.indicator_id)}/`}>
-                    {i.name_en}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-
-            <p className="text-ink-faint tabular mt-4 text-[12px]">
-              {indicators.length} indicator{indicators.length === 1 ? "" : "s"} ·{" "}
-              {formatNumber(topic.observation_count)} observations ·{" "}
-              <Link href={`/topics/${topic.slug}/`}>Open topic →</Link>
-            </p>
-          </section>
-        ))}
-      </div>
-
-      <Section
-        title="Planned coverage"
-        note="Subject areas we intend to cover. No data published yet, so these have no pages."
-      >
-        <ul className="grid grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
-          {planned.map((t) => (
-            <li key={t.topic_id} className="text-[14px]">
-              <span className="text-ink-soft">{t.name_en}</span>
-              {t.name_ne && (
-                <span className="text-ink-faint ne text-[13px]"> · {t.name_ne}</span>
-              )}
-            </li>
-          ))}
-        </ul>
-      </Section>
+      <p className="text-ink-soft max-w-prose text-[15px] leading-relaxed">
+        <Link href="/indicators/">Go to Indicators</Link>, where every published measure
+        is listed and can be filtered by topic and by how far down the geography it
+        reaches.
+      </p>
     </>
   );
 }

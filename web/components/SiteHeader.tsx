@@ -29,15 +29,16 @@ import { Search } from "@/components/Search";
 */
 
 /*
-  Compare sits next to Places because it is the verb for them.
+  Five slots, one question each.
 
-  A sixth item, not a replacement: the redesign proposal would have taken the
-  Topics slot for it, and dropping a route readers already reach from every
-  place page is a separate decision from adding this one. If the nav is ever
-  trimmed, Topics and Indicators answering the same question is where to start.
+  Topics held the sixth and answered the same question as Indicators: both
+  listed the same ten topics with the same indicators and the same headline
+  values. Topic is a filter on /indicators/ now, and /topics/ redirects there.
+  Individual topic pages keep their URLs -- they are hubs with charts and a
+  ranking, and every place page links to one -- they simply stop competing
+  with Indicators for the same reader.
 */
 const NAV = [
-  { href: "/topics/", label: "Topics" },
   { href: "/places/", label: "Places" },
   { href: "/compare/", label: "Compare" },
   { href: "/indicators/", label: "Indicators" },
@@ -117,9 +118,6 @@ export function SiteFooter() {
           <div>
             <h2 className="text-label text-ink-faint mb-2 uppercase">Explore</h2>
             <ul className="space-y-1 text-[13px]">
-              <li>
-                <Link href="/topics/">Topics</Link>
-              </li>
               <li>
                 <Link href="/places/">Places</Link>
               </li>

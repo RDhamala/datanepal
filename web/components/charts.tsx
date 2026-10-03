@@ -1,12 +1,22 @@
 import { DataDisclosure, DataGrid } from "./viz/DataDisclosure";
 import Link from "next/link";
+/*
+  Formatting from lib/format, not lib/data.
+
+  lib/data reads Parquet off disk and therefore imports node:fs, so anything
+  that reaches it cannot be bundled for the browser. This module only ever
+  rendered from server components, so the shortcut went unnoticed until a
+  client component wanted a Sparkline and the build failed on "Reading from
+  node:fs is not handled". lib/data re-exports these anyway; lib/format is
+  where they live and is pure.
+*/
 import {
   formatChange,
   formatCompact,
   formatNumber,
   formatWithUnit,
-  type Unit,
-} from "@/lib/data";
+} from "@/lib/format";
+import type { Unit } from "@/lib/types";
 
 /*
   The visualization system.
