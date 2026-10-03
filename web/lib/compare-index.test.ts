@@ -25,10 +25,27 @@ type Index = {
 
 const FILE = path.join(process.cwd(), "public", "compare-index.json");
 
+/*
+  The index is a build artifact and is not committed -- it is 141 KB derived
+  entirely from publish/dist, so committing it would be storing a second copy
+  of data the repo already holds, kept in sync by hand.
+
+  That made this suite pass locally and fail in CI for a week's worth of
+  commits: the file was on the machine that had run a build, and the `web` job
+  runs `npm test` before `npm run build`, so it never existed there. Eight
+  tests reported green on a developer's laptop and errored on the eighth line
+  of a pull request.
+
+  `pretest` in package.json now builds it, so `npm test` carries its own input
+  wherever it runs. This throw is the backstop for `npx vitest run`, which
+  skips npm's lifecycle hooks.
+*/
 const load = (): Index => {
   if (!fs.existsSync(FILE)) {
     throw new Error(
-      "public/compare-index.json is missing. It is built by `npm run prebuild`.",
+      "public/compare-index.json is missing. `npm test` builds it via pretest; " +
+        "running vitest directly skips that, so run " +
+        "`node scripts/build-compare-index.mjs` first.",
     );
   }
   return JSON.parse(fs.readFileSync(FILE, "utf8")) as Index;
