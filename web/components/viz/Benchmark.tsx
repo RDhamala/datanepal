@@ -41,7 +41,17 @@ export function Benchmark({ data }: { data: BenchmarkData }) {
 
       <table className="mt-2.5 w-full">
         <caption className="sr-only">
-          {data.label} for {subject?.name}, compared with its province and Nepal
+          {/*
+            Named from the rows rather than asserted. "compared with its
+            province and Nepal" was written when a district page was the only
+            caller; a local government compares against its district too, and
+            a province has no province above it.
+          */}
+          {data.label} for {subject?.name}, compared with{" "}
+          {data.rows
+            .filter((r) => !r.isSubject)
+            .map((r) => r.name)
+            .join(", ")}
         </caption>
         <tbody>
           {data.rows.map((row) => (

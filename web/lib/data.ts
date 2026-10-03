@@ -759,6 +759,19 @@ export async function localUnitMapFor(districtPlaceId: string): Promise<{
   };
 }
 
+/**
+ * How a local-unit type is appended to a name when one has to be
+ * distinguished from an ancestor of the same name. Spelled out rather than
+ * derived, because "Metropolitan" is not a suffix anyone writes after a place
+ * name and "Rural Municipality" is.
+ */
+const LOCAL_UNIT_TYPE_SUFFIX: Record<string, string> = {
+  metropolitan: " Metropolitan City",
+  sub_metropolitan: " Sub-Metropolitan City",
+  municipality: " Municipality",
+  rural_municipality: " Rural Municipality",
+};
+
 /** Display order and labels for local-unit types, coarsest first. */
 export const LOCAL_UNIT_TYPES = [
   { type: "metropolitan", label: "Metropolitan city" },
@@ -1384,6 +1397,34 @@ export async function benchmarksFor(
       });
     }
     if (rows.length < 2) continue; // A benchmark of one is not a benchmark.
+
+    /*
+      Qualify an ancestor that shares the subject's name.
+
+      Kathmandu Metropolitan City sits in Kathmandu District, so its benchmark
+      read "Kathmandu 90.5%" above "Kathmandu 89.2%" and a reader had no way
+      to tell which was which. 18 local governments are in this position, and
+      three of them share a name with their *province* rather than their
+      district -- Koshi rural municipality is in Koshi Province, and so are
+      Bagmati and Gandaki in theirs.
+
+      Only the colliding ancestors are qualified, and never the subject: the
+      page is about that place, its name is in the h1 above, and appending a
+      type to it would read as a correction rather than a clarification.
+    */
+    const nameCounts = new Map<string, number>();
+    for (const r of rows) nameCounts.set(r.name, (nameCounts.get(r.name) ?? 0) + 1);
+    for (const r of rows) {
+      if (r.isSubject || (nameCounts.get(r.name) ?? 0) < 2) continue;
+      const type = byId.get(r.placeId)?.place_type;
+      const suffix =
+        type === "district"
+          ? " District"
+          : type === "province"
+            ? " Province"
+            : LOCAL_UNIT_TYPE_SUFFIX[type ?? ""];
+      if (suffix) r.name = `${r.name}${suffix}`;
+    }
 
     // Rank among peers of the same type, which is the other half of "is this
     // high or low" -- 72.4% means more once you know it is 61st of 77.

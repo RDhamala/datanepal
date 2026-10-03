@@ -36,6 +36,9 @@ design, and the baseline still describes them.
 | `sudur-paschim-desktop.png` | Longest Nepali name in the country |
 | `manang-desktop-local-map.png` | Fewest local governments (4); quantile legend adapts |
 | `sarlahi-mobile-local-map.png` | Most local governments (20), at 390px — all labelled |
+| `lg-kathmandu-metropolitan-desktop.png` | A metropolitan city named after its own district |
+| `lg-longest-nepali-desktop.png` | बाह्रगाउँ मुक्तिक्षेत्र गाउँपालिका — longest Nepali name |
+| `lg-longest-english-mobile.png` | Diktel Rupakot Majhuwagadhi at 390px — 27 characters, two lines |
 
 **What to look for against `../current/`.** The fact strip's figures went from
 22px — the same size as the section headings above them — to the `stat` role.
@@ -49,6 +52,17 @@ survives. Every disclosure says the same kind of thing in the same place.
 **Measured, not eyeballed.** No horizontal overflow at 390, 834, 1440 or 1920
 on any of the three pages. Type at 1440: h1 52 · stat 30 · heading 22 ·
 body 15. At 834: 45 · 27 · 18. At 390: 36 · 24 · 17. Dhading 4,970 → 4,858.
+
+**Fourth stage.** All 753 local-government pages. `check-place-pages.mjs`
+now covers 837 pages in under a second and the vitest counterpart walks every
+benchmark in the country. The three screenshots at the foot of the table are
+the identity cases: a place named after its district, the longest Devanagari
+name, and the longest Latin one on a phone.
+
+Kathmandu Metropolitan City is the one worth opening. Its benchmark used to
+read "Kathmandu 90.5%" above "Kathmandu 89.2%" with nothing to say which was
+the page you were on — 18 local governments share a name with an ancestor, and
+three of those collide with their province rather than their district.
 
 **Third stage.** All 7 provinces and 77 districts now use the system. Rather
 than open 84 pages, `web/scripts/check-place-pages.mjs` asserts the

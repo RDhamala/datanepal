@@ -23,7 +23,15 @@ import path from "node:path";
 
 const OUT = path.join(process.cwd(), "out", "np");
 
-const EXPECTED = { provinces: 7, districts: 77 };
+const EXPECTED = { provinces: 7, districts: 77, localGovernments: 753 };
+
+/** As rendered in the eyebrow, from TYPE_LABEL in the local-government page. */
+const TYPE_LABELS = [
+  "Municipality",
+  "Rural Municipality",
+  "Metropolitan City",
+  "Sub-Metropolitan City",
+];
 
 /** Rendered markup only: no RSC payload, no inline scripts. */
 function render(file) {
@@ -42,8 +50,15 @@ function render(file) {
 const failures = [];
 const fail = (page, msg) => failures.push(`${page}: ${msg}`);
 
-/** Checks every place page shares, whatever its level. */
-function checkCommon(page, html, { name }) {
+/**
+ * Checks every place page shares.
+ *
+ * `requireAgeSex` is false below district level, and that is a fact about the
+ * data rather than a concession: UNFPA publishes age detail to districts and
+ * no further, so a local government has no pyramid to nest. Asserting it
+ * anyway would have made 753 pages fail for being correct.
+ */
+function checkCommon(page, html, { name, requireAgeSex = true }) {
   if (!new RegExp(`<h1[^>]*>${name}`).test(html)) {
     fail(page, `h1 does not open with "${name}"`);
   }
@@ -83,7 +98,7 @@ function checkCommon(page, html, { name }) {
   if (/<h2[^>]*>Age and sex/.test(html)) {
     fail(page, "Age and sex is an h2; it belongs inside Population as an h3");
   }
-  if (!/<h3[^>]*>\s*Age and sex structure/.test(html)) {
+  if (requireAgeSex && !/<h3[^>]*>\s*Age and sex structure/.test(html)) {
     fail(page, "Age and sex structure missing");
   }
 
@@ -136,6 +151,7 @@ if (provinceDirs.length !== EXPECTED.provinces) {
 }
 
 let districtCount = 0;
+let localCount = 0;
 
 for (const prov of provinceDirs) {
   const page = `np/${prov}`;
@@ -193,7 +209,70 @@ for (const prov of provinceDirs) {
     if (!dHtml.includes("By population, 2021 census")) {
       fail(dPage, "linked ranking beside the local map missing");
     }
+
+    /* ---------------------------------------------------- local governments */
+
+    const locals = fs
+      .readdirSync(path.join(OUT, prov, dist), { withFileTypes: true })
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name)
+      .sort();
+
+    for (const local of locals) {
+      const lPage = `np/${prov}/${dist}/${local}`;
+      const lFile = path.join(OUT, prov, dist, local, "index.html");
+      if (!fs.existsSync(lFile)) {
+        fail(lPage, "no index.html");
+        continue;
+      }
+      localCount++;
+      const lHtml = render(lFile);
+      const lName = (lHtml.match(/<h1[^>]*>([^<]+)</) ?? [])[1] ?? "";
+
+      checkCommon(lPage, lHtml, { name: lName, requireAgeSex: false });
+
+      // The eyebrow carries the legal type. A municipality and a rural
+      // municipality are different kinds of thing, and the ranking this page
+      // quotes is against its own type.
+      // The four legal types, exactly as the page writes them. Title case on
+      // the multi-word ones is the product's choice, not an accident -- the
+      // eyebrow is uppercased by CSS and the locator sentence lowercases it,
+      // so this is the only place the cased form is visible to a check.
+      if (!new RegExp(`(${TYPE_LABELS.join("|")}) · [^<]+ District`).test(lHtml)) {
+        fail(lPage, "type/district eyebrow missing or unrecognised");
+      }
+
+      if (
+        !/A (municipality|rural municipality|metropolitan city|sub-metropolitan city) in [^<.]+ District, [^<.]+ Province, one of \d+ local governments there/.test(
+          lHtml,
+        )
+      ) {
+        fail(lPage, "locator sentence missing or malformed");
+      }
+
+      // The locator map and the sibling ranking beside it. At this level the
+      // comparison is the page: 58,828 means nothing without its neighbours.
+      if (!/<h2[^>]*>In context/.test(lHtml)) fail(lPage, "locator section missing");
+      if (!/By population, 2021/i.test(lHtml)) fail(lPage, "sibling ranking missing");
+
+      // 22 local-government names are shared across districts, which is why
+      // URLs are hierarchical. The breadcrumb has to carry both parents, or
+      // the four places called Madi are indistinguishable from each other.
+      if (!new RegExp(`href="/np/${prov}/"`).test(lHtml)) {
+        fail(lPage, "breadcrumb missing the province link");
+      }
+      if (!new RegExp(`href="/np/${prov}/${dist}/"`).test(lHtml)) {
+        fail(lPage, "breadcrumb missing the district link");
+      }
+    }
   }
+}
+
+if (localCount !== EXPECTED.localGovernments) {
+  fail(
+    "np/",
+    `${localCount} local-government pages, expected ${EXPECTED.localGovernments}`,
+  );
 }
 
 if (districtCount !== EXPECTED.districts) {
@@ -202,7 +281,7 @@ if (districtCount !== EXPECTED.districts) {
 
 /* ------------------------------------------------------------------ report */
 
-const checked = provinceDirs.length + districtCount;
+const checked = provinceDirs.length + districtCount + localCount;
 if (failures.length) {
   console.error(
     `\ncheck-place-pages: ${failures.length} failures across ${checked} pages\n`,
@@ -214,5 +293,6 @@ if (failures.length) {
 }
 
 console.log(
-  `check-place-pages ok — ${provinceDirs.length} provinces, ${districtCount} districts`,
+  `check-place-pages ok — ${provinceDirs.length} provinces, ${districtCount} districts, ` +
+    `${localCount} local governments`,
 );
