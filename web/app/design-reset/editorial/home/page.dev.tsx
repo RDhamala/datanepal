@@ -7,7 +7,7 @@ import {
   provinceOverview,
   recentUpdates,
   topicCards,
-} from "@/lib/design-reset";
+} from "@/lib/editorial";
 import {
   Chapter,
   EditorialFigure,

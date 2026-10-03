@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Figure } from "@/lib/design-reset";
+import type { Figure } from "@/lib/editorial";
 import {
   EscapeSiteChrome,
   figureText,

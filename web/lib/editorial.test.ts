@@ -4,7 +4,7 @@ import {
   geographyScale,
   nationalSnapshot,
   topicCards,
-} from "./design-reset";
+} from "./editorial";
 
 /*
   The prototype data layer, held to the same rules as production.

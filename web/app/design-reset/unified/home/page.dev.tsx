@@ -7,7 +7,7 @@ import {
   provinceOverview,
   recentUpdates,
   topicCards,
-} from "@/lib/design-reset";
+} from "@/lib/editorial";
 import {
   Figure,
   ROLE,
@@ -15,7 +15,7 @@ import {
   StatRow,
   UnifiedShell,
 } from "@/components/design-reset/unified";
-import { GeoExplorer } from "@/components/design-reset/GeoExplorer";
+import { GeoExplorer } from "@/components/editorial/GeoExplorer";
 import {
   coverageSentence,
   figureText,

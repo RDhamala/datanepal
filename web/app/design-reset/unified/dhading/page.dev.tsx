@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { dhadingProfile } from "@/lib/design-reset";
+import { dhadingProfile } from "@/lib/editorial";
 import {
   BenchmarkLine,
   Figure,
@@ -10,7 +10,7 @@ import {
   Section,
   UnifiedShell,
 } from "@/components/design-reset/unified";
-import { GeoExplorer } from "@/components/design-reset/GeoExplorer";
+import { GeoExplorer } from "@/components/editorial/GeoExplorer";
 import {
   ordinal,
   PrototypeBar,

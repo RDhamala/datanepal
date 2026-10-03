@@ -7,7 +7,7 @@ import {
   provinceOverview,
   recentUpdates,
   topicCards,
-} from "@/lib/design-reset";
+} from "@/lib/editorial";
 import { AtlasShell, KpiTile, Panel } from "@/components/design-reset/atlas";
 import { AtlasMap } from "@/components/design-reset/AtlasMap";
 import {
