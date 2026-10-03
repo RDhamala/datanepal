@@ -392,3 +392,85 @@ export function BenchmarkLine({
     </div>
   );
 }
+
+/* --------------------------------------------------------- chart grammar */
+
+/*
+  Three forms, because there are three kinds of quantity on these pages.
+
+    count            additive, starts at zero   -> bar,     series-1
+    rate             bounded, not additive      -> dot,     series-2
+    parts of a whole shares that sum to 100%    -> stacked, sequential ramp
+
+  The page had one form and one colour for all three, which made a literacy
+  rate look exactly like a population count and drew four census categories
+  that sum to the whole population as four unrelated bars.
+
+  The axis rule follows from the form, and is the reason this is not
+  decoration: a bar encodes value as *length*, so its axis must start at zero
+  or the length lies. A dot encodes value as *position*, so its axis may be
+  trimmed to the data -- which is what makes a 58%-to-76% spread legible
+  instead of a row of near-identical bars crowded against the right edge.
+*/
+
+export type QuantityKind = "count" | "rate";
+
+export const kindOf = (unitKind: string | null | undefined): QuantityKind =>
+  unitKind === "ratio" ? "rate" : "count";
+
+/**
+ * Parts of a whole: one bar, segments in the sequential ramp.
+ *
+ * The ramp rather than categorical slots because these categories are ordered
+ * -- can read and write, can read only, cannot read or write -- and an ordered
+ * partition drawn in unordered colours throws away the order.
+ */
+export function StackedBar({
+  parts,
+  total,
+  caption,
+}: {
+  parts: { label: string; value: number }[];
+  total: number;
+  caption?: string;
+}) {
+  if (!parts.length || total <= 0) return null;
+  const ramp = [
+    "var(--color-seq-2)",
+    "var(--color-seq-3)",
+    "var(--color-seq-4)",
+    "var(--color-seq-5)",
+  ];
+  return (
+    <div>
+      <div className="flex h-7 overflow-hidden rounded-md" aria-hidden="true">
+        {parts.map((p, i) => (
+          <div
+            key={p.label}
+            className="h-full"
+            style={{
+              width: `${(p.value / total) * 100}%`,
+              background: ramp[i % ramp.length],
+            }}
+          />
+        ))}
+      </div>
+      <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5">
+        {parts.map((p, i) => (
+          <li key={p.label} className="flex items-center gap-1.5 text-[12px]">
+            <span
+              className="h-2.5 w-2.5 shrink-0 rounded-sm"
+              style={{ background: ramp[i % ramp.length] }}
+              aria-hidden="true"
+            />
+            <span className="text-ink-soft">{p.label}</span>
+            <span className="text-ink tabular font-medium">
+              {((p.value / total) * 100).toFixed(1)}%
+            </span>
+          </li>
+        ))}
+      </ul>
+      {caption && <p className="text-ink-faint mt-2.5 text-[11px]">{caption}</p>}
+    </div>
+  );
+}

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { EditorialPlace } from "@/lib/editorial";
 import { TYPE_LABEL } from "@/lib/editorial";
-import { BenchmarkLine, Figure, LeadStat, ROLE, Section } from "./system";
+import { BenchmarkLine, Figure, LeadStat, ROLE, Section, StackedBar } from "./system";
 import { GeoExplorer } from "./GeoExplorer";
 import { ordinal } from "./format";
 import { AgePyramid } from "@/components/AgePyramid";
@@ -339,16 +339,16 @@ export function PlacePage({ data }: { data: EditorialPlace }) {
                   title="Population aged 5 and over, by literacy status"
                   subtitle="The census partition behind the rate."
                 >
-                  <RankedBars
-                    label={`Population aged 5 and over by literacy status, ${literacy.period}`}
-                    noun="categories"
-                    rowLabel="Literacy status"
-                    valueLabel="People"
-                    compact
-                    rows={literacyBreakdown.map((r) => ({
-                      name: r.label,
+                  {/* A partition, drawn as one. Four bars from zero made four
+                      census categories that sum to the population aged 5 and
+                      over look like four unrelated magnitudes. */}
+                  <StackedBar
+                    parts={literacyBreakdown.map((r) => ({
+                      label: r.label,
                       value: r.all,
                     }))}
+                    total={literacyBreakdown.reduce((n, r) => n + r.all, 0)}
+                    caption={`${formatNumber(literacyBreakdown.reduce((n, r) => n + r.all, 0))} people aged 5 and over. Counts are in the table.`}
                   />
                   <DataDisclosure
                     count={literacyBreakdown.length}
