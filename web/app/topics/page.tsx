@@ -6,6 +6,7 @@ import {
   formatWithUnit,
   indicatorSlug,
   indicatorsOfTopic,
+  distributionsFor,
   nationalHeadline,
   placeProfile,
   populationOf,
@@ -63,6 +64,10 @@ export default async function TopicsIndex() {
   const series = np ? await seriesFor(np) : [];
   const pop = np ? await populationOf(np) : null;
   const profile = np ? await placeProfile(np) : [];
+  // Fourth caller of the shared headline path. Elections falls through to
+  // inds[0] here, which is an indicator with no total, so without this the
+  // card printed a single party's seats as the topic's national figure.
+  const distributions = np ? await distributionsFor(np.place_id) : [];
 
   const detail = await Promise.all(
     live.map(async (t: Topic) => {
@@ -70,10 +75,18 @@ export default async function TopicsIndex() {
       const headlineId = HEADLINE[t.slug] ?? inds[0]?.indicator_id;
       const ind = inds.find((i) => i.indicator_id === headlineId);
 
-      const h = nationalHeadline(headlineId, { pop, series, profile, units: us });
+      const h = nationalHeadline(headlineId, {
+        pop,
+        series,
+        profile,
+        units: us,
+        distributions,
+      });
       const headline: Headline | null = h
         ? {
-            name: ind?.name_en ?? "",
+            name: h.leading
+              ? `${ind?.name_en ?? ""} — largest ${h.leading.dimensionName.toLowerCase()}, ${h.leading.memberName}`
+              : (ind?.name_en ?? ""),
             value: formatWithUnit(h.value, h.unit),
             period: h.period,
             note:

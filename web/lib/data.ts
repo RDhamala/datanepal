@@ -15,9 +15,11 @@ import { asyncBufferFromFile, parquetReadObjects } from "hyparquet";
 import {
   AGE_BANDS,
   dimensionKey,
+  pickAggregate,
   pickHeadline,
   pickLaterEstimate,
   pickMember,
+  specificity,
   statusLabel,
 } from "./format";
 
@@ -796,21 +798,6 @@ export type ProfileTopic = {
   metrics: ProfileMetric[];
 };
 
-/**
- * Count of dimension members that are not the total.
- *
- * Used to choose which row represents an indicator on a profile. Preferring the
- * fewest non-total members finds the aggregate without hardcoding a dimension
- * vocabulary — which matters because local units publish population as
- * `residence_type=household|sex=all` while districts publish
- * `residence_type=all|sex=all`, and a profile should show whichever the source
- * actually has rather than know the difference.
- */
-function specificity(dimensionKey: string): number {
-  if (dimensionKey === "none") return 0;
-  return dimensionKey.split("|").filter((part) => !part.endsWith("=all")).length;
-}
-
 function memberOf(dimensionKey: string, dimension: string): string | null {
   if (dimensionKey === "none") return null;
   const hit = dimensionKey.split("|").find((p) => p.startsWith(`${dimension}=`));
@@ -922,6 +909,113 @@ export async function placeProfile(place: Place): Promise<ProfileTopic[]> {
     .sort((a, b) => a.topic.sort_order - b.topic.sort_order);
 }
 
+export type DistributionMember = {
+  memberId: string;
+  name: string;
+  nameNe: string | null;
+  value: number;
+};
+
+export type Distribution = {
+  indicatorId: string;
+  dimensionId: string;
+  dimensionName: string;
+  unitId: string;
+  period: number;
+  status: string;
+  /** Descending by value. */
+  members: DistributionMember[];
+};
+
+/**
+ * Indicators that have no aggregate, expressed as what they actually are.
+ *
+ * An indicator dimensioned by party, ministry, commodity or school level has
+ * no total worth printing -- the sum of seats by party is the size of the
+ * house, not a fact about any party -- so `pickAggregate` correctly returns
+ * nothing for them and `placeProfile` skips them entirely. That left three
+ * surfaces with a hole, and the hole was previously filled by whichever row
+ * sorted first.
+ *
+ * This is the generic replacement. It finds, for one place, every indicator
+ * whose rows carry exactly one dimension and no total, and returns the members
+ * ranked. Nothing here knows what a party is: the same code serves the budget
+ * by ministry and the prices by commodity that this platform intends to hold,
+ * which is the point. `partyResultsFor` is now a thin alias over it.
+ */
+export async function distributionsFor(placeId: string): Promise<Distribution[]> {
+  const [obs, inds, dims, members] = await Promise.all([
+    observations(),
+    indicators(),
+    table<{ dimension_id: string; name_en: string }>("dimensions.parquet"),
+    table<{
+      dimension_id: string;
+      member_id: string;
+      name_en: string;
+      name_ne: string | null;
+    }>("dimension_members.parquet"),
+  ]);
+
+  const dimName = new Map(dims.map((d) => [d.dimension_id, d.name_en]));
+  const unitOfIndicator = new Map(inds.map((i) => [i.indicator_id, i.default_unit_id]));
+  const memberInfo = new Map(
+    members.map((m) => [`${m.dimension_id}=${m.member_id}`, m]),
+  );
+
+  const byIndicator = new Map<string, Observation[]>();
+  for (const o of obs) {
+    if (o.place_id !== placeId || o.value_numeric === null) continue;
+    byIndicator.set(o.indicator_id, [...(byIndicator.get(o.indicator_id) ?? []), o]);
+  }
+
+  const out: Distribution[] = [];
+  for (const [indicatorId, rows] of byIndicator) {
+    // Only indicators with no whole. One that has an aggregate -- explicit or
+    // by a dimension that does not vary -- is a scalar with a breakdown, and
+    // belongs on the ordinary headline path. Asking pickAggregate rather than
+    // re-testing the key shape keeps the two definitions from drifting.
+    if (pickAggregate(rows)) continue;
+
+    // Exactly one dimension, the same one throughout. A two-dimension cube
+    // without a total is a different problem and is deliberately not guessed
+    // at here -- it would need a stated denominator to mean anything.
+    const dimensionIds = new Set(
+      rows.map((r) => r.dimension_key.split("=")[0]).filter(Boolean),
+    );
+    if (dimensionIds.size !== 1) continue;
+    if (rows.some((r) => r.dimension_key.split("|").length !== 1)) continue;
+    const dimensionId = [...dimensionIds][0];
+
+    const latest = Math.max(...rows.map((r) => Number(r.period_start.slice(0, 4))));
+    const current = rows.filter((r) => Number(r.period_start.slice(0, 4)) === latest);
+
+    const ranked = current
+      .map((r) => {
+        const info = memberInfo.get(r.dimension_key);
+        const memberId = r.dimension_key.slice(dimensionId.length + 1);
+        return {
+          memberId,
+          name: info?.name_en || info?.name_ne || memberId,
+          nameNe: info?.name_ne ?? null,
+          value: r.value_numeric!,
+        };
+      })
+      .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
+
+    if (!ranked.length) continue;
+    out.push({
+      indicatorId,
+      dimensionId,
+      dimensionName: dimName.get(dimensionId) ?? dimensionId,
+      unitId: unitOfIndicator.get(indicatorId) ?? "count",
+      period: latest,
+      status: current[0].status,
+      members: ranked,
+    });
+  }
+  return out;
+}
+
 export type NationalHeadline = {
   value: number;
   unit: Unit | undefined;
@@ -930,6 +1024,19 @@ export type NationalHeadline = {
   /** Empty when the indicator has no series to plot -- population's headline
    * comes from `populationOf`, which does not expose one. */
   points: SeriesPoint[];
+  /**
+   * Set when the indicator has no aggregate, so `value` is the leading
+   * member rather than a total. A caller that prints `value` without reading
+   * this is stating a part as if it were the whole -- which is the bug this
+   * field exists to make impossible to reintroduce silently.
+   */
+  leading?: {
+    dimensionId: string;
+    dimensionName: string;
+    memberName: string;
+    memberNameNe: string | null;
+    memberCount: number;
+  };
 };
 
 /**
@@ -945,6 +1052,11 @@ export type NationalHeadline = {
  * four rows of the indicators index rendered nothing at all: they only ever
  * checked `population` and a plain series. One function, called from all
  * three, is what keeps that from happening a fourth time.
+ *
+ * `distributions` is the fourth case and the reason this signature changed:
+ * an indicator with no total has no national figure, and each of those three
+ * sites had started to work around that separately. Pass it and they all get
+ * the same honest answer -- a leading member, labelled as one.
  */
 export function nationalHeadline(
   indicatorId: string,
@@ -953,6 +1065,7 @@ export function nationalHeadline(
     series: IndicatorSeries[];
     profile: ProfileTopic[];
     units: Unit[];
+    distributions?: Distribution[];
   },
 ): NationalHeadline | null {
   if (indicatorId === "population" && ctx.pop) {
@@ -986,6 +1099,28 @@ export function nationalHeadline(
       period: String(m.period),
       status: statusLabel(m.status),
       points: [],
+    };
+  }
+
+  // No aggregate anywhere. If the indicator is a distribution, say which
+  // member leads and how many there are; never print the member's value as
+  // though it were the national figure.
+  const d = ctx.distributions?.find((x) => x.indicatorId === indicatorId);
+  if (d?.members.length) {
+    const [leader] = d.members;
+    return {
+      value: leader.value,
+      unit: ctx.units.find((u) => u.unit_id === d.unitId),
+      period: String(d.period),
+      status: statusLabel(d.status),
+      points: [],
+      leading: {
+        dimensionId: d.dimensionId,
+        dimensionName: d.dimensionName,
+        memberName: leader.name,
+        memberNameNe: leader.nameNe,
+        memberCount: d.members.length,
+      },
     };
   }
 

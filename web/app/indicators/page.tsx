@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   country,
+  distributionsFor,
   formatWithUnit,
   indicatorSlug,
   indicators,
@@ -76,6 +77,10 @@ export default async function IndicatorsIndex() {
   const series = np ? await seriesFor(np) : [];
   const pop = np ? await populationOf(np) : null;
   const profile = np ? await placeProfile(np) : [];
+  // Indicators with no aggregate -- seats by party today, budget by ministry
+  // later. Without this the row printed whichever component part sorted
+  // first, as a national figure.
+  const distributions = np ? await distributionsFor(np.place_id) : [];
 
   // Deepest place type each indicator reaches. A reader comparing districts
   // needs to know which indicators actually go that far before clicking.
@@ -135,6 +140,7 @@ export default async function IndicatorsIndex() {
                   series,
                   profile,
                   units: us,
+                  distributions,
                 });
                 const value = h
                   ? { text: formatWithUnit(h.value, h.unit), period: h.period }
@@ -181,6 +187,15 @@ export default async function IndicatorsIndex() {
                           <div className="text-ink tabular text-[1.25rem] leading-none font-semibold tracking-[-0.025em]">
                             {value.text}
                           </div>
+                          {/* A distribution has no national total. Name the
+                              member the figure belongs to, in the same breath
+                              as the figure, so the column cannot be read as
+                              one of national totals. */}
+                          {h?.leading && (
+                            <div className="text-ink-muted mt-1 text-[11px]">
+                              largest of {h.leading.memberCount}: {h.leading.memberName}
+                            </div>
+                          )}
                           <div className="text-ink-faint tabular mt-1 text-[11px]">
                             {value.period}
                             {status && ` ${status}`}
