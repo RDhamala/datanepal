@@ -15,9 +15,9 @@ sources → ingestion (dlt) → warehouse (DuckDB) → transform (dbt) → publi
 
 ## Project Skills
 
-Nine Skills under `.claude/skills/` encode what's specific and repeatable about
-this project — not things Claude already knows (React, dbt, SQL). Use the
-relevant one(s) rather than re-deriving these rules from scratch:
+Thirteen Skills under `.claude/skills/` encode what's specific and repeatable
+about this project — not things Claude already knows (React, dbt, SQL). Use
+the relevant one(s) rather than re-deriving these rules from scratch:
 
 | Skill | Owns |
 |---|---|
@@ -30,12 +30,19 @@ relevant one(s) rather than re-deriving these rules from scratch:
 | `datanepal-ingestion` | Building the source-to-canonical pipeline for a new dataset |
 | `datanepal-geography` | Canonical place identity, crosswalks, P-code/geography rules |
 | `datanepal-data-quality` | What to test, and the publication gate |
+| `datanepal-build-publish` | Running the pipeline, and keeping `publish/dist` honest |
+| `datanepal-web-data` | The build-time data layer: `web/lib/data.ts` and what it hands the pages |
+| `datanepal-adr` | Writing a decision record, and whether a decision earns one |
+| `datanepal-commits` | Commit and PR messages in this repo's voice |
 
 Frontend work always pairs a build skill with `datanepal-visual-review` — code
 that passes CI is not the same as a page that looks right. Ingestion work always
 pairs `datanepal-ingestion` with `datanepal-data-quality`, and with
 `datanepal-geography` whenever a new source's identifiers need to join the
-spine. See each Skill's frontmatter for exactly when it should trigger.
+spine. Anything that changes `transform/`, `ingestion/` or `catalog/` ends in
+`datanepal-build-publish`, because an unexported change is invisible to both
+the site and its tests. See each Skill's frontmatter for exactly when it
+should trigger.
 
 ## Hard constraints
 
@@ -192,6 +199,25 @@ whether something looks right. Use the Chrome DevTools MCP.
 
 Step 4 is the one that matters. A dataset that does not conform to the spine
 cannot be joined against anything, which defeats the point of centralising it.
+
+## Running the pipeline
+
+Everything is a Make target; `make help` lists them.
+
+```
+make catalog    catalog/ YAML projected into dbt seeds (build does this for you)
+make ingest     every connector into the warehouse -- network, usually unnecessary
+make build      dbt seed + run + test against the warehouse already on disk
+make revisions  fold this build into append-only history
+make publish    export marts to publish/dist
+make all        the whole chain, as the monthly Action runs it
+make check      ruff, catalog validation, pytest, and web/ npm run check
+```
+
+**`make build` alone is not enough to see a change.** `web/lib/data.ts` reads
+`publish/dist`, not the warehouse, so vitest and `next build` both keep showing
+the previous export until `make publish` runs. A data-side change verified
+without it has not been verified.
 
 ## Environment notes
 
