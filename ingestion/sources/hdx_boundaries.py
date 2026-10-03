@@ -40,14 +40,14 @@ import io
 import json
 import logging
 import math
-import os
 import sys
 import zipfile
 from collections.abc import Iterator
 from typing import Any
 
 import dlt
-import httpx
+
+from ingestion import http
 
 logger = logging.getLogger(__name__)
 
@@ -78,13 +78,6 @@ MIN_RING_AREA = 1e-4
 # than quietly under-reporting.
 EXPECTED = {1: 7, 2: 77, 3: 775}
 
-
-def _verify() -> str | bool:
-    for var in ("REQUESTS_CA_BUNDLE", "SSL_CERT_FILE"):
-        path = os.getenv(var)
-        if path and os.path.exists(path):
-            return path
-    return True
 
 
 def _perp_distance(
@@ -165,9 +158,7 @@ def _simplify_geometry(geometry: dict, eps: float) -> dict | None:
 
 
 def _geojson_url() -> str:
-    response = httpx.get(HDX_PACKAGE_API, timeout=60, follow_redirects=True, verify=_verify())
-    response.raise_for_status()
-    payload = response.json()
+    payload = http.get_json(HDX_PACKAGE_API, what="HDX boundaries package_show", timeout=60)
     if not payload.get("success"):
         raise RuntimeError("HDX package_show returned success=false")
     for res in payload["result"]["resources"]:
@@ -183,8 +174,7 @@ def boundaries() -> Iterator[dict[str, Any]]:
     url = _geojson_url()
     logger.info("Fetching COD boundary geometry (large; ~58 MB)")
 
-    response = httpx.get(url, timeout=600, follow_redirects=True, verify=_verify())
-    response.raise_for_status()
+    response = http.get(url, what="COD boundary geometry (~58 MB)", timeout=600)
 
     counts: dict[int, int] = {}
     vertices: dict[int, int] = {}

@@ -191,12 +191,30 @@ export function TrendChart({
  * Horizontal, because place names are long and Nepali names are longer.
  * One hue, because length carries the magnitude and colour would add nothing.
  */
+/*
+  Column header for each plural noun this component is handed.
+
+  Listed rather than derived. "parties" singularises to "Party" and a naive
+  rule gives "Partie"; the same trap already produced "Metropolitan Citys"
+  elsewhere in this codebase, which is why TYPE_PLURAL is a literal table too.
+  An unlisted noun falls back to "Name", which is vague but never wrong.
+*/
+const ROW_LABEL: Record<string, string> = {
+  places: "Place",
+  provinces: "Province",
+  districts: "District",
+  "local governments": "Local government",
+  areas: "Area",
+  parties: "Party",
+};
+
 export function RankedBars({
   rows,
   unit,
   label,
   valueLabel = "Value",
   noun = "places",
+  rowLabel,
   max: maxOverride,
   compact = false,
 }: {
@@ -204,8 +222,21 @@ export function RankedBars({
   unit?: Unit;
   label: string;
   valueLabel?: string;
-  /** What the rows are, for the disclosure label. Places, parties, years. */
+  /** What the rows are, for the disclosure summary. Places, parties, years. */
   noun?: string;
+  /**
+   * Header for the name column in the data table.
+   *
+   * Separate from `noun` because they read differently -- "View all 7 places"
+   * over a column headed "Place" -- and defaulted *from* it rather than to a
+   * fixed "Place", which is the version of this that already shipped wrong:
+   * the elections page reused this component and filed political parties under
+   * a column headed "Place", live until an audit caught it. The sighted reader
+   * never sees that header. It is served only to the person who cannot check
+   * it against the chart, so the default has to be right without the caller
+   * remembering.
+   */
+  rowLabel?: string;
   max?: number;
   /** Narrow column beside a map: tighter grid, no duplicate table. */
   compact?: boolean;
@@ -253,7 +284,7 @@ export function RankedBars({
         <DataDisclosure count={rows.length} noun={noun}>
           <DataGrid
             caption={label}
-            columns={[noun === "places" ? "Place" : "Name", "नेपाली", valueLabel]}
+            columns={[rowLabel ?? ROW_LABEL[noun] ?? "Name", "नेपाली", valueLabel]}
             rows={rows.map((r) => [r.name, r.nameNe ?? "—", fmt(r.value)])}
           />
         </DataDisclosure>

@@ -34,33 +34,19 @@ from __future__ import annotations
 
 import io
 import logging
-import os
 from collections.abc import Iterator
 from typing import Any
 
 import dlt
-import httpx
 import openpyxl
+
+from ingestion import http
 
 logger = logging.getLogger(__name__)
 
 HDX_PACKAGE_API = "https://data.humdata.org/api/3/action/package_show?id=cod-ab-npl"
 
 
-def _verify() -> str | bool:
-    """Resolve the TLS trust store.
-
-    httpx bundles certifi and ignores the conventional CA environment
-    variables, so behind a TLS-inspecting proxy every request fails with
-    CERTIFICATE_VERIFY_FAILED. Honour REQUESTS_CA_BUNDLE / SSL_CERT_FILE the
-    way curl and requests do, and fall back to certifi everywhere else.
-    """
-    for var in ("REQUESTS_CA_BUNDLE", "SSL_CERT_FILE"):
-        path = os.getenv(var)
-        if path and os.path.exists(path):
-            logger.debug("Using CA bundle from %s", var)
-            return path
-    return True
 
 UNIT_TYPES = {
     "1": "metropolitan",
@@ -84,9 +70,7 @@ def _resource_url(fmt: str = "XLSX") -> str:
     Resource URLs embed revision IDs and change when OCHA republishes, so
     hardcoding one guarantees a stale or broken fetch later.
     """
-    response = httpx.get(HDX_PACKAGE_API, timeout=30, follow_redirects=True, verify=_verify())
-    response.raise_for_status()
-    payload = response.json()
+    payload = http.get_json(HDX_PACKAGE_API, what="HDX admin package_show", timeout=30)
     if not payload.get("success"):
         raise RuntimeError("HDX package_show returned success=false")
 
@@ -114,8 +98,7 @@ def admin_units() -> Iterator[dict[str, Any]]:
     url = _resource_url("XLSX")
     logger.info("Fetching HDX admin boundaries from %s", url)
 
-    response = httpx.get(url, timeout=180, follow_redirects=True, verify=_verify())
-    response.raise_for_status()
+    response = http.get(url, what="HDX admin boundaries XLSX", timeout=180)
     workbook = openpyxl.load_workbook(io.BytesIO(response.content), read_only=True)
 
     # --- Provinces -------------------------------------------------------

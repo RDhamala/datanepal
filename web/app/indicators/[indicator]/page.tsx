@@ -382,6 +382,9 @@ export default async function IndicatorPage({ params }: { params: Promise<Params
             unit={unit}
             valueLabel={unit?.name_en ?? "Value"}
             noun={`${distribution.dimensionName.toLowerCase()} entries`}
+            // The dimension names its own rows: "Party", not "Name". The
+            // header is read only by someone who cannot see the chart.
+            rowLabel={distribution.dimensionName}
           />
         </Section>
       )}

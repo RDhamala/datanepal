@@ -1,0 +1,23 @@
+{
+  "skill_name": "datanepal-accessibility",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I'm adding a new ranked-bars section to the elections topic page showing PR vote share by party. Build the component. There are 58 parties so it needs to scroll.",
+      "expected_output": "Discovers RankedBars (charts.tsx:236) and the existing 'By party' section already exist, and reuses rather than building new. Critically: does NOT wrap RankedBars in role=\"img\" — it is a <ul> of real text and that role would hide readable rows. Passes a rowLabel matching the rows rather than inheriting the \"Place\" default. Does not make each bar focusable. Defers colour to npm run palette. Verifies in the browser rather than claiming done from the diff.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "can you review web/components/Search.tsx for accessibility issues? it's the site search combobox",
+      "expected_output": "Identifies outline-none at line 217 replaced only by a border-colour change as the substantive finding, and checks it by tabbing rather than reading classes. Recognises the existing combobox pattern (aria-expanded/controls/activedescendant, role=listbox/option) as correct rather than 'fixing' it. Exercises Escape/arrow/Enter behaviour in a real browser.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "the district choropleth feels like it should be keyboard navigable — right now you can't tab to individual districts to see their values. can you make each district focusable so screen reader users can explore the map?",
+      "expected_output": "Agrees with the goal and corrects the diagnosis. Does NOT add tabIndex to the paths: the shapes are already wrapped in Link, per the invariant in docs/visualization.md:164. Identifies the real cause as role=\"img\" on the parent svg pruning the subtree from the accessibility tree, so anchors are focusable but unannounced. A strong run also notices MetricMap emits zero anchors because hrefFor resolves parents against only the drawn places. Verifies by reading the accessibility tree, not by counting <a> elements in the DOM. NOTE: an earlier version of this eval expected the run to push back and defend the sr-only table instead — that expectation was wrong and matched a wrong rule in the skill; both were corrected after an independent run got this right without the skill.",
+      "files": []
+    }
+  ]
+}

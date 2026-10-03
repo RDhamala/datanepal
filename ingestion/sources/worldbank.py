@@ -28,12 +28,13 @@ recorded in the source catalog so attribution is not misleading.
 from __future__ import annotations
 
 import logging
-import os
 from collections.abc import Iterator
 from typing import Any
 
 import dlt
 import httpx
+
+from ingestion import http
 
 logger = logging.getLogger(__name__)
 
@@ -116,32 +117,24 @@ MIN_OBSERVATIONS_PER_INDICATOR = 10
 MIN_AVERAGE_OBSERVATIONS_PER_INDICATOR = 30
 
 
-def _verify() -> str | bool:
-    """Honour conventional CA env vars; httpx ignores them by default."""
-    for var in ("REQUESTS_CA_BUNDLE", "SSL_CERT_FILE"):
-        path = os.getenv(var)
-        if path and os.path.exists(path):
-            return path
-    return True
-
-
 @dlt.resource(name="indicators", write_disposition="replace")
 def indicators() -> Iterator[dict[str, Any]]:
     """Yield one row per indicator-year."""
     emitted = 0
     kept_by_code: dict[str, int] = {}
-    with httpx.Client(timeout=60, follow_redirects=True, verify=_verify()) as client:
+    with httpx.Client(timeout=60, follow_redirects=True, verify=http.verify()) as client:
         for wb_code, (indicator_id, unit_id) in INDICATORS.items():
-            response = client.get(
+            # One request per indicator, so a retry re-fetches that indicator's
+            # whole payload and yields nothing until it succeeds -- a timeout
+            # part-way through the 128 indicators cannot leave a partial series
+            # behind. That is the failure this project fears most, and the
+            # per-indicator floor below is the second line of defence.
+            payload = http.client_get_json(
+                client,
                 f"{API}/country/{COUNTRY}/indicator/{wb_code}",
+                what=f"World Bank {wb_code}",
                 params={"format": "json", "per_page": PER_PAGE},
-                headers={
-                    "User-Agent": "datanepal-bot/0.1 "
-                    "(+https://github.com/RDhamala/datanepal)"
-                },
             )
-            response.raise_for_status()
-            payload = response.json()
 
             # The API returns [metadata, rows]. An error returns a single dict.
             if not isinstance(payload, list) or len(payload) < 2:

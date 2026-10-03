@@ -17,7 +17,9 @@ import { useRouter } from "next/navigation";
 
   Accessibility follows the combobox pattern: aria-expanded on the input,
   aria-activedescendant tracking the highlighted option, arrow keys to move,
-  Enter to open, Escape to dismiss. It degrades to a plain text input with no
+  Enter to open, Escape to dismiss, and a polite live region announcing the
+  result count so the list is not silent to anyone not watching it. It degrades
+  to a plain text input with no
   script, which is honest rather than broken — the visible affordance is a
   filter over links, not a promise of server-side search.
 */
@@ -264,6 +266,22 @@ export function Search({
           ))}
         </ul>
       )}
+
+      {/*
+        The listbox above is visual feedback. Someone not looking at it gets
+        nothing from results appearing, changing, or emptying out — the input
+        just goes quiet. Announce the count instead, politely, so it waits for
+        a pause in typing rather than interrupting every keystroke.
+      */}
+      <p aria-live="polite" className="sr-only">
+        {showList && index !== null
+          ? results.length === 0
+            ? `No results for ${query.trim()}`
+            : `${results.length} result${results.length === 1 ? "" : "s"}${
+                results.length === MAX_RESULTS ? ", showing the closest matches" : ""
+              }`
+          : ""}
+      </p>
 
       {examples && examples.length > 0 && !showList && (
         <p className="text-ink-faint mt-2.5 text-[12px]">
