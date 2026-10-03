@@ -1,3 +1,4 @@
+import { DataDisclosure } from "./viz/DataDisclosure";
 import Link from "next/link";
 import { parseGeometry, projector, toPath, type Ring } from "@/lib/geo";
 import { labelBox, layoutLabels } from "@/lib/maplabels";
@@ -291,11 +292,8 @@ export function ReferenceMap({
         name gets a dot, and this is where that name lives. A caption that says
         "named in the table below" has to be true.
       */}
-      <details className="mt-4">
-        <summary className="text-ink-faint hover:text-ink-soft cursor-pointer text-[12px]">
-          View all {dis.length} names
-        </summary>
-        <ul className="border-line divide-line mt-3 max-h-80 divide-y overflow-auto rounded-md border text-[13px]">
+      <DataDisclosure count={dis.length} noun="names">
+        <ul className="divide-line divide-y text-[13px]">
           {[...dis]
             .sort((a, b) => a.name.localeCompare(b.name))
             .map((d) => (
@@ -305,7 +303,7 @@ export function ReferenceMap({
               </li>
             ))}
         </ul>
-      </details>
+      </DataDisclosure>
 
       <figcaption className="text-ink-faint mt-4 text-[12px] leading-relaxed">
         {caption} {labelCaption(layout, dis.length)}

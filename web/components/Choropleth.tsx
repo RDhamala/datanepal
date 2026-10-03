@@ -1,3 +1,4 @@
+import { DataDisclosure } from "./viz/DataDisclosure";
 import Link from "next/link";
 import { formatCompact, formatNumber, type Unit } from "@/lib/data";
 import { parseGeometry, projector, toPath } from "@/lib/geo";
@@ -268,47 +269,40 @@ export function Choropleth({
         </figcaption>
       )}
 
-      <details className="mt-4">
-        <summary className="text-ink-faint hover:text-ink-soft cursor-pointer text-[12px]">
-          View data table
-        </summary>
-        <div className="border-line mt-3 max-h-96 overflow-auto rounded-md border">
-          <table className="w-full text-[13px]">
-            <caption className="sr-only">{label}</caption>
-            <thead className="bg-surface-raised sticky top-0">
-              <tr className="border-line border-b">
-                <th
-                  scope="col"
-                  className="text-label text-ink-faint px-3 py-2 text-left uppercase"
-                >
-                  Area
-                </th>
-                <th
-                  scope="col"
-                  className="text-label text-ink-faint px-3 py-2 text-right uppercase"
-                >
-                  {valueLabel}
-                </th>
+      <DataDisclosure count={features.length} noun="areas">
+        <table className="w-full text-[13px]">
+          <caption className="sr-only">{label}</caption>
+          <thead className="bg-surface-raised sticky top-0">
+            <tr className="border-line border-b">
+              <th
+                scope="col"
+                className="text-label text-ink-faint px-3 py-2 text-left uppercase"
+              >
+                Area
+              </th>
+              <th
+                scope="col"
+                className="text-label text-ink-faint px-3 py-2 text-right uppercase"
+              >
+                {valueLabel}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((f) => (
+              <tr key={f.placeId} className="border-line border-b last:border-0">
+                <td className="px-3 py-1.5">
+                  <Link href={f.href}>{f.name}</Link>
+                  {f.nameNe && <span className="text-ink-faint ne"> · {f.nameNe}</span>}
+                </td>
+                <td className="text-ink tabular px-3 py-1.5 text-right">
+                  {f.value === null ? "—" : formatNumber(f.value)}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {sorted.map((f) => (
-                <tr key={f.placeId} className="border-line border-b last:border-0">
-                  <td className="px-3 py-1.5">
-                    <Link href={f.href}>{f.name}</Link>
-                    {f.nameNe && (
-                      <span className="text-ink-faint ne"> · {f.nameNe}</span>
-                    )}
-                  </td>
-                  <td className="text-ink tabular px-3 py-1.5 text-right">
-                    {f.value === null ? "—" : formatNumber(f.value)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </details>
+            ))}
+          </tbody>
+        </table>
+      </DataDisclosure>
     </figure>
   );
 }

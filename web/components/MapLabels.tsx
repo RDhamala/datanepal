@@ -65,9 +65,36 @@ export function MapLabels<T>({
             fontSize={p.fontSize}
             fill={ink ? ink(p.item) : "var(--color-ink)"}
             pointerEvents="none"
+            /*
+              A halo in the page's own surface colour, painted under the glyphs.
+
+              Without it a label legible on its own shape disappears the moment
+              it overhangs. "Dhunibenshi" sits on Dhading's darkest local unit,
+              so it inks white; the shape is narrow and the name is long, so its
+              last characters land on the page background and were white on
+              white. It read as a clipped label, and the frame check in
+              layoutLabels is what everyone looked at -- but the label was
+              comfortably inside the viewBox the whole time. Contrast was the
+              problem, not geometry.
+
+              paint-order matters: without it the stroke is drawn over the fill
+              and thins every glyph.
+            */
+            stroke="var(--color-surface)"
+            strokeWidth={Math.max(2.5, p.fontSize * 0.3)}
+            strokeLinejoin="round"
+            style={{ paintOrder: "stroke fill" }}
           >
             {p.lines.map((line, j) => (
-              <tspan key={j} x={p.box.x} dy={j === 0 ? 0 : p.fontSize * 1.15}>
+              /*
+                p.at.x, not p.box.x. The layout engine tries a label at several
+                offsets around the centroid and only accepts one that clears
+                the frame and every placed label -- then this discarded the
+                horizontal half of that decision and drew the line back at the
+                shape's centre, which is neither where it was measured nor
+                necessarily inside the frame.
+              */
+              <tspan key={j} x={p.at.x} dy={j === 0 ? 0 : p.fontSize * 1.15}>
                 {line}
               </tspan>
             ))}

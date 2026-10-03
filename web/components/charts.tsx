@@ -1,3 +1,4 @@
+import { DataDisclosure, DataGrid } from "./viz/DataDisclosure";
 import Link from "next/link";
 import {
   formatChange,
@@ -14,8 +15,9 @@ import {
   tables for exact lookup and verification. A chart that exists so the page has
   a chart on it is worse than the table it replaced.
 
-  Every chart ships with an accessible table under a "View data table"
-  disclosure. That is a `<details>` element, not a JavaScript toggle -- this is a
+  Every chart ships with an accessible table under a disclosure, and the
+  disclosure itself now belongs to viz/DataDisclosure rather than to each
+  chart. It is a `<details>` element, not a JavaScript toggle -- this is a
   static site, and a disclosure works with no client bundle, no hydration, and
   no failure mode when scripts are blocked.
 
@@ -25,62 +27,6 @@ import {
   age-sex pyramid. Using eight colours on a one-series bar chart is decoration
   pretending to be information.
 */
-
-/* ------------------------------------------------------------ shared table */
-
-function DataDisclosure({
-  caption,
-  columns,
-  rows,
-}: {
-  caption: string;
-  columns: string[];
-  rows: (string | number)[][];
-}) {
-  return (
-    <details className="group mt-4">
-      <summary className="text-ink-faint hover:text-ink-soft cursor-pointer text-[12px]">
-        View data table
-      </summary>
-      <div className="border-line mt-3 max-h-96 overflow-auto rounded-lg border">
-        <table className="w-full text-[13px]">
-          <caption className="sr-only">{caption}</caption>
-          <thead className="bg-surface-raised sticky top-0">
-            <tr className="border-line border-b">
-              {columns.map((c, i) => (
-                <th
-                  key={c}
-                  scope="col"
-                  className={`text-label text-ink-faint px-3 py-2 uppercase ${
-                    i === 0 ? "text-left" : "text-right"
-                  }`}
-                >
-                  {c}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, ri) => (
-              <tr key={ri} className="border-line border-b last:border-0">
-                {r.map((cell, ci) => (
-                  <td
-                    key={ci}
-                    className={`px-3 py-1.5 ${
-                      ci === 0 ? "text-ink-soft" : "text-ink tabular text-right"
-                    }`}
-                  >
-                    {cell}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </details>
-  );
-}
 
 /* ------------------------------------------------------------- trend chart */
 
@@ -211,11 +157,13 @@ export function TrendChart({
         />
       </svg>
 
-      <DataDisclosure
-        caption={`${label} by year`}
-        columns={["Year", "Value"]}
-        rows={[...points].reverse().map((p) => [p.year, formatNumber(p.value)])}
-      />
+      <DataDisclosure count={points.length} noun="years">
+        <DataGrid
+          caption={`${label} by year`}
+          columns={["Year", "Value"]}
+          rows={[...points].reverse().map((p) => [p.year, formatNumber(p.value)])}
+        />
+      </DataDisclosure>
     </figure>
   );
 }
@@ -289,11 +237,13 @@ export function RankedBars({
       </ul>
 
       {!compact && (
-        <DataDisclosure
-          caption={label}
-          columns={["Place", "नेपाली", valueLabel]}
-          rows={rows.map((r) => [r.name, r.nameNe ?? "—", fmt(r.value)])}
-        />
+        <DataDisclosure count={rows.length} noun="places">
+          <DataGrid
+            caption={label}
+            columns={["Place", "नेपाली", valueLabel]}
+            rows={rows.map((r) => [r.name, r.nameNe ?? "—", fmt(r.value)])}
+          />
+        </DataDisclosure>
       )}
     </figure>
   );

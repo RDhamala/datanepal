@@ -5,6 +5,10 @@ data build 24 August 2026, using the baselines in `references/current/` plus
 the source and the published Parquet. Every figure below was measured or
 computed, not estimated; the commands are in §11.
 
+Findings §1, §2, §3, §6 and §9 were resolved on 3 October 2026; §6 and §9
+carry corrections, because measuring them in the browser showed the original
+diagnosis was wrong in both cases. The rest stand.
+
 These are **system-level defects** — defaults, contracts and missing
 abstractions. Each one would reappear in the next feature if only its current
 symptom were patched. Ordered by consequence, not by page.
@@ -125,25 +129,30 @@ default for any route whose length grows with ingestion.
 **Touches.** `app/indicators/page.tsx`, `app/datasets/page.tsx`,
 `app/places/page.tsx`.
 
-## 6. The type scale does not let data dominate
+## 6. Number sizes had no rule, and the audit's first reading of this was wrong
 
-**Evidence.** `app/globals.css`: `--text-stat: 2rem` (32px) against
-`--text-title: 1.875rem` (30px) — a ratio of **1.07×**. Body is 15px.
-`--text-heading` was made fluid in `ed18d1e` (17px → 22px between 768 and
-1280), which fixed the heading-to-body ratio; the stat-to-title relation was
-not part of that change.
+**Correction, 3 October 2026.** This finding originally read "`--text-stat`
+(32px) against `--text-title` (30px) — a ratio of 1.07×, so the headline figure
+ties with the page title". That is wrong. `--text-title` is not the page title:
+its only consumer is the Devanagari pairing under an h1. The page title is
+`--text-display`, measured at 52px on the Dhading page against a largest
+figure of 34px. The hierarchy was never inverted, and the fix implied by the
+original wording — shrink the stat — would have made the page worse. Measured
+in the browser rather than read off the token names.
 
-**Why it is system-level.** On a platform whose argument is that the data is
-the product, the headline figure ties with the page title. One token sets this
-everywhere, so it is one change — but it is also the reason every data module
-reads at the same volume, and no amount of per-component adjustment will fix
-it.
+**What was actually wrong.** Three ad-hoc number sizes with no rule between
+them: `FactStrip` hardcoded `text-[1.35rem]`/`sm:text-[1.4rem]` (22px at wide
+viewports), `Tile` used `--text-stat` (32px), and `TopicSummary` used an
+inline `text-[2.1rem]` (34px). 22px is exactly where `--text-heading` tops
+out, so a district's population rendered at the same size as the words
+"Population & Demographics" above it and the strip read as a row of
+subheadings.
 
-**Fix.** Re-derive `--text-stat` against `--text-title` deliberately, and
-decide whether the stat is fluid like the heading or fixed. Then re-review the
-KPI strip, which is where the ratio is most visible.
-
-**Touches.** `app/globals.css`, `components/viz/MetricStrip.tsx`.
+**Fixed.** Explicit roles in `app/globals.css` — display, stat-lead, stat,
+title, heading, body, label — with the rule stated where they are defined: *a
+figure outranks the heading above it, and nothing outranks the page title.*
+`--text-display` also became fluid (36px → 52px), because 52px fixed is
+assertive on a 390px phone.
 
 ## 7. Comparative context exists at one of four place levels
 
@@ -186,24 +195,34 @@ reference row.
 
 **Touches.** `lib/data.ts` (`comparisonFor`), new `app/compare/`.
 
-## 9. Map labels are clipped at the frame edge
+## 9. Map labels vanished where they overhang — not clipping
 
-**Evidence.** On the Dhading local-government choropleth, "Dhunibenshi" is cut
-by the right edge of the SVG frame at **both** 1440 and 390 — see
-`references/current/dhading-desktop-local-map.png` and
-`dhading-mobile-local-map.png`. The label engine places inside-polygon labels
-without testing them against the viewBox.
+**Correction, 3 October 2026.** This finding originally read "'Dhunibenshi' is
+cut by the right edge of the SVG frame" and sent the fix toward
+`layoutLabels`' bounds check. Measured: the label's bounding box right edge is
+448.9 in a 478-unit viewBox, fully inside the frame, and inside its parent.
+The frame check was correct the whole time.
 
-**Why it is system-level.** This is the engine that labels every map at every
-level, and a commit in this history (`Keep every map label inside the frame`)
-already addressed one class of it. The remaining case is the eastern-most
-polygon of a district whose bounding box is wider than it is tall — Dhading is
-not special, it is simply shaped that way, and 77 districts will produce more.
+**What was actually wrong.** Two things, both real.
 
-**Fix.** Clamp or re-anchor a label whose rendered box crosses the viewBox,
-and add a check that fails when any label's box is not fully contained.
+The label inked white because its polygon is the darkest class of the ramp,
+and it is longer than that polygon, so its tail landed on the white page and
+disappeared. It read as a clipped label. `MetricMap` also had its own label
+renderer, separate from `MapLabels`, so the two maps on the site drew names by
+different code — which is why the first fix landed in the wrong file.
 
-**Touches.** `components/MapLabels.tsx`.
+Separately, `MapLabels` positioned every `tspan` at the shape's centroid
+rather than at the position the layout engine chose, so the horizontal half of
+every offset placement was silently discarded at render time.
+
+**Fixed.** One ink for every label with a halo in the page colour painted
+under the glyphs (`paint-order: stroke fill`), which is legible on every class
+of the ramp and on the page between them — the only rule that holds for a
+label that may be in either place. `tspan` now uses the chosen position.
+
+**Still open.** Two label renderers remain. `MetricMap` should use
+`MapLabels`; this change applied the same fix to both rather than merging
+them, which is a refactor the proof page did not need.
 
 ## 10. Provenance is present everywhere and weighted nowhere
 

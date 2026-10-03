@@ -1,4 +1,5 @@
 import { COLOR, TYPE } from "@/lib/viz";
+import { DataDisclosure } from "./DataDisclosure";
 
 /*
   The wrapper every chart and map shares.
@@ -28,6 +29,8 @@ export function Figure({
   caption,
   table,
   tableLabel,
+  tableCount,
+  tableNoun,
   children,
   wide = false,
 }: {
@@ -46,7 +49,10 @@ export function Figure({
   readout?: React.ReactNode;
   caption?: React.ReactNode;
   table?: React.ReactNode;
+  /** Overrides the composed disclosure label. Prefer tableCount + tableNoun. */
   tableLabel?: string;
+  tableCount?: number;
+  tableNoun?: string;
   children: React.ReactNode;
   /** Charts and maps get more width than prose; tables get all of it. */
   wide?: boolean;
@@ -91,17 +97,9 @@ export function Figure({
       )}
 
       {table && (
-        <details className="mt-3">
-          <summary
-            className="text-ink-faint hover:text-ink-soft cursor-pointer"
-            style={{ fontSize: TYPE.small }}
-          >
-            {tableLabel ?? "View the numbers"}
-          </summary>
-          <div className="border-line mt-3 max-h-96 overflow-auto rounded-md border">
-            {table}
-          </div>
-        </details>
+        <DataDisclosure label={tableLabel} count={tableCount} noun={tableNoun}>
+          {table}
+        </DataDisclosure>
       )}
     </figure>
   );

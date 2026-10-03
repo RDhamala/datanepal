@@ -1,5 +1,6 @@
 "use client";
 
+import { DataDisclosure } from "./viz/DataDisclosure";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { formatWithUnit } from "@/lib/format";
@@ -195,12 +196,22 @@ export function MetricMap({
 
         {features.map((f) => {
           if (!f.label) return null;
-          const bin = binOf(metric.values[f.placeId]);
-          // Dark fills need light ink, and which fills are dark changes with the
-          // metric -- so the label colour has to be decided here rather than at
-          // build time with the rest of the layout.
-          const ink =
-            bin !== null && bin >= 3 ? "var(--color-surface)" : "var(--color-ink)";
+          /*
+            One ink for every label, with a surface halo behind it.
+
+            The previous rule flipped a label to the surface colour on the two
+            darkest classes, which is correct only while the label stays inside
+            its shape. A name wider than its polygon overhangs onto the page,
+            and a surface-coloured label on the page is nothing at all -- which
+            is how "Dhunibenshi" came to look clipped. Flipping the halo
+            instead does not help: the overhanging half would still be the
+            wrong way round.
+
+            So the atlas answer: dark ink always, a halo in the page colour
+            thick enough to carry it over a saturated fill. Legible on every
+            class of the ramp and on the page between them, which is the only
+            rule that holds for a label that may be in either place.
+          */
           const top =
             f.label.y - ((f.label.lines.length - 1) * f.label.fontSize * 1.15) / 2;
           return (
@@ -211,8 +222,24 @@ export function MetricMap({
               textAnchor="middle"
               className="font-medium"
               fontSize={f.label.fontSize}
-              fill={ink}
+              fill="var(--color-ink)"
               pointerEvents="none"
+              /*
+                Halo, for the same reason as in MapLabels: a name longer than
+                its shape overhangs onto the page, and ink chosen for a dark
+                fill is then invisible. "Dhunibenshi" on Dhading's local-unit
+                map inks white, runs past the municipality's eastern edge, and
+                the tail of the word was white on white -- which reads as a
+                clipped label and sent the audit looking at the frame check,
+                which was correct all along.
+
+                paint-order keeps the stroke behind the glyphs instead of
+                eroding them.
+              */
+              stroke="var(--color-surface)"
+              strokeWidth={Math.max(2.5, f.label.fontSize * 0.3)}
+              strokeLinejoin="round"
+              style={{ paintOrder: "stroke fill" }}
             >
               {f.label.lines.map((line, j) => (
                 <tspan
@@ -281,62 +308,57 @@ export function MetricMap({
         </p>
       </figcaption>
 
-      <details className="mt-4">
-        <summary className="text-ink-faint hover:text-ink-soft cursor-pointer text-[12px]">
-          View all {features.length} values
-        </summary>
-        <div className="border-line mt-3 max-h-96 overflow-auto rounded-md border">
-          <table className="w-full text-[13px]">
-            <thead className="bg-surface-raised sticky top-0">
-              <tr className="border-line border-b">
-                <th
-                  scope="col"
-                  className="text-label text-ink-faint px-3 py-2 text-left uppercase"
-                >
-                  Area
-                </th>
-                {/* Every metric, not just the selected one: the table is where a
+      <DataDisclosure count={features.length} noun="areas">
+        <table className="w-full text-[13px]">
+          <thead className="bg-surface-raised sticky top-0">
+            <tr className="border-line border-b">
+              <th
+                scope="col"
+                className="text-label text-ink-faint px-3 py-2 text-left uppercase"
+              >
+                Area
+              </th>
+              {/* Every metric, not just the selected one: the table is where a
                     reader compares across measures, which no single shading can
                     do. */}
-                {metrics.map((m) => (
-                  <th
-                    key={m.id}
-                    scope="col"
-                    className="text-label text-ink-faint px-3 py-2 text-right uppercase"
-                  >
-                    {m.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {[...features]
-                .sort(
-                  (a, b) =>
-                    (metric.values[b.placeId] ?? -Infinity) -
-                    (metric.values[a.placeId] ?? -Infinity),
-                )
-                .map((f) => (
-                  <tr key={f.placeId} className="border-line border-b last:border-0">
-                    <td className="px-3 py-1.5">
-                      {f.href ? <Link href={f.href}>{f.name}</Link> : f.name}
+              {metrics.map((m) => (
+                <th
+                  key={m.id}
+                  scope="col"
+                  className="text-label text-ink-faint px-3 py-2 text-right uppercase"
+                >
+                  {m.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {[...features]
+              .sort(
+                (a, b) =>
+                  (metric.values[b.placeId] ?? -Infinity) -
+                  (metric.values[a.placeId] ?? -Infinity),
+              )
+              .map((f) => (
+                <tr key={f.placeId} className="border-line border-b last:border-0">
+                  <td className="px-3 py-1.5">
+                    {f.href ? <Link href={f.href}>{f.name}</Link> : f.name}
+                  </td>
+                  {metrics.map((m) => (
+                    <td
+                      key={m.id}
+                      className="text-ink-soft tabular px-3 py-1.5 text-right"
+                    >
+                      {m.values[f.placeId] !== undefined
+                        ? formatWithUnit(m.values[f.placeId], m.unit)
+                        : "—"}
                     </td>
-                    {metrics.map((m) => (
-                      <td
-                        key={m.id}
-                        className="text-ink-soft tabular px-3 py-1.5 text-right"
-                      >
-                        {m.values[f.placeId] !== undefined
-                          ? formatWithUnit(m.values[f.placeId], m.unit)
-                          : "—"}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
-      </details>
+                  ))}
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      </DataDisclosure>
     </figure>
   );
 }

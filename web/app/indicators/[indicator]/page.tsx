@@ -22,6 +22,7 @@ import {
 } from "@/lib/data";
 import { Headline, RankedBars, TrendChart } from "@/components/charts";
 import { MetricMap } from "@/components/MetricMap";
+import { DataDisclosure } from "@/components/viz/DataDisclosure";
 import { Crumbs, PageHeader, Section, SourceNote } from "@/components/ui";
 import { TYPE } from "@/lib/viz";
 
@@ -288,57 +289,48 @@ export default async function IndicatorPage({ params }: { params: Promise<Params
 
           {/* The exact-lookup fallback the map and the extremes list can't
               give: every district, not just the ends. */}
-          <details className="mt-6">
-            <summary
-              className="text-ink-faint hover:text-ink-soft cursor-pointer"
-              style={{ fontSize: TYPE.small }}
-            >
-              View all {districtCmp.rows.length} districts
-            </summary>
-            <div className="border-line mt-3 max-h-96 overflow-auto rounded-md border">
-              <table className="w-full" style={{ fontSize: TYPE.body }}>
-                <thead className="bg-surface-raised sticky top-0">
-                  <tr className="border-line border-b">
-                    <th
-                      scope="col"
-                      className="text-label text-ink-faint px-3 py-2 text-left uppercase"
-                    >
-                      District
-                    </th>
-                    <th
-                      scope="col"
-                      className="text-label text-ink-faint px-3 py-2 text-right uppercase"
-                    >
-                      {ind.name_en}
-                    </th>
+          <DataDisclosure count={districtCmp.rows.length} noun="districts">
+            <table className="w-full" style={{ fontSize: TYPE.body }}>
+              <thead className="bg-surface-raised sticky top-0">
+                <tr className="border-line border-b">
+                  <th
+                    scope="col"
+                    className="text-label text-ink-faint px-3 py-2 text-left uppercase"
+                  >
+                    District
+                  </th>
+                  <th
+                    scope="col"
+                    className="text-label text-ink-faint px-3 py-2 text-right uppercase"
+                  >
+                    {ind.name_en}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {districtCmp.rows.map((r) => (
+                  <tr
+                    key={r.place.place_id}
+                    className="border-line border-b last:border-0"
+                  >
+                    <td className="px-3 py-1.5">
+                      <Link
+                        href={`/np/${
+                          allPlaces.find((p) => p.place_id === r.place.parent_place_id)
+                            ?.slug ?? ""
+                        }/${r.place.slug}/`}
+                      >
+                        {r.place.name_en}
+                      </Link>
+                    </td>
+                    <td className="text-ink-soft tabular px-3 py-1.5 text-right">
+                      {formatWithUnit(r.value, districtCmp.unit)}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {districtCmp.rows.map((r) => (
-                    <tr
-                      key={r.place.place_id}
-                      className="border-line border-b last:border-0"
-                    >
-                      <td className="px-3 py-1.5">
-                        <Link
-                          href={`/np/${
-                            allPlaces.find(
-                              (p) => p.place_id === r.place.parent_place_id,
-                            )?.slug ?? ""
-                          }/${r.place.slug}/`}
-                        >
-                          {r.place.name_en}
-                        </Link>
-                      </td>
-                      <td className="text-ink-soft tabular px-3 py-1.5 text-right">
-                        {formatWithUnit(r.value, districtCmp.unit)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </details>
+                ))}
+              </tbody>
+            </table>
+          </DataDisclosure>
         </Section>
       )}
 
