@@ -4,7 +4,7 @@ import { useId, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Metric, MetricMapFeature } from "@/components/MetricMap";
 import { MapLabelLayer } from "@/components/MapLabels";
-import { formatNumber, formatWithUnit } from "@/lib/format";
+import { formatWithUnit } from "@/lib/format";
 import { binFor, quantileBreaks } from "@/lib/viz";
 
 /*
@@ -41,7 +41,6 @@ export function GeoExplorer({
   height,
   outlinePath,
   title,
-  definition,
   source,
   /** Ranking before map on small screens, where tiny labels help nobody. */
   rankingFirstOnMobile = true,
@@ -53,7 +52,6 @@ export function GeoExplorer({
   height: number;
   outlinePath?: string;
   title: string;
-  definition?: string;
   source?: React.ReactNode;
   rankingFirstOnMobile?: boolean;
 }) {
@@ -62,13 +60,12 @@ export function GeoExplorer({
   const uid = useId();
   const metric = metrics[metricIndex];
 
-  const { binOf, breaks } = useMemo(() => {
-    const values = Object.values(metric?.values ?? {}).filter(Number.isFinite);
-    const b = quantileBreaks(values, 5);
-    return {
-      breaks: b,
-      binOf: (v?: number) => (v === undefined ? null : binFor(v, b)),
-    };
+  const binOf = useMemo(() => {
+    const b = quantileBreaks(
+      Object.values(metric?.values ?? {}).filter(Number.isFinite),
+      5,
+    );
+    return (v?: number) => (v === undefined ? null : binFor(v, b));
   }, [metric]);
 
   const ranked = useMemo(
@@ -81,6 +78,12 @@ export function GeoExplorer({
 
   const fmt = (v?: number) =>
     v === undefined ? "No data" : formatWithUnit(v, metric?.unit);
+  const active = activeId
+    ? {
+        name: rows.find((r) => r.placeId === activeId)?.name ?? "",
+        value: metric?.values[activeId],
+      }
+    : null;
   const all = Object.values(metric?.values ?? {});
   // Bars behind the ranking, so the list reads as a chart rather than a table.
   // Zero-based, like every other bar on the site.
@@ -88,39 +91,49 @@ export function GeoExplorer({
 
   return (
     <figure className="m-0">
-      <figcaption className="mb-3">
-        <p className="text-ink text-[14px] leading-snug font-semibold">{title}</p>
-        {definition && (
-          <p className="text-ink-soft mt-0.5 max-w-[62ch] text-[12px] leading-relaxed">
-            {definition}
-          </p>
-        )}
-      </figcaption>
-
+      {/* Measure tabs and the live readout share a line: the readout replaces
+          the paragraph that used to explain what hovering does. */}
       {/* ------------------------------------------- measure switch (tabs) */}
-      {metrics.length > 1 && (
-        <div
-          role="group"
-          aria-label="Shade the map by"
-          className="border-line mb-5 flex flex-wrap gap-x-5 gap-y-1 border-b"
-        >
-          {metrics.map((m, i) => (
-            <button
-              key={m.id}
-              type="button"
-              onClick={() => setMetricIndex(i)}
-              aria-pressed={i === metricIndex}
-              className={`focus-visible:outline-accent -mb-px flex min-h-11 items-end border-b-2 px-0.5 pb-2 text-[13px] focus-visible:outline-2 focus-visible:outline-offset-2 sm:min-h-0 ${
-                i === metricIndex
-                  ? "border-ink text-ink font-medium"
-                  : "text-ink-faint hover:text-ink-soft border-transparent"
-              }`}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="border-line mb-5 flex flex-wrap items-end justify-between gap-x-6 gap-y-2 border-b">
+        {metrics.length > 1 ? (
+          <div
+            role="group"
+            aria-label="Shade the map by"
+            className="flex flex-wrap gap-x-5"
+          >
+            {metrics.map((m, i) => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => setMetricIndex(i)}
+                aria-pressed={i === metricIndex}
+                className={`focus-visible:outline-accent -mb-px flex min-h-11 items-end border-b-2 px-0.5 pb-2.5 text-[13px] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 sm:min-h-0 ${
+                  i === metricIndex
+                    ? "border-brand text-ink font-medium"
+                    : "text-ink-faint hover:text-ink-soft border-transparent"
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <span />
+        )}
+
+        {/* Live readout. Replaces "point at a province to highlight it". */}
+        <p className="text-ink-soft pb-2.5 text-[12.5px]" aria-live="polite">
+          {active ? (
+            <>
+              <span className="text-ink font-medium">{active.name}</span>
+              <span className="text-ink-faint"> · </span>
+              <span className="tabular">{fmt(active.value)}</span>
+            </>
+          ) : (
+            <span className="text-ink-faint">{features.length} areas · select one</span>
+          )}
+        </p>
+      </div>
 
       <div
         className={`grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,23rem)] lg:gap-10 ${
@@ -202,25 +215,22 @@ export function GeoExplorer({
               </g>
             </svg>
 
-            {/* ----------------------------------------- restrained legend */}
-            <div className="mt-3">
-              <div className="flex h-1.5 gap-px overflow-hidden" aria-hidden="true">
-                {RAMP.map((c) => (
-                  <span key={c} className="flex-1" style={{ background: c }} />
-                ))}
-              </div>
-              <div className="text-ink-faint tabular mt-1 flex justify-between text-[11px]">
+            {/* Continuous ramp with its ends labelled. The class-break list it
+              replaces was five numbers nobody reads. */}
+            <div className="mt-4">
+              <div
+                className="h-1.5 rounded-full"
+                aria-hidden="true"
+                style={{
+                  background:
+                    "linear-gradient(to right, var(--color-seq-1), var(--color-seq-2), var(--color-seq-3), var(--color-seq-4), var(--color-seq-5))",
+                }}
+              />
+              <div className="text-ink-faint tabular mt-1.5 flex justify-between text-[11px]">
                 <span>{fmt(Math.min(...all))}</span>
                 <span>{fmt(Math.max(...all))}</span>
               </div>
             </div>
-            <p className="text-ink-faint mt-1.5 text-[11px] leading-relaxed">
-              {/* "about 1 areas" is what a per-class count gives for 7 provinces. */}
-              {features.length >= 15
-                ? `Five classes of about ${Math.round(features.length / 5)} areas.`
-                : "Five quantile classes."}{" "}
-              Breaks at {breaks.map((b) => formatNumber(Math.round(b))).join(", ")}.
-            </p>
           </div>
         </div>
 
@@ -235,7 +245,7 @@ export function GeoExplorer({
           </p>
           <ol
             aria-labelledby={`${uid}-rank`}
-            className="divide-line border-line divide-y border-t text-[13px]"
+            className="divide-line divide-y text-[13px]"
           >
             {ranked.map((r, i) => (
               <li key={r.placeId}>
@@ -245,8 +255,10 @@ export function GeoExplorer({
                   onMouseLeave={() => setActiveId(null)}
                   onFocus={() => setActiveId(r.placeId)}
                   onBlur={() => setActiveId(null)}
-                  className={`focus-visible:outline-accent flex min-h-11 items-center gap-3 py-[7px] no-underline focus-visible:outline-2 focus-visible:-outline-offset-2 sm:min-h-0 sm:items-baseline ${
-                    activeId === r.placeId ? "bg-surface-sunken" : ""
+                  className={`focus-visible:outline-accent -mx-3 flex min-h-11 items-center gap-3 rounded-md px-3 py-[7px] no-underline transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 sm:min-h-0 ${
+                    activeId === r.placeId
+                      ? "bg-surface-accent"
+                      : "hover:bg-surface-raised"
                   }`}
                 >
                   <span className="text-ink-faint tabular w-4 shrink-0 text-[11px]">
@@ -260,7 +272,7 @@ export function GeoExplorer({
                     aria-hidden="true"
                   >
                     <span
-                      className="absolute inset-y-0 left-0"
+                      className="absolute inset-y-0 left-0 rounded-full transition-[width,background] duration-200"
                       style={{
                         width: `${barMax > 0 && r.value !== undefined ? (r.value / barMax) * 100 : 0}%`,
                         background:

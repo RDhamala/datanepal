@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Figure as FigureData } from "@/lib/editorial";
-import { figureText, periodText, SourceNote } from "./format";
+import { figureText, periodText } from "./format";
 import { Sparkline } from "@/components/charts";
 
 /*
@@ -62,6 +62,15 @@ export function Section({
    * shrinks the measure. Off there.
    */
   contained = true,
+  /**
+   * `accent` puts the section on a tinted full-bleed band.
+   *
+   * Used sparingly -- one band per page. Five identical white sections
+   * separated by hairlines have no rhythm; alternating stripes have too much.
+   * One tinted band marks the section a reader is meant to *use* rather than
+   * read, which here is the map.
+   */
+  tone = "plain",
 }: {
   n?: number;
   title: string;
@@ -71,48 +80,62 @@ export function Section({
   children: React.ReactNode;
   id?: string;
   contained?: boolean;
+  tone?: "plain" | "accent";
 }) {
+  const accent = tone === "accent";
   return (
     <section
       id={id}
-      className={`border-line border-t pt-7 pb-10 ${
-        contained ? "max-w-page mx-auto px-5 sm:px-8" : ""
-      }`}
+      className={[
+        accent
+          ? "bg-surface-accent border-line -mx-5 border-y px-5 py-12 sm:-mx-8 sm:px-8"
+          : "pt-12 pb-12",
+        contained && !accent ? "max-w-page mx-auto px-5 sm:px-8" : "",
+      ].join(" ")}
     >
-      <div className="flex flex-wrap items-baseline justify-between gap-x-8 gap-y-1">
-        <h2 className="flex items-baseline gap-3">
-          {n !== undefined && (
-            <span className="text-ink-faint tabular text-[12px]" aria-hidden="true">
-              {String(n).padStart(2, "0")}
-            </span>
-          )}
-          <span
-            className="text-ink text-[clamp(1.375rem,1.1rem+1vw,1.75rem)] leading-[1.1] font-semibold tracking-[-0.02em]"
-            style={ROLE.section}
-          >
-            {title}
-            {titleNe && (
+      <div className={accent ? "max-w-page mx-auto" : ""}>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-8 gap-y-1">
+          <h2 className="flex items-baseline gap-3.5">
+            {n !== undefined && (
               <span
-                className="text-ink-faint ne ml-2.5 text-[0.62em] font-normal"
-                lang="ne"
+                className="text-brand tabular text-[11px] font-semibold"
+                style={{ letterSpacing: "0.1em" }}
+                aria-hidden="true"
               >
-                {titleNe}
+                {String(n).padStart(2, "0")}
               </span>
             )}
-          </span>
-        </h2>
-        {action && (
-          <Link href={action.href} className="text-[13px] whitespace-nowrap">
-            {action.label} →
-          </Link>
+            <span
+              className="text-ink text-[clamp(1.5rem,1.15rem+1.2vw,2rem)] leading-[1.08] font-semibold tracking-[-0.025em]"
+              style={ROLE.section}
+            >
+              {title}
+              {titleNe && (
+                <span
+                  className="text-ink-faint ne ml-2.5 text-[0.6em] font-normal"
+                  lang="ne"
+                >
+                  {titleNe}
+                </span>
+              )}
+            </span>
+          </h2>
+          {action && (
+            <Link
+              href={action.href}
+              className="text-ink-soft hover:text-brand text-[13px] whitespace-nowrap no-underline transition-colors"
+            >
+              {action.label} <span aria-hidden="true">→</span>
+            </Link>
+          )}
+        </div>
+        {intro && (
+          <p className="text-ink-soft mt-2.5 max-w-[60ch] text-[14px] leading-relaxed">
+            {intro}
+          </p>
         )}
+        <div className="mt-7">{children}</div>
       </div>
-      {intro && (
-        <p className="text-ink-soft mt-2 max-w-[62ch] text-[14px] leading-relaxed">
-          {intro}
-        </p>
-      )}
-      <div className="mt-6">{children}</div>
     </section>
   );
 }
@@ -128,46 +151,58 @@ export function Section({
  */
 export function StatRow({ figures }: { figures: FigureData[] }) {
   return (
-    <div className="divide-line border-line grid grid-cols-1 divide-y border-y sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4">
+    <div
+      className="bg-surface border-line divide-line grid grid-cols-1 divide-y overflow-hidden rounded-xl border sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4"
+      style={{ boxShadow: "var(--shadow-raise)" }}
+    >
       {figures.map((f, i) => (
         <div
           key={f.indicatorId}
-          className={`border-line py-5 sm:px-6 ${i > 0 ? "lg:border-l" : ""} ${i === 1 || i === 3 ? "sm:border-l" : ""} ${i < 2 ? "sm:border-b lg:border-b-0" : ""} ${i === 0 ? "sm:pl-0" : ""}`}
+          className={`border-line relative px-5 py-6 ${i > 0 ? "lg:border-l" : ""} ${
+            i % 2 === 1 ? "sm:border-l" : ""
+          } ${i < 2 ? "sm:border-b lg:border-b-0" : ""}`}
         >
           <p
-            className="text-ink-faint text-[11px] uppercase"
-            style={{ letterSpacing: "0.07em" }}
+            className="text-ink-faint text-[10.5px] uppercase"
+            style={{ letterSpacing: "0.08em" }}
           >
             {f.label}
           </p>
           <p
-            className="text-ink mt-1.5 text-[clamp(1.625rem,1.2rem+1.5vw,2.25rem)] leading-none font-semibold tracking-[-0.03em]"
+            className="text-ink mt-2.5 text-[clamp(1.75rem,1.3rem+1.6vw,2.375rem)] leading-none font-semibold tracking-[-0.035em]"
             style={ROLE.leadFigure}
           >
             {figureText(f)}
           </p>
-          <div className="mt-2 flex items-end justify-between gap-3">
-            <div>
-              <p className="text-ink-faint tabular text-[12px]">{periodText(f)}</p>
+
+          <div className="mt-3 flex items-end justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-ink-faint tabular text-[11.5px]">{periodText(f)}</p>
               {f.change && (
-                <p className="text-ink-soft tabular mt-0.5 text-[11px]">
-                  {f.change.delta >= 0 ? "▲" : "▼"}{" "}
+                <p
+                  className={`tabular mt-1 text-[11.5px] font-medium ${
+                    f.change.delta >= 0 ? "text-rise" : "text-fall"
+                  }`}
+                >
+                  {f.change.delta >= 0 ? "↑" : "↓"}{" "}
                   {Math.abs(f.change.delta) < 1
                     ? Math.abs(f.change.delta).toFixed(2)
                     : Math.abs(f.change.delta).toLocaleString(undefined, {
                         maximumFractionDigits: 1,
-                      })}{" "}
-                  from {f.change.fromYear}
+                      })}
+                  <span className="text-ink-faint font-normal">
+                    {" "}
+                    since {f.change.fromYear}
+                  </span>
                 </p>
               )}
             </div>
             {f.points.length >= 3 && (
-              <div className="overflow-hidden">
-                <Sparkline points={f.points.slice(-40)} width={92} height={24} />
+              <div className="shrink-0 overflow-hidden opacity-80">
+                <Sparkline points={f.points.slice(-40)} width={78} height={22} />
               </div>
             )}
           </div>
-          <SourceNote source={f.source} className="mt-2" />
         </div>
       ))}
     </div>
