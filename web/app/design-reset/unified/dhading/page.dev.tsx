@@ -284,7 +284,6 @@ export default async function UnifiedDhading() {
             width={d.localMap.width}
             height={d.localMap.height}
             title="Dhading by local government"
-            definition="Point at a place on the map or in the ranking to highlight it in both. Each links to its own profile; switch the measure above."
             source={
               <SourceNote source={literacy?.source ?? d.households?.source ?? null} />
             }

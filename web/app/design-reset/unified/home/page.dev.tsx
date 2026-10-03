@@ -159,7 +159,6 @@ export default async function UnifiedHome() {
             width={provinceView.map.width}
             height={provinceView.map.height}
             title="Nepal by province"
-            definition="Point at a province on the map or in the ranking to highlight it in both. Each links to its own profile; switch the measure above."
             source={
               <SourceNote
                 source={

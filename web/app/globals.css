@@ -50,6 +50,18 @@
     reference this token or --color-link, never a series colour.
   */
   --color-brand: #1c5aa6;
+  /*
+    Elevation and accent surfaces.
+
+    The page was hairline rules on pure white everywhere, which reads as a
+    wireframe rather than a product. These give the few surfaces that carry the
+    most weight -- the figure strip, the explorer -- a quiet lift, without
+    turning the page into a grid of cards.
+  */
+  --color-surface-accent: #f4f8fd;
+  --color-accent-soft: #dbe8f7;
+  --shadow-raise: 0 1px 2px rgba(16, 15, 14, 0.04), 0 2px 8px rgba(16, 15, 14, 0.04);
+  --shadow-lift: 0 1px 2px rgba(16, 15, 14, 0.05), 0 6px 20px rgba(16, 15, 14, 0.07);
   --color-link: var(--color-brand);
   --color-selected: #e3edfa;
 
@@ -192,6 +204,10 @@
       --color-ink-faint: #94938a;
 
       --color-brand: #6ba6e6;
+      --color-surface-accent: #15202e;
+      --color-accent-soft: #1f3550;
+      --shadow-raise: 0 1px 2px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35);
+      --shadow-lift: 0 1px 2px rgba(0, 0, 0, 0.55), 0 6px 20px rgba(0, 0, 0, 0.45);
       --color-link: var(--color-brand);
       --color-selected: #1b2f4a;
 

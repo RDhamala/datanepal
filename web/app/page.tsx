@@ -9,11 +9,7 @@ import {
 } from "@/lib/editorial";
 import { Figure, ROLE, Section, StatRow } from "@/components/editorial/system";
 import { GeoExplorer } from "@/components/editorial/GeoExplorer";
-import {
-  coverageSentence,
-  figureText,
-  SourceNote,
-} from "@/components/editorial/format";
+import { figureText } from "@/components/editorial/format";
 import { TrendChart } from "@/components/charts";
 import { Search } from "@/components/Search";
 
@@ -55,32 +51,46 @@ export default async function Home() {
   return (
     <>
       {/* ------------------------------------------------------------ hero */}
-      <section className="pb-9">
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,19rem)] lg:gap-14">
+      <section className="relative pt-2 pb-12">
+        {/*
+          The country itself, as the only ornament on the page.
+
+          Real province geometry at very low contrast -- geography is this
+          platform's identity, and it is the one decoration that is also the
+          subject. No tourism imagery.
+        */}
+        {provinceView.map && (
+          <svg
+            viewBox={`0 0 ${provinceView.map.width} ${provinceView.map.height}`}
+            aria-hidden="true"
+            className="pointer-events-none absolute -top-6 right-0 hidden w-[46%] opacity-[0.07] lg:block"
+          >
+            {provinceView.map.features.map((f) => (
+              <path key={f.placeId} d={f.path} fill="var(--color-brand)" />
+            ))}
+          </svg>
+        )}
+
+        <div className="relative grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,17rem)] lg:gap-16">
           <div>
             <h1
-              className="text-ink text-[clamp(2.5rem,1.9rem+2.8vw,3.75rem)] leading-[0.95] font-semibold tracking-[-0.04em]"
+              className="text-ink text-[clamp(2.75rem,2rem+3.2vw,4.25rem)] leading-[0.92] font-semibold tracking-[-0.045em]"
               style={ROLE.display}
             >
               Nepal, in data.
             </h1>
-            {/*
-              The Nepali is a second line of the title, not a grey subtitle.
-              On a bilingual national platform, setting one language as chrome
-              for the other is a statement, and not the one we want to make.
-            */}
             <p
-              className="text-brand ne mt-2 text-[clamp(1.375rem,1.05rem+1.3vw,1.875rem)] leading-tight font-medium"
+              className="text-brand ne mt-2.5 text-[clamp(1.5rem,1.1rem+1.5vw,2.125rem)] leading-tight font-medium"
               lang="ne"
               style={{ fontFamily: "var(--font-devanagari)" }}
             >
               नेपाल, तथ्याङ्कमा
             </p>
-            <p className="text-ink-soft mt-4 max-w-[52ch] text-[15px] leading-relaxed">
-              Open, documented public data for Nepal, with selected indicators available
-              down to province, district, and local-government level.
+            <p className="text-ink-soft mt-5 max-w-[46ch] text-[16px] leading-relaxed">
+              Open, documented public data for Nepal — down to province, district and
+              local government.
             </p>
-            <div className="mt-6 max-w-[32rem]">
+            <div className="mt-7 max-w-[34rem]">
               <Search
                 size="large"
                 placeholder="Search places, indicators, datasets…"
@@ -89,41 +99,37 @@ export default async function Home() {
             </div>
           </div>
 
-          {/*
-            Geographic scale as the frame the data sits in, not as four more
-            statistics. An indicator count is a fact about this platform, not
-            about Nepal, and putting it beside inflation invites reading it as
-            one -- so it goes below, quietly.
-          */}
-          <aside className="lg:pt-3">
-            <p
-              className="text-ink-faint text-[11px] uppercase"
-              style={{ letterSpacing: "0.07em" }}
-            >
-              The country, administratively
-            </p>
-            <dl className="divide-line border-line mt-2 divide-y border-t">
+          {/* Scale as three figures, not a paragraph. */}
+          <aside className="lg:pt-5">
+            <dl className="grid grid-cols-3 gap-4 lg:grid-cols-1 lg:gap-0">
               {[
                 [scale.provinces, "Provinces"],
                 [scale.districts, "Districts"],
                 [scale.localGovernments, "Local governments"],
-              ].map(([n, label]) => (
-                <div key={String(label)} className="flex items-baseline gap-4 py-2">
+              ].map(([n, label], i) => (
+                <div
+                  key={String(label)}
+                  className={`border-line lg:flex lg:items-baseline lg:gap-4 lg:py-2.5 ${i > 0 ? "lg:border-t" : ""}`}
+                >
                   <dt
-                    className="text-ink tabular w-14 text-[20px] leading-none font-semibold"
+                    className="text-ink tabular text-[26px] leading-none font-semibold lg:w-14 lg:text-[21px]"
                     style={ROLE.leadFigure}
                   >
                     {n as number}
                   </dt>
-                  <dd className="text-ink-soft text-[13px]">
-                    <Link href="/places/">{label as string}</Link>
+                  <dd className="text-ink-soft mt-1 text-[12.5px] lg:mt-0">
+                    <Link href="/places/" className="no-underline hover:underline">
+                      {label as string}
+                    </Link>
                   </dd>
                 </div>
               ))}
             </dl>
-            <p className="text-ink-faint mt-3 max-w-[34ch] text-[11px] leading-relaxed">
-              {coverageSentence(scale.subNationalIndicators, scale.indicators)}{" "}
-              <Link href="/indicators/">What is published, and how deep</Link>
+            <p className="text-ink-faint mt-4 text-[11.5px] leading-relaxed">
+              <Link href="/indicators/">
+                {scale.indicators} indicators · {scale.subNationalIndicators} below the
+                national level →
+              </Link>
             </p>
           </aside>
         </div>
@@ -134,7 +140,6 @@ export default async function Home() {
         contained={false}
         n={1}
         title="Nepal today"
-        intro="Current national figures, each with its publisher and reference period."
         action={{ href: "/indicators/", label: "All indicators" }}
       >
         <StatRow figures={snapshot} />
@@ -143,6 +148,7 @@ export default async function Home() {
       {/* ------------------------------------------------- 02 explore Nepal */}
       <Section
         contained={false}
+        tone="accent"
         n={2}
         title="Explore Nepal"
         titleNe="नेपाल अन्वेषण"
@@ -161,14 +167,6 @@ export default async function Home() {
             width={provinceView.map.width}
             height={provinceView.map.height}
             title="Nepal by province"
-            definition="Point at a province on the map or in the ranking to highlight it in both. Each links to its own profile; switch the measure above."
-            source={
-              <SourceNote
-                source={
-                  snapshot.find((f) => f.indicatorId === "population")?.source ?? null
-                }
-              />
-            }
           />
         )}
       </Section>
@@ -178,49 +176,50 @@ export default async function Home() {
         contained={false}
         n={3}
         title={`${topics.length} domains`}
-        intro="Every topic here holds published indicators. Tourism and Geography hold none yet, so they are not listed."
         action={{ href: "/indicators/", label: "Indicator index" }}
       >
-        <ul className="divide-line border-line grid divide-y border-t sm:grid-cols-2 sm:gap-x-10">
+        <ul className="grid gap-x-8 sm:grid-cols-2">
           {topics.map((t) => (
-            <li key={t.id} className="flex items-baseline justify-between gap-4 py-3">
-              <span className="min-w-0">
-                <Link
-                  href={`/topics/${t.slug}/`}
-                  className="text-ink text-[14px] font-medium no-underline hover:underline"
-                >
-                  {t.name}
-                </Link>
-                {t.nameNe && (
-                  <span className="text-ink-faint ne ml-2 text-[11px]" lang="ne">
-                    {t.nameNe}
+            <li key={t.id} className="border-line border-t">
+              <Link
+                href={`/topics/${t.slug}/`}
+                className="group hover:bg-surface-raised focus-visible:outline-accent -mx-3 flex items-baseline justify-between gap-4 rounded-lg px-3 py-3.5 no-underline transition-colors focus-visible:outline-2"
+              >
+                <span className="min-w-0">
+                  <span className="text-ink group-hover:text-brand text-[14px] font-medium transition-colors">
+                    {t.name}
                   </span>
-                )}
-                {t.description && (
-                  <span className="text-ink-faint mt-0.5 block max-w-[38ch] text-[11.5px] leading-snug">
-                    {t.description}
-                  </span>
-                )}
-              </span>
-              <span className="shrink-0 text-right">
-                {t.headline ? (
-                  <>
-                    <span className="text-ink tabular text-[14px] font-semibold">
-                      {figureText(t.headline)}
+                  {t.nameNe && (
+                    <span className="text-ink-faint ne ml-2 text-[11px]" lang="ne">
+                      {t.nameNe}
                     </span>
-                    <span className="text-ink-faint ml-1.5 text-[11px]">
-                      {t.headline.period}
+                  )}
+                  {t.description && (
+                    <span className="text-ink-faint mt-0.5 block max-w-[38ch] text-[11.5px] leading-snug">
+                      {t.description}
                     </span>
-                  </>
-                ) : (
-                  /* Elections is dimensioned by party and has no national
+                  )}
+                </span>
+                <span className="shrink-0 text-right">
+                  {t.headline ? (
+                    <>
+                      <span className="text-ink tabular text-[14px] font-semibold">
+                        {figureText(t.headline)}
+                      </span>
+                      <span className="text-ink-faint ml-1.5 text-[11px]">
+                        {t.headline.period}
+                      </span>
+                    </>
+                  ) : (
+                    /* Elections is dimensioned by party and has no national
                      total: the sum of seats is the size of the house, not a
                      fact about the country. */
-                  <span className="text-ink-faint text-[11px]">
-                    {t.indicatorCount} indicators
-                  </span>
-                )}
-              </span>
+                    <span className="text-ink-faint text-[11px]">
+                      {t.indicatorCount} indicators
+                    </span>
+                  )}
+                </span>
+              </Link>
             </li>
           ))}
         </ul>
@@ -231,7 +230,6 @@ export default async function Home() {
         contained={false}
         n={4}
         title="What has changed"
-        intro="Income per head has roughly tripled since 2000."
         action={{ href: "/indicators/", label: "Every published series" }}
       >
         <div className="grid gap-8 md:grid-cols-3">
@@ -240,7 +238,6 @@ export default async function Home() {
               key={f.indicatorId}
               title={f.label}
               subtitle={`${f.points[0]?.year}–${f.points.at(-1)?.year} · now ${figureText(f)}`}
-              source={<SourceNote source={f.source} />}
             >
               <TrendChart
                 points={f.points.map((p) => ({
@@ -250,11 +247,12 @@ export default async function Home() {
                 }))}
                 unit={f.unit}
                 label={f.label}
-                height={130}
+                height={150}
               />
             </Figure>
           ))}
         </div>
+        <p className="text-ink-faint mt-5 text-[11px]">World Bank · CC BY 4.0</p>
       </Section>
 
       {/* ---------------------------------------------- 05 updates + access */}
