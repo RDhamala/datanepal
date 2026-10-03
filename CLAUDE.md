@@ -169,6 +169,15 @@ therefore sum to 28,925,480, not to the national total, and
 `assert_census_local_units_reconcile` is what makes that an accounting identity
 rather than a silent shortfall.
 
+**The Devanagari face is committed, not fetched.** `web/public/fonts/` holds
+three WOFF2 subsets of Noto Sans Devanagari with their OFL licence and a
+provenance note, declared as `@font-face` in `app/globals.css`. This used to be
+`next/font/google`, which self-hosts the *delivered* file but fetches it from
+Google during `next build` — so every deploy depended on fonts.googleapis.com,
+and on 2026-10-03 a CI build failed when Google rate-limited the runner. Do not
+reintroduce `next/font/google`: a build-time network dependency that fails
+intermittently and only in CI is worse than the 160 KB it saves from the repo.
+
 **Run `npm run palette` before changing any colour**, rather than reasoning
 about contrast. `web/scripts/check-palette.mjs` checks categorical slots for
 CVD separation, sequential ramps for lightness monotonicity, and grouping tints

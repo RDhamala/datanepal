@@ -1,24 +1,7 @@
 import type { Metadata } from "next";
-import { Noto_Sans_Devanagari } from "next/font/google";
 import "./globals.css";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 import { SITE_ORIGIN } from "@/lib/site";
-
-/*
-  Self-hosted at build time so every visitor sees the chosen Devanagari face
-  rather than whatever their OS happens to substitute. "Noto Sans Devanagari"
-  as a bare CSS font-family name only works for the fraction of visitors who
-  already have it installed -- most don't, since it isn't a system font on
-  Windows or macOS. next/font fetches it once at build time and serves it from
-  our own origin, so it renders identically everywhere and needs no runtime
-  request to Google.
-*/
-const notoDevanagari = Noto_Sans_Devanagari({
-  subsets: ["devanagari"],
-  weight: ["400", "500", "600"],
-  display: "swap",
-  variable: "--font-noto-devanagari",
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_ORIGIN),
@@ -41,7 +24,29 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={notoDevanagari.variable}>
+    <html lang="en">
+      <head>
+        {/*
+          The Devanagari subset, preloaded.
+
+          It is the one face a Nepali name needs and the only one on the
+          critical path: every page carries bilingual chrome, so waiting for
+          the stylesheet to be parsed before the request starts is a visible
+          swap. The Latin subsets are not preloaded -- they cover punctuation
+          inside Nepali strings and arrive in time.
+
+          Hand-written because the faces are declared in globals.css now
+          rather than generated. The generator emitted exactly this link, for
+          exactly this file.
+        */}
+        <link
+          rel="preload"
+          href="/fonts/noto-sans-devanagari-devanagari.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin=""
+        />
+      </head>
       <body className="flex min-h-screen flex-col">
         <a
           href="#main"
