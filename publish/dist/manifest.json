@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-03T08:08:55.161827+00:00",
+  "generated_at": "2026-10-03T09:10:11.434532+00:00",
   "table_count": 16,
   "tables": [
     {
@@ -96,7 +96,7 @@
       "row_count": 753,
       "parquet": "geography.parquet",
       "json": "geography.json",
-      "bytes": 53276
+      "bytes": 53258
     },
     {
       "table": "indicators",
@@ -169,7 +169,7 @@
       "row_count": 43360,
       "parquet": "observation_dimensions.parquet",
       "json": null,
-      "bytes": 509380
+      "bytes": 509147
     },
     {
       "table": "observations",
@@ -262,7 +262,7 @@
       "row_count": 859,
       "parquet": "place_boundaries.parquet",
       "json": "place_boundaries.json",
-      "bytes": 661926
+      "bytes": 661912
     },
     {
       "table": "place_identifiers",
@@ -288,10 +288,10 @@
       "caveats": [
         "Identifier values are unique within their system, not globally. Always qualify a lookup by id_system.\n"
       ],
-      "row_count": 1351,
+      "row_count": 1350,
       "parquet": "place_identifiers.parquet",
       "json": "place_identifiers.json",
-      "bytes": 21627
+      "bytes": 21613
     },
     {
       "table": "places",
@@ -322,7 +322,7 @@
       "row_count": 860,
       "parquet": "places.parquet",
       "json": "places.json",
-      "bytes": 65095
+      "bytes": 65084
     },
     {
       "table": "protected_areas",
