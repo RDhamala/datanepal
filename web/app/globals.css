@@ -151,14 +151,19 @@
     ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
     Arial, sans-serif;
   /*
-    --font-noto-devanagari is set by next/font on <html> in app/layout.tsx,
-    which self-hosts the face at build time -- naming "Noto Sans Devanagari" here
-    directly would only work for visitors who already have it installed, which
-    is not a system font on Windows or macOS. "Kantipur" stays as a fallback for
-    the rare visitor with it installed locally before generic system fonts.
+    "Noto Sans Devanagari" is declared by the @font-face rules at the bottom of
+    this file and served from public/fonts, so naming it here is safe -- it does
+    not depend on the visitor having it installed, which they will not: it is
+    not a system font on Windows or macOS.
+
+    The Fallback entry is a metric-matched Arial. It carries ascent, descent and
+    size-adjust overrides so the line box is the same height before and after the
+    real face arrives, which is what stops a Nepali name reflowing the row it
+    sits in. "Kantipur" is kept for the rare visitor who has it locally.
   */
   --font-devanagari:
-    var(--font-noto-devanagari), "Kantipur", ui-sans-serif, system-ui, sans-serif;
+    "Noto Sans Devanagari", "Noto Sans Devanagari Fallback", "Kantipur", ui-sans-serif,
+    system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /*
@@ -328,4 +333,77 @@
     vector-effect: non-scaling-stroke;
     pointer-events: none;
   }
+}
+
+/* -------------------------------------------------------------- typefaces */
+
+/*
+  Noto Sans Devanagari, served from our own origin.
+
+  This was `next/font/google`, which fetches the face from Google at *build*
+  time. That reads as self-hosting -- and the delivered site genuinely makes no
+  request to Google -- but it puts fonts.googleapis.com on the critical path of
+  every deploy. On 2026-10-03 that failed: `next build` died with
+  "An error occurred in next/font ... Cannot read properties of null", Google
+  having rate-limited the CI runner after several builds in quick succession.
+  The same commit built fine minutes later with no change, which is the whole
+  problem -- a dependency that fails intermittently and only in CI.
+
+  The files are committed under public/fonts with their OFL licence and a
+  provenance note. They are the bytes Google serves, lifted out of a build.
+
+  One variable file per subset covers the whole weight axis, so the three
+  weights below point at the same file three times. That is what next/font
+  generated and it is correct: the browser instantiates the axis at the
+  declared weight.
+*/
+
+@font-face {
+  font-family: "Noto Sans Devanagari";
+  font-style: normal;
+  font-weight: 400 600;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("/fonts/noto-sans-devanagari-devanagari.woff2") format("woff2");
+  unicode-range:
+    u+0900-097f, u+1cd0-1cf9, u+200c-200d, u+20a8, u+20b9, u+20f0, u+25cc, u+a830-a839,
+    u+a8e0-a8ff, u+11b00-11b09;
+}
+
+@font-face {
+  font-family: "Noto Sans Devanagari";
+  font-style: normal;
+  font-weight: 400 600;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("/fonts/noto-sans-devanagari-latin.woff2") format("woff2");
+  unicode-range:
+    u+00??, u+0131, u+0152-0153, u+02bb-02bc, u+02c6, u+02da, u+02dc, u+0304, u+0308,
+    u+0329, u+2000-206f, u+20ac, u+2122, u+2191, u+2193, u+2212, u+2215, u+feff, u+fffd;
+}
+
+@font-face {
+  font-family: "Noto Sans Devanagari";
+  font-style: normal;
+  font-weight: 400 600;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("/fonts/noto-sans-devanagari-latin-ext.woff2") format("woff2");
+  unicode-range:
+    u+0100-02ba, u+02bd-02c5, u+02c7-02cc, u+02ce-02d7, u+02dd-02ff, u+0304, u+0308,
+    u+0329, u+1d00-1dbf, u+1e00-1e9f, u+1ef2-1eff, u+2020, u+20a0-20ab, u+20ad-20c0,
+    u+2113, u+2c60-2c7f, u+a720-a7ff;
+}
+
+/*
+  Metric-matched fallback, copied from what next/font computed for Arial. Held
+  separately from the real face so it applies only while that face is loading.
+*/
+@font-face {
+  font-family: "Noto Sans Devanagari Fallback";
+  src: local("Arial");
+  ascent-override: 84.27%;
+  descent-override: 38.37%;
+  line-gap-override: 0%;
+  size-adjust: 106.33%;
 }
