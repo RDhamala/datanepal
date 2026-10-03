@@ -1,4 +1,5 @@
 import { DataDisclosure, DataGrid } from "./viz/DataDisclosure";
+import { scriptAttrs } from "@/lib/lang";
 import Link from "next/link";
 /*
   Formatting from lib/format, not lib/data.
@@ -256,7 +257,7 @@ export function RankedBars({
             key={r.name}
             className="grid grid-cols-[minmax(7rem,11rem)_1fr_auto] items-center gap-3"
           >
-            <span className="truncate text-[13px]">
+            <span {...scriptAttrs(r.name, "truncate text-[13px]")}>
               {r.href ? (
                 <a href={r.href}>{r.name}</a>
               ) : (
@@ -284,7 +285,11 @@ export function RankedBars({
         <DataDisclosure count={rows.length} noun={noun}>
           <DataGrid
             caption={label}
-            columns={[rowLabel ?? ROW_LABEL[noun] ?? "Name", "नेपाली", valueLabel]}
+            columns={[
+              rowLabel ?? ROW_LABEL[noun] ?? "Name",
+              { label: "नेपाली", numeric: false },
+              valueLabel,
+            ]}
             rows={rows.map((r) => [r.name, r.nameNe ?? "—", fmt(r.value)])}
           />
         </DataDisclosure>

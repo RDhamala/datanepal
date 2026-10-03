@@ -419,7 +419,13 @@ export function PlacePage({ data }: { data: EditorialPlace }) {
             <DataDisclosure count={explorer.rows.length} noun={explorer.noun}>
               <DataGrid
                 caption={`${children ? place.name_en : parent?.name_en} by ${explorer.noun}, census`}
-                columns={["Place", "Type", "Population", "Households", "Literacy"]}
+                columns={[
+                  "Place",
+                  { label: "Type", numeric: false },
+                  "Population",
+                  "Households",
+                  "Literacy",
+                ]}
                 rows={explorer.rows.map((r) => [
                   r.name,
                   (TYPE_LABEL[r.placeType] ?? r.placeType).toLowerCase(),

@@ -260,7 +260,11 @@ export default async function TopicPage({ params }: { params: Promise<Params> })
               {winner && (
                 <p className="text-ink-soft mt-2" style={{ fontSize: TYPE.body }}>
                   {winner.name}
-                  {winner.nameNe && <span className="ne ml-1.5">{winner.nameNe}</span>}
+                  {winner.nameNe && (
+                    <span className="ne ml-1.5" lang="ne">
+                      {winner.nameNe}
+                    </span>
+                  )}
                 </p>
               )}
               {headline.definition && (
@@ -441,7 +445,9 @@ export default async function TopicPage({ params }: { params: Promise<Params> })
                     {i.name_en}
                   </Link>
                   {i.name_ne && (
-                    <span className="text-ink-faint ne ml-2">{i.name_ne}</span>
+                    <span className="text-ink-faint ne ml-2" lang="ne">
+                      {i.name_ne}
+                    </span>
                   )}
                 </FigureCell>
                 <FigureCell numeric>

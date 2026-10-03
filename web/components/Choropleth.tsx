@@ -304,7 +304,12 @@ export function Choropleth({
               <tr key={f.placeId} className="border-line border-b last:border-0">
                 <td className="px-3 py-1.5">
                   <Link href={f.href}>{f.name}</Link>
-                  {f.nameNe && <span className="text-ink-faint ne"> · {f.nameNe}</span>}
+                  {f.nameNe && (
+                    <span className="text-ink-faint ne" lang="ne">
+                      {" "}
+                      · {f.nameNe}
+                    </span>
+                  )}
                 </td>
                 <td className="text-ink tabular px-3 py-1.5 text-right">
                   {f.value === null ? "—" : formatNumber(f.value)}

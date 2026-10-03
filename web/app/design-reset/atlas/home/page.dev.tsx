@@ -135,8 +135,8 @@ export default async function AtlasHome() {
                       </span>
                       {t.nameNe && (
                         <span
-                          className="text-ink-faint ne block truncate text-[11px]"
                           lang="ne"
+                          className="text-ink-faint ne block truncate text-[11px]"
                         >
                           {t.nameNe}
                         </span>

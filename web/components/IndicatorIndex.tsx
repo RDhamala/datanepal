@@ -286,7 +286,9 @@ export function IndicatorIndex({
                 </span>
                 {t.name}
                 {t.nameNe && (
-                  <span className="text-ink-faint ne ml-2 font-normal">{t.nameNe}</span>
+                  <span className="text-ink-faint ne ml-2 font-normal" lang="ne">
+                    {t.nameNe}
+                  </span>
                 )}
               </span>
               <span className="text-ink-faint text-[12px]">
@@ -319,7 +321,7 @@ export function IndicatorIndex({
                     {r.name}
                   </Link>
                   {r.nameNe && (
-                    <span className="text-ink-faint ne ml-2 text-[13px]">
+                    <span className="text-ink-faint ne ml-2 text-[13px]" lang="ne">
                       {r.nameNe}
                     </span>
                   )}

@@ -306,7 +306,12 @@ export function ReferenceMap({
             .map((d) => (
               <li key={d.placeId} className="px-3 py-1.5">
                 {d.href ? <Link href={d.href}>{d.name}</Link> : <span>{d.name}</span>}
-                {d.nameNe && <span className="text-ink-faint ne"> · {d.nameNe}</span>}
+                {d.nameNe && (
+                  <span className="text-ink-faint ne" lang="ne">
+                    {" "}
+                    · {d.nameNe}
+                  </span>
+                )}
               </li>
             ))}
         </ul>

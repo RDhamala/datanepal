@@ -67,7 +67,6 @@ export function PageHeader({
         <p
           lang="ne"
           className="text-brand ne mt-1.5 text-[clamp(1.125rem,0.95rem+0.7vw,1.5rem)] leading-tight font-medium"
-          style={{ fontFamily: "var(--font-devanagari)" }}
         >
           {native}
         </p>

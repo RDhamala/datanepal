@@ -134,7 +134,12 @@ export function SourceDetail({ s }: { s: SourceDataset }) {
               s.publisher
             )}
             {s.publisher_name_ne && (
-              <span className="text-ink-faint"> · {s.publisher_name_ne}</span>
+              <span className="text-ink-faint">
+                {" · "}
+                <span className="ne" lang="ne">
+                  {s.publisher_name_ne}
+                </span>
+              </span>
             )}
           </dd>
           <dd className="text-ink-faint mt-0.5 text-[12px]">

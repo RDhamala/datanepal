@@ -300,7 +300,10 @@ export function CompareExplorer({ initial }: { initial: string[] }) {
                       <span className="text-ink text-[14px]">
                         {row[1]}
                         {row[2] && (
-                          <span className="text-ink-faint ne ml-2 text-[12px]">
+                          <span
+                            className="text-ink-faint ne ml-2 text-[12px]"
+                            lang="ne"
+                          >
                             {row[2]}
                           </span>
                         )}
