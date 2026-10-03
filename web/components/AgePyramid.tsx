@@ -1,4 +1,4 @@
-import { DataDisclosure } from "./viz/DataDisclosure";
+import { DataDisclosure, DataGrid } from "./viz/DataDisclosure";
 import { formatCompact, formatNumber } from "@/lib/data";
 
 /**
@@ -168,43 +168,28 @@ export function AgePyramid({ bands, period }: { bands: Band[]; period: number })
         })}
       </svg>
 
-      {/* Table view: identity and values available without colour or hover,
-          which is also the accessible fallback. */}
+      {/*
+        The accessible fallback, through DataGrid rather than a hand-rolled
+        table.
+
+        This one was hand-rolled and shipped with no <caption> and no scope on
+        any header, so a screen reader reading it got a stream of unattributed
+        numbers -- on all 838 place pages and every topic hub that draws a
+        pyramid. DataGrid supplies both, and has since the nine duplicated
+        disclosures were consolidated into it; this table simply predated that
+        and never got moved.
+      */}
       <DataDisclosure count={rows.length} noun="age bands" scroll={false}>
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="border-line bg-surface-raised border-b">
-              <th className="text-label text-ink-faint px-4 py-2 text-left uppercase">
-                Age
-              </th>
-              <th className="text-label text-ink-faint px-4 py-2 text-right uppercase">
-                Female
-              </th>
-              <th className="text-label text-ink-faint px-4 py-2 text-right uppercase">
-                Male
-              </th>
-              <th className="text-label text-ink-faint px-4 py-2 text-right uppercase">
-                Total
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((b) => (
-              <tr key={b.band} className="border-line border-b last:border-0">
-                <td className="text-ink-soft px-4 py-1.5">{b.band}</td>
-                <td className="text-ink-soft tabular px-4 py-1.5 text-right">
-                  {formatNumber(b.female)}
-                </td>
-                <td className="text-ink-soft tabular px-4 py-1.5 text-right">
-                  {formatNumber(b.male)}
-                </td>
-                <td className="text-ink tabular px-4 py-1.5 text-right font-medium">
-                  {formatNumber(b.female + b.male)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataGrid
+          caption={`Population by five-year age band and sex, ${period}`}
+          columns={["Age", "Female", "Male", "Total"]}
+          rows={rows.map((b) => [
+            b.band,
+            formatNumber(b.female),
+            formatNumber(b.male),
+            formatNumber(b.female + b.male),
+          ])}
+        />
       </DataDisclosure>
     </figure>
   );

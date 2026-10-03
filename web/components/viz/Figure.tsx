@@ -203,14 +203,25 @@ export function RampLegend({
  * left-aligned in a proportional face cannot.
  */
 export function FigureTable({
+  caption,
   columns,
   children,
 }: {
+  /**
+   * What the table lists.
+   *
+   * Required, not optional. Headers were scoped here from the start but there
+   * was no caption, so a screen reader got the columns and never the subject --
+   * "Indicator, Nepal, Unit" with no statement of what the rows are. Every
+   * other table on the site goes through DataGrid, which has always had one.
+   */
+  caption: string;
   columns: { label: string; numeric?: boolean }[];
   children: React.ReactNode;
 }) {
   return (
     <table className="w-full" style={{ fontSize: TYPE.body }}>
+      <caption className="sr-only">{caption}</caption>
       <thead className="bg-surface-raised sticky top-0">
         <tr className="border-line border-b">
           {columns.map((c) => (

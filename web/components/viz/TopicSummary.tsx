@@ -110,6 +110,7 @@ export function TopicSummary({
               By sex
             </p>
             <PairedBars
+              caption={`${headline.name}, by sex`}
               pairs={[
                 { label: "Female", value: female! },
                 { label: "Male", value: male!, accent: true },

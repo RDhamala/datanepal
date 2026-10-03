@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ExtremesTable } from "@/components/viz/ExtremesTable";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -276,6 +277,7 @@ export default async function TopicPage({ params }: { params: Promise<Params> })
                     By sex
                   </p>
                   <PairedBars
+                    caption={`${headline.name}, by sex`}
                     pairs={[
                       { label: "Female", value: female },
                       { label: "Male", value: male, accent: true },
@@ -292,6 +294,7 @@ export default async function TopicPage({ params }: { params: Promise<Params> })
                 subtitle="Categories the census reports, which together account for everyone counted."
                 table={
                   <FigureTable
+                    caption={`${view.composition.label}, by category`}
                     columns={[
                       { label: "Category" },
                       { label: "People", numeric: true },
@@ -357,40 +360,19 @@ export default async function TopicPage({ params }: { params: Promise<Params> })
               {/* Extremes rather than all 77: the map carries the pattern and
                   the ranking answers "who is at the ends", which is what a
                   reader actually asks of a list this long. */}
-              <table className="w-full" style={{ fontSize: TYPE.body }}>
-                <tbody>
-                  {[
-                    ...districtCmp.rows.slice(0, 5),
-                    null,
-                    ...districtCmp.rows.slice(-5),
-                  ].map((r) =>
-                    r === null ? (
-                      <tr key="gap">
-                        <td colSpan={2} className="text-ink-faint py-1.5 text-center">
-                          ⋯
-                        </td>
-                      </tr>
-                    ) : (
-                      <tr key={r.place.place_id} className="border-line border-b">
-                        <td className="py-1.5">
-                          <Link
-                            href={`/np/${
-                              allPlaces.find(
-                                (p) => p.place_id === r.place.parent_place_id,
-                              )?.slug ?? ""
-                            }/${r.place.slug}/`}
-                          >
-                            {r.place.name_en}
-                          </Link>
-                        </td>
-                        <td className="text-ink tabular py-1.5 text-right">
-                          {formatWithUnit(r.value, districtCmp.unit)}
-                        </td>
-                      </tr>
-                    ),
-                  )}
-                </tbody>
-              </table>
+              <ExtremesTable
+                caption={`${map.metrics[0]?.label ?? "This indicator"}: the five highest and five lowest districts`}
+                rows={districtCmp.rows.map((r) => ({
+                  placeId: r.place.place_id,
+                  name: r.place.name_en,
+                  href: `/np/${
+                    allPlaces.find((p) => p.place_id === r.place.parent_place_id)
+                      ?.slug ?? ""
+                  }/${r.place.slug}/`,
+                  value: r.value,
+                }))}
+                unit={districtCmp.unit}
+              />
               {spread.length > 4 && (
                 <p className="text-ink-faint mt-3" style={{ fontSize: TYPE.small }}>
                   {districtCmp.rows.length} districts, from{" "}
@@ -443,6 +425,7 @@ export default async function TopicPage({ params }: { params: Promise<Params> })
         note={`${inds.length} published. Every one has its own page with a full series and geographic breakdown.`}
       >
         <FigureTable
+          caption="Indicators in this topic, with the latest national value and unit for each"
           columns={[
             { label: "Indicator" },
             { label: "Nepal", numeric: true },

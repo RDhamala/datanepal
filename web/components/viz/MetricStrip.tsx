@@ -192,10 +192,17 @@ export function Sparkline({
  * the reader do the subtraction; a pair of bars does not.
  */
 export function PairedBars({
+  caption,
   pairs,
   unit,
   labelWidth = "34%",
 }: {
+  /**
+   * Screen-reader caption. The row headers carry each label, but without a
+   * caption the pair arrives as two unattributed numbers -- the reader hears
+   * "Female 14.9m, Male 14.3m" with no clue what is being counted.
+   */
+  caption: string;
   pairs: { label: string; value: number; accent?: boolean }[];
   unit: Unit | undefined;
   labelWidth?: string;
@@ -203,6 +210,7 @@ export function PairedBars({
   const max = Math.max(...pairs.map((p) => p.value));
   return (
     <table className="w-full">
+      <caption className="sr-only">{caption}</caption>
       <tbody>
         {pairs.map((p) => (
           <tr key={p.label}>

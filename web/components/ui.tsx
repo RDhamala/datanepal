@@ -185,49 +185,6 @@ export function Callout({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* ------------------------------------------------------------------- tables */
-
-export function DataTable({
-  columns,
-  children,
-}: {
-  columns: { label: string; numeric?: boolean }[];
-  children: React.ReactNode;
-}) {
-  /*
-    A minimum width so the table scrolls instead of compressing.
-
-    `overflow-x-auto` alone does nothing when the table is `w-full`: it shrinks
-    to fit and every cell wraps to a column of single words. A five-column table
-    at 390px became six lines of broken text per row. Scaling the floor with the
-    column count means a two-column table still fits a phone without a
-    pointless scrollbar, while a wide one stays legible and scrolls.
-  */
-  const minWidth = `${Math.max(0, columns.length - 2) * 8.5 + 17}rem`;
-  return (
-    <div className="border-line overflow-x-auto rounded-lg border">
-      <table className="w-full text-[13px]" style={{ minWidth }}>
-        <thead>
-          <tr className="border-line bg-surface-raised border-b">
-            {columns.map((c) => (
-              <th
-                key={c.label}
-                scope="col"
-                className={`text-label text-ink-faint px-4 py-2.5 font-semibold uppercase ${
-                  c.numeric ? "text-right" : "text-left"
-                }`}
-              >
-                {c.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>{children}</tbody>
-      </table>
-    </div>
-  );
-}
-
 export function Row({ children }: { children: React.ReactNode }) {
   return (
     <tr className="border-line hover:bg-surface-sunken border-b last:border-0">

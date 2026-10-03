@@ -270,6 +270,9 @@ export function MetricMap({
 
       <DataDisclosure count={features.length} noun="areas">
         <table className="w-full text-[13px]">
+          <caption className="sr-only">
+            {metric.label} for every area on the map, as exact values
+          </caption>
           <thead className="bg-surface-raised sticky top-0">
             <tr className="border-line border-b">
               <th
