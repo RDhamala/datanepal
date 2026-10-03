@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
 import {
   country,
   distributionsFor,
@@ -140,13 +139,13 @@ export default async function IndicatorsIndex() {
       />
 
       {/*
-        Filtering is client-side and lives in the address, so a filtered view
-        can be linked to. The data is already on the page: this is a static
-        export and there is nothing to fetch.
+        No Suspense boundary. It was here for useSearchParams, and in a static
+        export that combination writes the fallback to the HTML file rather
+        than the list -- which shipped an Indicators page with no indicators
+        in it for crawlers and for anyone with JavaScript off. The component
+        reads the address after mount instead.
       */}
-      <Suspense fallback={null}>
-        <IndicatorIndex rows={rows} topics={topicOptions} />
-      </Suspense>
+      <IndicatorIndex rows={rows} topics={topicOptions} />
     </>
   );
 }

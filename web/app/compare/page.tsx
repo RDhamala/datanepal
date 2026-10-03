@@ -58,6 +58,21 @@ export default function ComparePage() {
         heading above is already useful, so this stays quiet rather than
         flashing a skeleton of a table that may never be drawn.
       */}
+      {/*
+        A reader with scripts off never gets past this, so it says so rather
+        than showing "Loading places…" forever. Comparing needs the 141 KB
+        index fetched and filtered in the browser; unlike the rest of the
+        site, this one route genuinely cannot be static.
+      */}
+      <noscript>
+        <p className="text-ink-soft max-w-prose text-[14px] leading-relaxed">
+          Comparing places needs JavaScript: the list of 838 places is fetched and
+          filtered in your browser. Every place has its own page with the same measures
+          — <Link href="/places/">browse places</Link> — and each one carries a
+          benchmark against its district, province and Nepal.
+        </p>
+      </noscript>
+
       <Suspense
         fallback={<p className="text-ink-faint text-[14px]">Loading places…</p>}
       >

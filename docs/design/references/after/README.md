@@ -49,6 +49,9 @@ design, and the baseline still describes them.
 | `indicators-desktop-filters.png` | The merged index: topic and coverage as controls |
 | `indicators-desktop-filtered.png` | "To local government" — 5 of 36, two topics left |
 | `indicators-mobile-filtered.png` | 390px, nav down to five items |
+| `indicators-desktop-bounded.png` | Seven of ten domains on the first screen |
+| `indicators-desktop-expanded.png` | One topic open; the rest stay closed |
+| `indicators-mobile-bounded.png` | 10,685px → 2,256px on a phone |
 
 **What to look for against `../current/`.** The fact strip's figures went from
 22px — the same size as the section headings above them — to the `stat` role.
@@ -62,6 +65,18 @@ survives. Every disclosure says the same kind of thing in the same place.
 **Measured, not eyeballed.** No horizontal overflow at 390, 834, 1440 or 1920
 on any of the three pages. Type at 1440: h1 52 · stat 30 · heading 22 ·
 body 15. At 834: 45 · 27 · 18. At 390: 36 · 24 · 17. Dhading 4,970 → 4,858.
+
+**Eighth stage.** Audit §5, the last structural finding. Each topic on
+`/indicators/` is a disclosure, so the page is O(topics) rather than
+O(indicators): 10,685px → 2,256px on a phone, 6,686 → 1,597 on a desktop, and
+ingestion stops lengthening it. Compare `indicators-desktop-bounded.png` with
+`../current/indicators-desktop.png` — the same 36 indicators, with the ten
+domains visible at once instead of spread over four screens.
+
+It also caught a regression from the previous stage: the topic filter had put
+`useSearchParams` inside a Suspense boundary, which in a static export writes
+the fallback to the HTML file. `/indicators/` had shipped with no indicators
+in its markup at all.
 
 **Seventh stage.** Audit §4: `/topics/` and `/indicators/` listed the same ten
 topics with the same indicators and the same headline values, and held two of

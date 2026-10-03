@@ -5,10 +5,11 @@ data build 24 August 2026, using the baselines in `references/current/` plus
 the source and the published Parquet. Every figure below was measured or
 computed, not estimated; the commands are in §11.
 
-Findings §1, §2, §3, §4, §6, §8 and §9 are resolved; §6 and §9 carry
-corrections, because measuring them in the browser showed the original
-diagnosis was wrong in both cases. §5 and §7 stand. §10 is partly addressed —
-every figure now carries a period chip, but provenance still has one weight.
+Findings §1–§6, §8 and §9 are resolved; §6 and §9 carry corrections, because
+measuring them in the browser showed the original diagnosis was wrong in both
+cases. §7 is resolved in the code but its text here has not been re-verified.
+§10 is partly addressed — every figure now carries a period chip, but
+provenance still has one weight.
 
 These are **system-level defects** — defaults, contracts and missing
 abstractions. Each one would reappear in the next feature if only its current
@@ -123,25 +124,48 @@ the homepage's "Browse topics", and the 404 page — against eight linking to
 individual topic pages, which is the ratio that decided which one absorbed
 the other.
 
-## 5. Index routes have no length budget
+## 5. Index routes had no length budget — resolved
 
 **Evidence.** Measured document heights at 1440 × 1000: `/indicators/`
-**6,605 px**, `/datasets/` 4,381, `/places/` 2,935, `/` 4,117. At 390 × 844:
-`/indicators/` **10,433 px**, `/` 7,058.
+**6,686 px**, `/datasets/` 4,381, `/places/` 2,929. At 390 × 844:
+`/indicators/` **10,685 px**. A reader on a phone could not see which ten
+domains exist without scrolling past all 36 indicators.
 
-**Why it is system-level.** There is no pagination, filtering or virtualisation
-contract for a list route, so page length is a function of how much data has
-been ingested. Thirty-six indicators produce a 10,000-pixel mobile page today;
-the platform intends to hold many times that. Data México's state profile —
-**47,444 px** — is the same trajectory several years on, and is in the
-reference pack as a warning.
+**Why it was system-level.** No pagination, filtering or virtualisation
+contract for a list route, so page length was a function of how much had been
+ingested. Data México's 47,444 px state profile is the same trajectory several
+years on.
 
-**Fix the contract.** Index routes get an explicit budget: a default visible
-set, a filter, and a stated total. "Show everything, always" stops being the
-default for any route whose length grows with ingestion.
+**Resolved.** Each topic on `/indicators/` is a disclosure, so the page's
+height is **O(topics) rather than O(indicators)** and ingestion stops
+lengthening it. 10,685 px → **2,256 px** on a phone, 6,686 → **1,597** on a
+desktop. The closed row carries what a reader needs in order to choose — the
+count, how deep the topic reaches, how many of its measures have a time
+series — which is an overview the long version never offered. Any active
+filter opens every matching topic.
 
-**Touches.** `app/indicators/page.tsx`, `app/datasets/page.tsx`,
-`app/places/page.tsx`.
+`details`/`summary` rather than a JavaScript toggle, so every row stays in the
+HTML for a crawler and for a reader with scripts off. `scripts/check-index-pages.mjs`
+asserts that property and the budget together — the stated total must equal the
+number of indicator links in the rendered markup, and **no indicator row may
+sit outside a disclosure** — and runs as `postbuild`. Verified it fails for
+the right reason by unwrapping one topic in the built output: two failures,
+naming the two rows that escaped.
+
+`/places/` and `/datasets/` were left alone. Their lengths are fine and their
+growth vector does not exist yet: when wards land, `/places/` becomes a 6,743
+row list and will need the same treatment. The check is written so that it
+will say so.
+
+**A regression found while doing this, and fixed.** The topic filter added in
+§4 put `useSearchParams` inside a `Suspense` boundary, which in a static
+export writes the *fallback* to the HTML file. For one commit `/indicators/`
+shipped with every indicator in the RSC payload and none in the document — an
+Indicators page with no indicators for crawlers and for anyone with JavaScript
+off. Typecheck, lint, 119 tests, the place-page checker and a browser all
+passed it, because every one of them either runs JavaScript or does not look
+at that route. The component reads `window.location` after mount instead, and
+the new check is the thing that would have caught it.
 
 ## 6. Number sizes had no rule, and the audit's first reading of this was wrong
 

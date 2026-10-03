@@ -7,7 +7,7 @@
     "dev": "next dev",
     "prebuild": "node scripts/copy-data.mjs && node scripts/build-search-index.mjs && node scripts/build-compare-index.mjs",
     "build": "next build",
-    "postbuild": "node scripts/check-place-pages.mjs",
+    "postbuild": "node scripts/check-place-pages.mjs && node scripts/check-index-pages.mjs",
     "start": "npx serve out",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",

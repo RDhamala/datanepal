@@ -1,8 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Sparkline } from "@/components/charts";
 import { TYPE } from "@/lib/viz";
 
@@ -79,21 +78,52 @@ export function IndicatorIndex({
   rows: IndicatorRow[];
   topics: TopicOption[];
 }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const params = useSearchParams();
+  /*
+    The filter state is read from the address on mount, not through
+    useSearchParams.
 
-  const topic = params.get("topic") ?? "all";
-  const coverage = params.get("coverage") ?? "all";
+    useSearchParams opts a component out of prerendering, and in a static
+    export that means the Suspense fallback is what gets written to the HTML
+    file. This list shipped empty for one commit: every indicator was in the
+    RSC payload and none was in the document, so a crawler and a reader with
+    JavaScript off both saw an Indicators page with no indicators. It passed
+    typecheck, lint, 119 tests and the page checker, because all of them
+    either run JavaScript or do not look.
+
+    Reading window.location after mount costs one render and keeps the
+    unfiltered list -- which is exactly what a crawler should see -- in the
+    static HTML.
+  */
+  const [topic, setTopic] = useState("all");
+  const [coverage, setCoverage] = useState("all");
+
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    setTopic(p.get("topic") ?? "all");
+    setCoverage(p.get("coverage") ?? "all");
+  }, []);
 
   const setParam = (key: string, value: string) => {
-    const next = new URLSearchParams(params.toString());
+    if (key === "topic") setTopic(value);
+    else setCoverage(value);
+    const next = new URLSearchParams(window.location.search);
     if (value === "all") next.delete(key);
     else next.set(key, value);
     const query = next.toString();
-    // replace, not push: filtering is adjusting one destination, and a back
-    // button full of filter states makes leaving the page take six presses.
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    // replaceState, not push: filtering is adjusting one destination, and a
+    // back button full of filter states makes leaving the page take six
+    // presses. No router call, so the page does not re-render from the top.
+    window.history.replaceState(
+      null,
+      "",
+      query ? `${window.location.pathname}?${query}` : window.location.pathname,
+    );
+  };
+
+  const clear = () => {
+    setTopic("all");
+    setCoverage("all");
+    window.history.replaceState(null, "", window.location.pathname);
   };
 
   const shown = useMemo(
@@ -113,9 +143,31 @@ export function IndicatorIndex({
     for (const r of shown) {
       byTopic.set(r.topicId, [...(byTopic.get(r.topicId) ?? []), r]);
     }
+    const rank: Record<string, number> = {
+      national: 0,
+      province: 1,
+      district: 2,
+      local: 3,
+    };
     return topics
       .filter((t) => byTopic.has(t.id))
-      .map((t) => ({ topic: t, rows: byTopic.get(t.id)! }));
+      .map((t) => {
+        const list = byTopic.get(t.id)!;
+        // The deepest level anything in this topic reaches, so the closed row
+        // answers "is there anything here for my district" without opening.
+        const deepest = list.reduce(
+          (best, r) =>
+            (rank[r.coverageLevel] ?? 0) > (rank[best] ?? 0) ? r.coverageLevel : best,
+          "national",
+        );
+        return {
+          topic: t,
+          rows: list,
+          deepestLabel:
+            list.find((r) => r.coverageLevel === deepest)?.coverageLabel ?? "National",
+          series: list.filter((r) => r.hasTimeSeries).length,
+        };
+      });
   }, [shown, topics]);
 
   const filtered = topic !== "all" || coverage !== "all";
@@ -181,7 +233,7 @@ export function IndicatorIndex({
                 {" · "}
                 <button
                   type="button"
-                  onClick={() => router.replace(pathname, { scroll: false })}
+                  onClick={clear}
                   className="underline underline-offset-2"
                 >
                   clear filters
@@ -200,21 +252,60 @@ export function IndicatorIndex({
         </p>
       )}
 
-      {grouped.map(({ topic: t, rows: list }) => (
-        <section key={t.id} className="mb-14">
-          <h2 className="text-heading text-ink font-semibold">
-            {/*
-              The heading still links to the topic hub. The hub is not the
-              duplicate -- it carries charts and a ranking this list cannot --
-              so it keeps its URL and gains a way in from here.
-            */}
-            <Link href={`/topics/${t.slug}/`}>{t.name}</Link>
-            {t.nameNe && (
-              <span className="text-ink-faint ne ml-2 font-normal">{t.nameNe}</span>
-            )}
-          </h2>
+      {/*
+        A topic is a disclosure, not a run of rows.
 
-          <ul className="divide-line border-line mt-4 divide-y border-t">
+        The page was 6,686px on a desktop and 10,685px on a phone, and a reader
+        could not see which ten domains exist without scrolling past all of
+        them. Worse, its height was a function of how much had been ingested:
+        36 indicators today, and the platform intends to hold many times that.
+
+        Collapsing by topic makes the length O(topics) rather than
+        O(indicators), so ingestion stops lengthening the page. The closed row
+        still carries what a reader needs to choose -- the count, how deep the
+        topic goes, how many of its measures have a time series -- and the
+        rows stay in the HTML, so a crawler and a reader with no JavaScript
+        both get the whole index. details/summary needs no script at all.
+
+        Any active filter opens every matching topic: a reader who has just
+        narrowed to five indicators should see five indicators, not five
+        closed boxes. The key remounts the element when that changes, so
+        manual toggles survive until the filters move.
+      */}
+      {grouped.map(({ topic: t, rows: list, deepestLabel, series }) => (
+        <details
+          key={`${t.id}-${filtered}`}
+          open={filtered}
+          className="border-line group border-b"
+        >
+          <summary className="focus-visible:outline-accent cursor-pointer list-none py-5 focus-visible:outline-2 focus-visible:outline-offset-2">
+            <span className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+              <span className="text-heading text-ink font-semibold">
+                <span className="text-ink-faint mr-2 inline-block transition-transform group-open:rotate-90">
+                  ›
+                </span>
+                {t.name}
+                {t.nameNe && (
+                  <span className="text-ink-faint ne ml-2 font-normal">{t.nameNe}</span>
+                )}
+              </span>
+              <span className="text-ink-faint text-[12px]">
+                {list.length} indicator{list.length === 1 ? "" : "s"} · {deepestLabel}
+                {series > 0 && ` · ${series} with a time series`}
+              </span>
+            </span>
+          </summary>
+
+          {/*
+            The hub keeps its link, below the summary rather than inside it:
+            a link inside a summary is a control that does two things
+            depending on where you click it.
+          */}
+          <p className="text-ink-faint mb-3 text-[12px]">
+            <Link href={`/topics/${t.slug}/`}>Charts and rankings for {t.name} →</Link>
+          </p>
+
+          <ul className="divide-line border-line mb-6 divide-y border-t">
             {list.map((r) => (
               <li
                 key={r.id}
@@ -283,7 +374,7 @@ export function IndicatorIndex({
               </li>
             ))}
           </ul>
-        </section>
+        </details>
       ))}
     </>
   );
