@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ROLE } from "@/components/editorial/system";
 import type { PublishedTable, SourceDataset } from "@/lib/data";
 
 /* -------------------------------------------------------------- breadcrumb */
@@ -42,15 +43,40 @@ export function PageHeader({
   meta?: React.ReactNode;
 }) {
   return (
-    <header className="border-line mb-10 border-b pb-8">
-      {eyebrow && <p className="text-label text-ink-faint mb-3 uppercase">{eyebrow}</p>}
-      <h1 className="text-display text-ink font-semibold">{title}</h1>
+    <header className="mb-10 pb-2">
+      {eyebrow && (
+        <p
+          className="text-ink-faint mb-2 text-[11px] uppercase"
+          style={{ letterSpacing: "0.08em" }}
+        >
+          {eyebrow}
+        </p>
+      )}
+      {/*
+        One type scale across the site. This used to be a sans --text-display
+        with the Nepali underneath in grey at --text-title, which is a
+        different page from the one the homepage and the 838 place pages set.
+      */}
+      <h1
+        className="text-ink text-[clamp(2.25rem,1.8rem+2.2vw,3.25rem)] leading-[0.98] font-semibold tracking-[-0.035em]"
+        style={ROLE.display}
+      >
+        {title}
+      </h1>
       {native && (
-        <p lang="ne" className="text-title text-ink-soft ne mt-2 font-normal">
+        <p
+          lang="ne"
+          className="text-brand ne mt-1.5 text-[clamp(1.125rem,0.95rem+0.7vw,1.5rem)] leading-tight font-medium"
+          style={{ fontFamily: "var(--font-devanagari)" }}
+        >
           {native}
         </p>
       )}
-      {meta && <div className="text-ink-faint mt-4 text-[13px]">{meta}</div>}
+      {meta && (
+        <div className="text-ink-soft mt-4 max-w-[70ch] text-[14px] leading-relaxed">
+          {meta}
+        </div>
+      )}
     </header>
   );
 }
@@ -81,7 +107,7 @@ export function Tile({
   accent?: "series-1" | "series-2";
 }) {
   return (
-    <div className="bg-surface-raised px-4 py-4 sm:px-5">
+    <div className="border-line border-t border-l px-4 py-4 first:border-l-0 sm:px-5">
       <div className="text-label text-ink-faint mb-2 flex items-center gap-1.5 uppercase">
         {accent && (
           <span
@@ -93,7 +119,12 @@ export function Tile({
         )}
         {label}
       </div>
-      <div className="text-stat tabular text-ink font-semibold">{value}</div>
+      <div
+        className="text-ink text-[clamp(1.25rem,1.05rem+0.7vw,1.625rem)] leading-none font-semibold tracking-[-0.03em]"
+        style={ROLE.leadFigure}
+      >
+        {value}
+      </div>
       {sub && <div className="text-ink-faint mt-1 text-[12px]">{sub}</div>}
     </div>
   );
@@ -101,7 +132,10 @@ export function Tile({
 
 export function TileRow({ children }: { children: React.ReactNode }) {
   return (
-    <div className="border-line bg-line mb-10 grid grid-cols-2 gap-px overflow-hidden rounded-lg border sm:grid-cols-3 lg:grid-cols-6">
+    <div
+      className="bg-surface border-line divide-line mb-10 grid grid-cols-2 overflow-hidden rounded-xl border sm:grid-cols-3 lg:grid-cols-6"
+      style={{ boxShadow: "var(--shadow-raise)" }}
+    >
       {children}
     </div>
   );
@@ -119,20 +153,25 @@ export function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mb-11">
-      <h2 className="text-heading text-ink font-semibold">{title}</h2>
+    <section className="border-line border-t pt-7 pb-11">
+      <h2
+        className="text-ink text-[clamp(1.375rem,1.1rem+1vw,1.75rem)] leading-[1.08] font-semibold tracking-[-0.025em]"
+        style={ROLE.section}
+      >
+        {title}
+      </h2>
       {/*
-        max-w-prose on the note, because it was missing and the consequence was
-        measurable: six notes on a district page ran past 1200px, one of them 176
-        characters on a single line. A section heading can span the page; a
+        max-w on the note, because it was missing and the consequence was
+        measurable: six notes on a district page ran past 1200px, one of them
+        176 characters on a single line. A heading can span the page; a
         sentence cannot.
       */}
       {note && (
-        <p className="text-ink-faint mt-1 mb-4 max-w-prose text-[13px] leading-relaxed">
+        <p className="text-ink-soft mt-2 mb-5 max-w-[62ch] text-[14px] leading-relaxed">
           {note}
         </p>
       )}
-      {!note && <div className="mb-4" />}
+      {!note && <div className="mb-6" />}
       {children}
     </section>
   );
