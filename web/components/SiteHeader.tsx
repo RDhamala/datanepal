@@ -28,9 +28,18 @@ import { Search } from "@/components/Search";
   so it stays.
 */
 
+/*
+  Compare sits next to Places because it is the verb for them.
+
+  A sixth item, not a replacement: the redesign proposal would have taken the
+  Topics slot for it, and dropping a route readers already reach from every
+  place page is a separate decision from adding this one. If the nav is ever
+  trimmed, Topics and Indicators answering the same question is where to start.
+*/
 const NAV = [
   { href: "/topics/", label: "Topics" },
   { href: "/places/", label: "Places" },
+  { href: "/compare/", label: "Compare" },
   { href: "/indicators/", label: "Indicators" },
   { href: "/datasets/", label: "Datasets" },
   { href: "/about/", label: "About" },
@@ -113,6 +122,9 @@ export function SiteFooter() {
               </li>
               <li>
                 <Link href="/places/">Places</Link>
+              </li>
+              <li>
+                <Link href="/compare/">Compare places</Link>
               </li>
               <li>
                 <Link href="/indicators/">Indicators</Link>

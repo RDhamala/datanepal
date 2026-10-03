@@ -42,6 +42,10 @@ design, and the baseline still describes them.
 | `nepal-desktop-overview.png` | Nepal's own page: identity, metrics, ten topic sections |
 | `nepal-desktop-elections.png` | Elections as a distribution, and the province map with its ranking |
 | `nepal-tablet.png` · `nepal-mobile-age-sex.png` | 834px and 390px |
+| `compare-desktop-default.png` | /compare as it opens: Nepal and Kathmandu, containment named |
+| `compare-desktop-four-districts.png` | Four districts under four different provinces |
+| `compare-desktop-five.png` | The five-place maximum, input disabled with a reason |
+| `compare-tablet.png` · `compare-mobile.png` · `compare-mobile-table.png` | 834px and 390px |
 
 **What to look for against `../current/`.** The fact strip's figures went from
 22px — the same size as the section headings above them — to the `stat` role.
@@ -55,6 +59,18 @@ survives. Every disclosure says the same kind of thing in the same place.
 **Measured, not eyeballed.** No horizontal overflow at 390, 834, 1440 or 1920
 on any of the three pages. Type at 1440: h1 52 · stat 30 · heading 22 ·
 body 15. At 834: 45 · 27 · 18. At 390: 36 · 24 · 17. Dhading 4,970 → 4,858.
+
+**Sixth stage.** `/compare`, the audit's §8 and the one route on the redesign
+proposal's list that adds a capability rather than removing duplication.
+
+Every place page could already compare its own children, which is the
+comparison the data made easy rather than the one a reader arrives with: Humla
+against Kathmandu is two districts in different provinces. `compareFor` has
+always taken an arbitrary list of places; nothing ever passed it one.
+
+Worth opening with four districts selected. The containment note is the part
+that took the most care — comparing a district with its own province is a fair
+question and a trap, because the larger figure already includes the smaller.
 
 **Fifth stage.** Nepal's own page, at `/np/`. It had never existed: every
 level below the country had a profile and the country did not, because the

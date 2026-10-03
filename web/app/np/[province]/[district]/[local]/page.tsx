@@ -411,7 +411,23 @@ export default async function LocalUnitPage({ params }: { params: Promise<Params
         <AnchoredSection
           id="compare"
           title={`Compare with the rest of ${dist.name_en}`}
-          note="Every published census measure, side by side. This unit is highlighted; rank by any column, or select rows to compare a few."
+          note={
+            <>
+              Every published census measure, side by side. This unit is highlighted;
+              rank by any column, or select rows to compare a few.{" "}
+              {/*
+                The cross-parent comparison, from where the intent is.
+
+                This section compares children of one parent, which is the
+                comparison the data made easy rather than the one a reader
+                arrives with. The link carries this place, so /compare opens
+                with it already chosen.
+              */}
+              <Link href={`/compare/?p=${`${prov.slug}/${dist.slug}/${place.slug}`}`}>
+                Compare {place.name_en} with any place in Nepal →
+              </Link>
+            </>
+          }
         >
           <ComparePanel
             places={compare.places}

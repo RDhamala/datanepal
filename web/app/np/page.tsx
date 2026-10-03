@@ -356,7 +356,21 @@ export default async function NepalPage() {
         <AnchoredSection
           id="compare"
           title="Compare the provinces"
-          note="Every published census measure, side by side. Rank by any column, or select rows to compare a few."
+          note={
+            <>
+              Every published census measure, side by side. Rank by any column, or
+              select rows to compare a few.{" "}
+              {/*
+                The cross-parent comparison, from where the intent is.
+
+                This section compares children of one parent, which is the
+                comparison the data made easy rather than the one a reader
+                arrives with. The link carries this place, so /compare opens
+                with it already chosen.
+              */}
+              <Link href="/compare/?p=nepal">Compare any places, at any level →</Link>
+            </>
+          }
         >
           <ComparePanel
             places={compare.places}
