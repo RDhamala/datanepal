@@ -29,6 +29,7 @@ import { MetricMap } from "@/components/MetricMap";
 import { Composition } from "@/components/viz/Composition";
 import { Figure, FigureCell, FigureRow, FigureTable } from "@/components/viz/Figure";
 import { PairedBars } from "@/components/viz/MetricStrip";
+import { DataDisclosure } from "@/components/viz/DataDisclosure";
 import { Crumbs, PageHeader, Section, SourceNote } from "@/components/ui";
 import { TYPE } from "@/lib/viz";
 
@@ -470,14 +471,8 @@ export default async function TopicPage({ params }: { params: Promise<Params> })
         </FigureTable>
 
         {supporting.length > 0 && (
-          <details className="mt-4">
-            <summary
-              className="text-ink-faint hover:text-ink-soft cursor-pointer"
-              style={{ fontSize: TYPE.small }}
-            >
-              What these measure
-            </summary>
-            <dl className="mt-3 max-w-prose space-y-3">
+          <DataDisclosure label="What these measure" scroll={false}>
+            <dl className="max-w-prose space-y-3 p-4">
               {inds
                 .filter((i) => i.definition)
                 .map((i) => (
@@ -494,7 +489,7 @@ export default async function TopicPage({ params }: { params: Promise<Params> })
                   </div>
                 ))}
             </dl>
-          </details>
+          </DataDisclosure>
         )}
       </Section>
 

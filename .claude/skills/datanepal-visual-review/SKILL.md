@@ -32,10 +32,28 @@ opening the built page.
 8. **Repeat from step 2** after fixing. Do not stop after the first pass; stop
    when remaining issues are minor, not structural.
 
-No approved prototype currently exists in this repository. If one is added
-later, its location and what it's meant to convey (and what not to copy
-literally — real data, accessibility, and maintainability still constrain the
-build) should be indexed from this skill.
+**The approved prototype is
+[`docs/design/references/approved/datanepal-visual-prototype.png`](../../../docs/design/references/approved/datanepal-visual-prototype.png).**
+Read its terms in
+[`docs/design/references/README.md`](../../../docs/design/references/README.md)
+before comparing against it: hierarchy, search prominence, map prominence,
+chart prominence and the place-profile sequence are intentional; its numbers
+are not. It reads "5 Indicators available" where the platform publishes 36 and
+labels eight of ten topics "Coming soon" when all ten carry data. Real data,
+accessibility, provenance and maintainability still constrain the build.
+
+Baselines of the live site are in `docs/design/references/current/`, captures
+of the six external products in `docs/design/references/external/` (indexed
+with what to borrow and reject in `docs/design/reference-index.md`), and the
+"after" set for the component system in `docs/design/references/after/`.
+
+**Measure, do not read the token names.** Two findings in
+`docs/design/current-ui-audit.md` were wrong because they were derived from
+source rather than from the rendered page: `--text-title` turned out not to be
+the page title, and a label that looked clipped was comfortably inside its
+frame and merely white on white. Both diagnoses pointed the fix at the wrong
+file. `getComputedStyle`, `getBBox` and `getBoundingClientRect` in the browser
+are the evidence; the CSS is the hypothesis.
 
 ## Checklist
 

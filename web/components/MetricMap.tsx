@@ -1,5 +1,7 @@
 "use client";
 
+import { DataDisclosure } from "./viz/DataDisclosure";
+import { MapLabelLayer } from "./MapLabels";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { formatWithUnit } from "@/lib/format";
@@ -194,55 +196,23 @@ export function MetricMap({
 
         {outlinePath && <path d={outlinePath} className="geo-province-outline" />}
 
-        {features.map((f) =>
-          f.dot ? (
-            <circle
-              key={`dot-${f.placeId}`}
-              cx={f.dot.x}
-              cy={f.dot.y}
-              r={1.3}
-              fill="var(--color-ink-soft)"
-              pointerEvents="none"
-            />
-          ) : null,
-        )}
-
-        {features.map((f) => {
-          if (!f.label) return null;
-          const bin = binOf(metric.values[f.placeId]);
-          // Dark fills need light ink, and which fills are dark changes with the
-          // metric -- so the label colour has to be decided here rather than at
-          // build time with the rest of the layout.
-          const ink =
-            bin !== null && bin >= 3 ? "var(--color-surface)" : "var(--color-ink)";
-          const top =
-            f.label.y - ((f.label.lines.length - 1) * f.label.fontSize * 1.15) / 2;
-          return (
-            <text
-              key={`label-${f.placeId}`}
-              // Layout string, not a name -- see MapLabels. The shape's own
-              // link and the table below carry the real one.
-              aria-hidden="true"
-              x={f.label.x}
-              y={top + f.label.fontSize * 0.35}
-              textAnchor="middle"
-              className="font-medium"
-              fontSize={f.label.fontSize}
-              fill={ink}
-              pointerEvents="none"
-            >
-              {f.label.lines.map((line, j) => (
-                <tspan
-                  key={j}
-                  x={f.label!.x}
-                  dy={j === 0 ? 0 : f.label!.fontSize * 1.15}
-                >
-                  {line}
-                </tspan>
-              ))}
-            </text>
-          );
-        })}
+        {/*
+          One renderer for dots and labels, shared with the choropleth and the
+          reference map. This file used to carry its own copy, which is how a
+          halo fix landed in a file this page does not render.
+        */}
+        <MapLabelLayer
+          labels={features
+            .filter((f) => f.label)
+            .map((f) => ({
+              at: { x: f.label!.x, y: f.label!.y },
+              lines: f.label!.lines,
+              fontSize: f.label!.fontSize,
+            }))}
+          dots={features
+            .filter((f) => f.dot)
+            .map((f) => ({ x: f.dot!.x, y: f.dot!.y }))}
+        />
       </svg>
 
       <figcaption className="mt-4">
@@ -298,62 +268,57 @@ export function MetricMap({
         </p>
       </figcaption>
 
-      <details className="mt-4">
-        <summary className="text-ink-faint hover:text-ink-soft cursor-pointer text-[12px]">
-          View all {features.length} values
-        </summary>
-        <div className="border-line mt-3 max-h-96 overflow-auto rounded-md border">
-          <table className="w-full text-[13px]">
-            <thead className="bg-surface-raised sticky top-0">
-              <tr className="border-line border-b">
-                <th
-                  scope="col"
-                  className="text-label text-ink-faint px-3 py-2 text-left uppercase"
-                >
-                  Area
-                </th>
-                {/* Every metric, not just the selected one: the table is where a
+      <DataDisclosure count={features.length} noun="areas">
+        <table className="w-full text-[13px]">
+          <thead className="bg-surface-raised sticky top-0">
+            <tr className="border-line border-b">
+              <th
+                scope="col"
+                className="text-label text-ink-faint px-3 py-2 text-left uppercase"
+              >
+                Area
+              </th>
+              {/* Every metric, not just the selected one: the table is where a
                     reader compares across measures, which no single shading can
                     do. */}
-                {metrics.map((m) => (
-                  <th
-                    key={m.id}
-                    scope="col"
-                    className="text-label text-ink-faint px-3 py-2 text-right uppercase"
-                  >
-                    {m.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {[...features]
-                .sort(
-                  (a, b) =>
-                    (metric.values[b.placeId] ?? -Infinity) -
-                    (metric.values[a.placeId] ?? -Infinity),
-                )
-                .map((f) => (
-                  <tr key={f.placeId} className="border-line border-b last:border-0">
-                    <td className="px-3 py-1.5">
-                      {f.href ? <Link href={f.href}>{f.name}</Link> : f.name}
+              {metrics.map((m) => (
+                <th
+                  key={m.id}
+                  scope="col"
+                  className="text-label text-ink-faint px-3 py-2 text-right uppercase"
+                >
+                  {m.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {[...features]
+              .sort(
+                (a, b) =>
+                  (metric.values[b.placeId] ?? -Infinity) -
+                  (metric.values[a.placeId] ?? -Infinity),
+              )
+              .map((f) => (
+                <tr key={f.placeId} className="border-line border-b last:border-0">
+                  <td className="px-3 py-1.5">
+                    {f.href ? <Link href={f.href}>{f.name}</Link> : f.name}
+                  </td>
+                  {metrics.map((m) => (
+                    <td
+                      key={m.id}
+                      className="text-ink-soft tabular px-3 py-1.5 text-right"
+                    >
+                      {m.values[f.placeId] !== undefined
+                        ? formatWithUnit(m.values[f.placeId], m.unit)
+                        : "—"}
                     </td>
-                    {metrics.map((m) => (
-                      <td
-                        key={m.id}
-                        className="text-ink-soft tabular px-3 py-1.5 text-right"
-                      >
-                        {m.values[f.placeId] !== undefined
-                          ? formatWithUnit(m.values[f.placeId], m.unit)
-                          : "—"}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
-      </details>
+                  ))}
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      </DataDisclosure>
     </figure>
   );
 }

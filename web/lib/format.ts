@@ -168,16 +168,50 @@ export function dimensionKey(members: Record<string, string>): string {
   census arrived keyed `residence_type=household|sex=all`. Nothing errored: every
   local government page simply showed a dash where its population should be.
 
-  So selection is by shape rather than by name: the aggregate is the row with
-  the fewest dimension members that are not a total. A new dimension therefore
-  costs nothing here, which is the property the canonical model is supposed to
-  have.
+  So selection is by shape rather than by name: the aggregate is the row whose
+  every dimension is a total. A new dimension therefore costs nothing here,
+  which is the property the canonical model is supposed to have.
+
+  What the shape rule must NOT do is settle for the nearest thing available.
+  The first version ranked rows by how few specific members they carried and
+  took the first, so when an indicator had no total at all it returned the row
+  that happened to sort first and presented it as the aggregate. Every
+  dimension on the site carried an `all` member -- sex, age_band,
+  residence_type, literacy_status -- so this went unnoticed until `party`
+  arrived with 58 members, no total, and keys of uniform length: /indicators/
+  published "3 seats" for an election the largest party won with 125.
+
+  An aggregate that does not exist has to be reported as absent. Rendering
+  nothing is a visible gap; rendering a component part as if it were the whole
+  is a confident lie, and this platform's entire argument is that its numbers
+  can be trusted.
 */
 
 /** Members of a dimension key that are not the '=all' total. */
 function specificMembers(dimensionKey: string): string[] {
   if (dimensionKey === "none") return [];
   return dimensionKey.split("|").filter((part) => !part.endsWith("=all"));
+}
+
+/** Dimensions a key declares at all, totalled or not. */
+function declaredMembers(dimensionKey: string): string[] {
+  return dimensionKey === "none" ? [] : dimensionKey.split("|");
+}
+
+/**
+ * Count of dimension members that are not the total.
+ *
+ * Exported because `placeProfile` needs the same notion of specificity to pair
+ * a sex split with its parent row, and two copies of this rule drifting apart
+ * is precisely how the `=all` assumption survived unexamined for so long.
+ */
+export function specificity(dimensionKey: string): number {
+  return specificMembers(dimensionKey).length;
+}
+
+/** True when every dimension this row declares is a total. */
+export function isAggregate(dimensionKey: string): boolean {
+  return specificMembers(dimensionKey).length === 0;
 }
 
 type Dimensioned = { dimension_key: string };
@@ -241,13 +275,63 @@ export function pickLaterEstimate<T extends Ranked>(
   return pickAggregate(later.filter((r) => yearOf(r) === newest));
 }
 
-/** The least specific row: the aggregate across every dimension. */
+/** `dimension` of a `dimension=member` part. */
+const dimensionOf = (part: string): string => part.slice(0, part.indexOf("="));
+
+/**
+ * The row that represents the whole of what is published, or `undefined` when
+ * no row does.
+ *
+ * Two shapes count as the whole, and the difference between them is the whole
+ * of this function:
+ *
+ *   1. Every dimension is an explicit total -- `residence_type=all|sex=all`,
+ *      or `none`. Unambiguous.
+ *
+ *   2. A dimension is specific but takes only one value across the rows in
+ *      scope. A local government publishes its census population as
+ *      `residence_type=household|sex=all` and never publishes any other
+ *      residence type, because institutional population is carried at
+ *      district level by design. A dimension that does not vary carries no
+ *      information, so the row is still the whole of what exists.
+ *
+ * A dimension that *does* vary is a different matter: choosing one of its
+ * members is choosing a part. Seats by party vary across 58 members, so there
+ * is no whole, and `undefined` is the honest answer -- see the note above on
+ * the three seats this used to report for a party that won 125.
+ *
+ * The residual risk is a source that publishes exactly one member of a
+ * genuinely multi-member dimension, which rule 2 would accept as a total. The
+ * census reconciliation tests are what hold that down: local units must sum
+ * to 28,925,480 and there must be 753 of them, which no component part can
+ * satisfy by accident.
+ *
+ * Deterministic throughout. Ties break on specificity, then on declared
+ * dimensions, then on the key itself -- never on source order, which is what
+ * made the old tie-break unpredictable when every key was the same length.
+ */
 export function pickAggregate<T extends Dimensioned>(rows: T[]): T | undefined {
-  return [...rows].sort(
+  const seen = new Map<string, Set<string>>();
+  for (const r of rows) {
+    for (const part of declaredMembers(r.dimension_key)) {
+      const dim = dimensionOf(part);
+      const values = seen.get(dim) ?? new Set<string>();
+      values.add(part.slice(dim.length + 1));
+      seen.set(dim, values);
+    }
+  }
+  const varies = (part: string): boolean =>
+    (seen.get(dimensionOf(part))?.size ?? 1) > 1;
+
+  const candidates = rows.filter((r) => !specificMembers(r.dimension_key).some(varies));
+  if (!candidates.length) return undefined;
+
+  return [...candidates].sort(
     (a, b) =>
-      specificMembers(a.dimension_key).length -
-        specificMembers(b.dimension_key).length ||
-      a.dimension_key.length - b.dimension_key.length,
+      specificity(a.dimension_key) - specificity(b.dimension_key) ||
+      declaredMembers(a.dimension_key).length -
+        declaredMembers(b.dimension_key).length ||
+      a.dimension_key.localeCompare(b.dimension_key),
   )[0];
 }
 
@@ -264,10 +348,12 @@ export function pickMember<T extends Dimensioned>(
 ): T | undefined {
   const wanted = `${dimension}=${member}`;
   const matching = rows.filter((r) => r.dimension_key.split("|").includes(wanted));
+  // Fewest *other* specific members: the wanted one is not a reason to rank a
+  // row lower. Tie broken on the key itself rather than its length, so two
+  // equally specific rows cannot swap places when the source reorders.
   return [...matching].sort(
     (a, b) =>
-      specificMembers(a.dimension_key).length -
-        specificMembers(b.dimension_key).length ||
-      a.dimension_key.length - b.dimension_key.length,
+      specificity(a.dimension_key) - specificity(b.dimension_key) ||
+      a.dimension_key.localeCompare(b.dimension_key),
   )[0];
 }

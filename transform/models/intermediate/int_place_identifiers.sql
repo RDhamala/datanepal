@@ -16,7 +16,8 @@
 */
 
 with places as (
-    select place_id, place_type, source_pcode from {{ ref('int_places') }}
+    select place_id, place_type, source_pcode, is_historical
+    from {{ ref('int_places') }}
 ),
 
 ocha as (
@@ -82,12 +83,30 @@ country_pcode as (
     where place_type = 'country'
 ),
 
+historical as (
+    -- Places that no longer exist have no P-code, so they need a namespace of
+    -- their own to be referenceable at all. `place_successions` resolves both
+    -- of its endpoints through this table, which is what lets one succession
+    -- row point from a historical place to a current one without either side
+    -- knowing which is which.
+    select
+        p.place_id,
+        'datanepal_historical' as id_system,
+        h.historical_id        as id_value,
+        'datanepal-internal'   as dataset_id,
+        true                   as is_authoritative
+    from {{ ref('historical_places') }} h
+    inner join places p
+        on p.place_id = {{ derive_place_id('h.place_type', 'h.historical_id') }}
+),
+
 unioned as (
     select * from ocha
     union all select * from wikidata
     union all select * from iso_subdivision
     union all select * from iso_country
     union all select * from country_pcode
+    union all select * from historical
 )
 
 select

@@ -19,4 +19,7 @@ select
     center_lon
 from {{ ref('places') }}
 where place_type = 'protected_area'
+  -- Current only. `places` holds abolished places (ADR-0008); a degazetted
+  -- reserve should leave this table rather than linger in it.
+  and is_current
 order by ocha_pcode

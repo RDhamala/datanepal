@@ -1,8 +1,11 @@
+import { DataDisclosure } from "./DataDisclosure";
 import Link from "next/link";
-import { formatWithUnit, statusLabel } from "@/lib/format";
+import { formatNumber, formatWithUnit } from "@/lib/format";
 import type { Benchmark as BenchmarkData, ProfileTopic } from "@/lib/data";
 import { COLOR, TYPE } from "@/lib/viz";
 import { Benchmark } from "./Benchmark";
+import { HeadlineMetric } from "./HeadlineMetric";
+import { periodNote } from "@/lib/profile";
 import { PairedBars } from "./MetricStrip";
 
 /*
@@ -30,6 +33,7 @@ export function TopicSummary({
   headlineId,
   benchmark,
   placeName,
+  valueShownAbove = false,
 }: {
   topic: ProfileTopic;
   /** Indicator to lead with. The rest become supporting values. */
@@ -37,6 +41,16 @@ export function TopicSummary({
   /** Comparison against province and Nepal, where the data supports one. */
   benchmark?: BenchmarkData;
   placeName: string;
+  /**
+   * Suppress the headline figure, keeping its breakdown.
+   *
+   * For the case where the page's fact strip already carries this exact
+   * number a few hundred pixels above -- a district's population appears in
+   * both, and printing it twice at two sizes reads as an inconsistency a
+   * reader has to check rather than as emphasis. Defaults off, so no existing
+   * page changes.
+   */
+  valueShownAbove?: boolean;
 }) {
   const headline =
     topic.metrics.find((m) => m.indicatorId === headlineId) ?? topic.metrics[0];
@@ -66,15 +80,29 @@ export function TopicSummary({
             {headline.name}
           </Link>
         </p>
-        <p className="text-ink tabular mt-1.5 text-[2.1rem] leading-none font-semibold tracking-[-0.035em]">
-          {formatWithUnit(headline.value, headline.unit)}
-        </p>
-        <p className="text-ink-faint mt-2" style={{ fontSize: TYPE.small }}>
-          {headline.period}
-          {headline.periodType === "instant" ? " census" : ""}
-          {statusLabel(headline.status) ? ` ${statusLabel(headline.status)}` : ""}
-          {!headline.isAdditive && " · not additive across places"}
-        </p>
+        {/*
+          The same metric component the fact strip uses, rather than a fourth
+          number style. The label is rendered above as a link to the
+          indicator, so this one is suppressed to avoid printing it twice.
+        */}
+        {!valueShownAbove && (
+          <HeadlineMetric
+            lead
+            label=""
+            value={formatWithUnit(headline.value, headline.unit)}
+            period={headline.period}
+            status={
+              headline.status === "actual"
+                ? headline.periodType === "instant"
+                  ? "census"
+                  : "final"
+                : headline.status === "projection"
+                  ? "projection"
+                  : "estimate"
+            }
+            context={headline.isAdditive ? null : "Not additive across places."}
+          />
+        )}
 
         {hasGap && (
           <div className="mt-5">
@@ -93,8 +121,10 @@ export function TopicSummary({
                   higher" of a rate that differs by 8 points is a different and
                   wrong claim. */}
               <span style={{ color: male! > female! ? COLOR.inkSoft : COLOR.inkSoft }}>
-                {Math.abs(male! - female!).toFixed(isRate ? 1 : 0)}
-                {isRate ? " points" : ""} higher for {male! > female! ? "men" : "women"}
+                {isRate
+                  ? `${Math.abs(male! - female!).toFixed(1)} points`
+                  : formatNumber(Math.abs(male! - female!))}{" "}
+                higher for {male! > female! ? "men" : "women"}
               </span>
             </p>
           </div>
@@ -103,6 +133,20 @@ export function TopicSummary({
 
       <div className="space-y-7">
         {benchmark && <Benchmark data={benchmark} />}
+
+        {/*
+          Mixed reference periods, said once and in words.
+
+          A section showing 2021 households beside a 2023 population is two
+          correct figures whose ratio is not: 4.0 people per household instead
+          of 3.75. The per-figure chips make each date visible; this makes the
+          invitation to divide them explicit, which the chips alone cannot.
+        */}
+        {periodNote(topic.metrics) && (
+          <p className="border-line-strong text-ink-soft max-w-prose border-l-2 pl-3 text-[12px] leading-relaxed">
+            {periodNote(topic.metrics)}
+          </p>
+        )}
 
         {supporting.length > 0 && (
           <div>
@@ -137,14 +181,8 @@ export function TopicSummary({
 
             {/* Definitions kept, not deleted. They belong to whoever wants them
                 rather than to everyone who glances at the page. */}
-            <details className="mt-3">
-              <summary
-                className="text-ink-faint hover:text-ink-soft cursor-pointer"
-                style={{ fontSize: TYPE.small }}
-              >
-                What these measure
-              </summary>
-              <dl className="mt-2 space-y-2">
+            <DataDisclosure label="What these measure" scroll={false}>
+              <dl className="space-y-2 p-4">
                 {[headline, ...supporting].map((m) => (
                   <div key={m.indicatorId}>
                     <dt className="text-ink-soft" style={{ fontSize: TYPE.small }}>
@@ -161,7 +199,7 @@ export function TopicSummary({
                   </div>
                 ))}
               </dl>
-            </details>
+            </DataDisclosure>
           </div>
         )}
       </div>

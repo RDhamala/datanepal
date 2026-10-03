@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Noto_Sans_Devanagari } from "next/font/google";
 import "./globals.css";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
+import { SITE_ORIGIN } from "@/lib/site";
 
 /*
   Self-hosted at build time so every visitor sees the chosen Devanagari face
@@ -20,7 +21,7 @@ const notoDevanagari = Noto_Sans_Devanagari({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://datanepal.org"),
+  metadataBase: new URL(SITE_ORIGIN),
   title: {
     default: "DataNepal — Nepal, in data",
     template: "%s — DataNepal",
@@ -30,7 +31,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "DataNepal",
     description: "Open, documented public data for Nepal.",
-    url: "https://datanepal.org",
+    url: SITE_ORIGIN,
     siteName: "DataNepal",
     type: "website",
   },

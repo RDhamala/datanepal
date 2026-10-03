@@ -15,9 +15,9 @@ sources → ingestion (dlt) → warehouse (DuckDB) → transform (dbt) → publi
 
 ## Project Skills
 
-Ten Skills under `.claude/skills/` encode what's specific and repeatable about
-this project — not things Claude already knows (React, dbt, SQL). Use the
-relevant one(s) rather than re-deriving these rules from scratch:
+Fourteen Skills under `.claude/skills/` encode what's specific and repeatable
+about this project — not things Claude already knows (React, dbt, SQL). Use
+the relevant one(s) rather than re-deriving these rules from scratch:
 
 | Skill | Owns |
 |---|---|
@@ -31,6 +31,10 @@ relevant one(s) rather than re-deriving these rules from scratch:
 | `datanepal-ingestion` | Building the source-to-canonical pipeline for a new dataset |
 | `datanepal-geography` | Canonical place identity, crosswalks, P-code/geography rules |
 | `datanepal-data-quality` | What to test, and the publication gate |
+| `datanepal-build-publish` | Running the pipeline, and keeping `publish/dist` honest |
+| `datanepal-web-data` | The build-time data layer: `web/lib/data.ts` and what it hands the pages |
+| `datanepal-adr` | Writing a decision record, and whether a decision earns one |
+| `datanepal-commits` | Commit and PR messages in this repo's voice |
 
 Frontend work always pairs a build skill with `datanepal-visual-review` — code
 that passes CI is not the same as a page that looks right — and with
@@ -39,7 +43,10 @@ control, since a page that looks right can still be unreachable by keyboard.
 Ingestion work always
 pairs `datanepal-ingestion` with `datanepal-data-quality`, and with
 `datanepal-geography` whenever a new source's identifiers need to join the
-spine. See each Skill's frontmatter for exactly when it should trigger.
+spine. Anything that changes `transform/`, `ingestion/` or `catalog/` ends in
+`datanepal-build-publish`, because an unexported change is invisible to both
+the site and its tests. See each Skill's frontmatter for exactly when it
+should trigger.
 
 ## Hard constraints
 
@@ -168,6 +175,16 @@ CVD separation, sequential ramps for lightness monotonicity, and grouping tints
 for label contrast. It is wired into `npm run check`, and it has already caught
 a blue-on-blue pair that landed on the Bagmati/Gandaki border.
 
+**Every page is in the sitemap, and the sitemap is checked against the
+output.** 838 place pages have almost no inbound links -- a rural municipality
+in Humla is four clicks from the homepage and nowhere else on the web -- so
+discovery by crawl alone reaches the long tail slowly or never. `app/sitemap.ts`
+lists all 890 URLs with a `lastmod` taken from the revision history rather than
+the build clock, because stamping every page as changed on every deploy is a
+claim crawlers learn to ignore. `scripts/check-sitemap.mjs` asserts the sitemap
+and the emitted HTML are the *same set*, in both directions: a sitemap that
+quietly lost the 753 is still valid XML and still passes a spot-check.
+
 **Look at the rendered page.** Status codes and geometry checks do not tell you
 whether something looks right. Use the Chrome DevTools MCP.
 
@@ -186,6 +203,25 @@ whether something looks right. Use the Chrome DevTools MCP.
 
 Step 4 is the one that matters. A dataset that does not conform to the spine
 cannot be joined against anything, which defeats the point of centralising it.
+
+## Running the pipeline
+
+Everything is a Make target; `make help` lists them.
+
+```
+make catalog    catalog/ YAML projected into dbt seeds (build does this for you)
+make ingest     every connector into the warehouse -- network, usually unnecessary
+make build      dbt seed + run + test against the warehouse already on disk
+make revisions  fold this build into append-only history
+make publish    export marts to publish/dist
+make all        the whole chain, as the monthly Action runs it
+make check      ruff, catalog validation, pytest, and web/ npm run check
+```
+
+**`make build` alone is not enough to see a change.** `web/lib/data.ts` reads
+`publish/dist`, not the warehouse, so vitest and `next build` both keep showing
+the previous export until `make publish` runs. A data-side change verified
+without it has not been verified.
 
 ## Environment notes
 

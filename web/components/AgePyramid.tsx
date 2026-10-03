@@ -1,3 +1,4 @@
+import { DataDisclosure } from "./viz/DataDisclosure";
 import { formatCompact, formatNumber } from "@/lib/data";
 
 /**
@@ -169,47 +170,42 @@ export function AgePyramid({ bands, period }: { bands: Band[]; period: number })
 
       {/* Table view: identity and values available without colour or hover,
           which is also the accessible fallback. */}
-      <details className="mt-4">
-        <summary className="text-ink-faint hover:text-ink-soft cursor-pointer text-[12px]">
-          Show as table
-        </summary>
-        <div className="border-line mt-3 overflow-x-auto rounded-lg border">
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr className="border-line bg-surface-raised border-b">
-                <th className="text-label text-ink-faint px-4 py-2 text-left uppercase">
-                  Age
-                </th>
-                <th className="text-label text-ink-faint px-4 py-2 text-right uppercase">
-                  Female
-                </th>
-                <th className="text-label text-ink-faint px-4 py-2 text-right uppercase">
-                  Male
-                </th>
-                <th className="text-label text-ink-faint px-4 py-2 text-right uppercase">
-                  Total
-                </th>
+      <DataDisclosure count={rows.length} noun="age bands" scroll={false}>
+        <table className="w-full text-[13px]">
+          <thead>
+            <tr className="border-line bg-surface-raised border-b">
+              <th className="text-label text-ink-faint px-4 py-2 text-left uppercase">
+                Age
+              </th>
+              <th className="text-label text-ink-faint px-4 py-2 text-right uppercase">
+                Female
+              </th>
+              <th className="text-label text-ink-faint px-4 py-2 text-right uppercase">
+                Male
+              </th>
+              <th className="text-label text-ink-faint px-4 py-2 text-right uppercase">
+                Total
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((b) => (
+              <tr key={b.band} className="border-line border-b last:border-0">
+                <td className="text-ink-soft px-4 py-1.5">{b.band}</td>
+                <td className="text-ink-soft tabular px-4 py-1.5 text-right">
+                  {formatNumber(b.female)}
+                </td>
+                <td className="text-ink-soft tabular px-4 py-1.5 text-right">
+                  {formatNumber(b.male)}
+                </td>
+                <td className="text-ink tabular px-4 py-1.5 text-right font-medium">
+                  {formatNumber(b.female + b.male)}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {rows.map((b) => (
-                <tr key={b.band} className="border-line border-b last:border-0">
-                  <td className="text-ink-soft px-4 py-1.5">{b.band}</td>
-                  <td className="text-ink-soft tabular px-4 py-1.5 text-right">
-                    {formatNumber(b.female)}
-                  </td>
-                  <td className="text-ink-soft tabular px-4 py-1.5 text-right">
-                    {formatNumber(b.male)}
-                  </td>
-                  <td className="text-ink tabular px-4 py-1.5 text-right font-medium">
-                    {formatNumber(b.female + b.male)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </details>
+            ))}
+          </tbody>
+        </table>
+      </DataDisclosure>
     </figure>
   );
 }

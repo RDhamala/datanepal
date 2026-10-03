@@ -1,11 +1,22 @@
+import { DataDisclosure, DataGrid } from "./viz/DataDisclosure";
 import Link from "next/link";
+/*
+  Formatting from lib/format, not lib/data.
+
+  lib/data reads Parquet off disk and therefore imports node:fs, so anything
+  that reaches it cannot be bundled for the browser. This module only ever
+  rendered from server components, so the shortcut went unnoticed until a
+  client component wanted a Sparkline and the build failed on "Reading from
+  node:fs is not handled". lib/data re-exports these anyway; lib/format is
+  where they live and is pure.
+*/
 import {
   formatChange,
   formatCompact,
   formatNumber,
   formatWithUnit,
-  type Unit,
-} from "@/lib/data";
+} from "@/lib/format";
+import type { Unit } from "@/lib/types";
 
 /*
   The visualization system.
@@ -14,8 +25,9 @@ import {
   tables for exact lookup and verification. A chart that exists so the page has
   a chart on it is worse than the table it replaced.
 
-  Every chart ships with an accessible table under a "View data table"
-  disclosure. That is a `<details>` element, not a JavaScript toggle -- this is a
+  Every chart ships with an accessible table under a disclosure, and the
+  disclosure itself now belongs to viz/DataDisclosure rather than to each
+  chart. It is a `<details>` element, not a JavaScript toggle -- this is a
   static site, and a disclosure works with no client bundle, no hydration, and
   no failure mode when scripts are blocked.
 
@@ -25,62 +37,6 @@ import {
   age-sex pyramid. Using eight colours on a one-series bar chart is decoration
   pretending to be information.
 */
-
-/* ------------------------------------------------------------ shared table */
-
-function DataDisclosure({
-  caption,
-  columns,
-  rows,
-}: {
-  caption: string;
-  columns: string[];
-  rows: (string | number)[][];
-}) {
-  return (
-    <details className="group mt-4">
-      <summary className="text-ink-faint hover:text-ink-soft cursor-pointer text-[12px]">
-        View data table
-      </summary>
-      <div className="border-line mt-3 max-h-96 overflow-auto rounded-lg border">
-        <table className="w-full text-[13px]">
-          <caption className="sr-only">{caption}</caption>
-          <thead className="bg-surface-raised sticky top-0">
-            <tr className="border-line border-b">
-              {columns.map((c, i) => (
-                <th
-                  key={c}
-                  scope="col"
-                  className={`text-label text-ink-faint px-3 py-2 uppercase ${
-                    i === 0 ? "text-left" : "text-right"
-                  }`}
-                >
-                  {c}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, ri) => (
-              <tr key={ri} className="border-line border-b last:border-0">
-                {r.map((cell, ci) => (
-                  <td
-                    key={ci}
-                    className={`px-3 py-1.5 ${
-                      ci === 0 ? "text-ink-soft" : "text-ink tabular text-right"
-                    }`}
-                  >
-                    {cell}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </details>
-  );
-}
 
 /* ------------------------------------------------------------- trend chart */
 
@@ -211,11 +167,13 @@ export function TrendChart({
         />
       </svg>
 
-      <DataDisclosure
-        caption={`${label} by year`}
-        columns={["Year", "Value"]}
-        rows={[...points].reverse().map((p) => [p.year, formatNumber(p.value)])}
-      />
+      <DataDisclosure count={points.length} noun="years">
+        <DataGrid
+          caption={`${label} by year`}
+          columns={["Year", "Value"]}
+          rows={[...points].reverse().map((p) => [p.year, formatNumber(p.value)])}
+        />
+      </DataDisclosure>
     </figure>
   );
 }
@@ -233,12 +191,30 @@ export function TrendChart({
  * Horizontal, because place names are long and Nepali names are longer.
  * One hue, because length carries the magnitude and colour would add nothing.
  */
+/*
+  Column header for each plural noun this component is handed.
+
+  Listed rather than derived. "parties" singularises to "Party" and a naive
+  rule gives "Partie"; the same trap already produced "Metropolitan Citys"
+  elsewhere in this codebase, which is why TYPE_PLURAL is a literal table too.
+  An unlisted noun falls back to "Name", which is vague but never wrong.
+*/
+const ROW_LABEL: Record<string, string> = {
+  places: "Place",
+  provinces: "Province",
+  districts: "District",
+  "local governments": "Local government",
+  areas: "Area",
+  parties: "Party",
+};
+
 export function RankedBars({
   rows,
   unit,
   label,
   valueLabel = "Value",
-  rowLabel = "Place",
+  noun = "places",
+  rowLabel,
   max: maxOverride,
   compact = false,
 }: {
@@ -246,11 +222,19 @@ export function RankedBars({
   unit?: Unit;
   label: string;
   valueLabel?: string;
+  /** What the rows are, for the disclosure summary. Places, parties, years. */
+  noun?: string;
   /**
-   * Header for the name column in the data table. Defaults to "Place" because
-   * most leaderboards here rank places — but the elections page ranks parties,
-   * and a table heading that misnames its own rows is served only to the reader
-   * who cannot check it against the chart.
+   * Header for the name column in the data table.
+   *
+   * Separate from `noun` because they read differently -- "View all 7 places"
+   * over a column headed "Place" -- and defaulted *from* it rather than to a
+   * fixed "Place", which is the version of this that already shipped wrong:
+   * the elections page reused this component and filed political parties under
+   * a column headed "Place", live until an audit caught it. The sighted reader
+   * never sees that header. It is served only to the person who cannot check
+   * it against the chart, so the default has to be right without the caller
+   * remembering.
    */
   rowLabel?: string;
   max?: number;
@@ -297,11 +281,13 @@ export function RankedBars({
       </ul>
 
       {!compact && (
-        <DataDisclosure
-          caption={label}
-          columns={[rowLabel, "नेपाली", valueLabel]}
-          rows={rows.map((r) => [r.name, r.nameNe ?? "—", fmt(r.value)])}
-        />
+        <DataDisclosure count={rows.length} noun={noun}>
+          <DataGrid
+            caption={label}
+            columns={[rowLabel ?? ROW_LABEL[noun] ?? "Name", "नेपाली", valueLabel]}
+            rows={rows.map((r) => [r.name, r.nameNe ?? "—", fmt(r.value)])}
+          />
+        </DataDisclosure>
       )}
     </figure>
   );

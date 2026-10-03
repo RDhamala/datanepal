@@ -5,7 +5,6 @@ import {
   comparisonFor,
   country,
   districtsOf,
-  formatCompact,
   formatNumber,
   formatPercent,
   metricMapFor,
@@ -14,17 +13,21 @@ import {
   benchmarksFor,
   compareFor,
   compositionFor,
+  indicatorSlug,
   placeProfile,
   spreadFor,
   populationOf,
+  indicators,
+  observations,
+  places,
+  units as allUnitsFn,
   provinces,
   sourcesFor,
-  statusLabel,
   tablesFor,
 } from "@/lib/data";
 import { AgePyramid } from "@/components/AgePyramid";
 import { MetricMap } from "@/components/MetricMap";
-import { profileSections } from "@/components/PlaceProfile";
+import { profileSections } from "@/lib/profile";
 import { TopicSummary } from "@/components/viz/TopicSummary";
 import { ComparePanel } from "@/components/viz/ComparePanel";
 import { Composition, Distribution } from "@/components/viz/Composition";
@@ -32,11 +35,14 @@ import { Figure, FigureTable, FigureRow, FigureCell } from "@/components/viz/Fig
 import {
   AnchoredSection,
   Crumbs,
-  FactStrip,
   PageHeader,
+  Pcode,
   SectionNav,
   SourceNote,
 } from "@/components/ui";
+import { RankedBars } from "@/components/charts";
+import { HeadlineMetricGroup } from "@/components/viz/HeadlineMetric";
+import { coverageByIndicator } from "@/lib/coverage";
 
 /*
   District page: same pattern as a province, one level down.
@@ -46,19 +52,6 @@ import {
   chart of nothing, and the local-unit list is grouped by type because 18 rural
   municipalities and 1 sub-metropolitan city are not the same kind of thing.
 */
-
-/**
- * Who published the headline population figure, and how it was arrived at.
- *
- * Derived rather than hardcoded: these pages said "UNFPA" unconditionally,
- * which was right while the projection was the only figure and became wrong the
- * moment the census supplied the count.
- */
-function populationProvenance(pop: { period: number; status: string }): string {
-  return pop.status === "actual"
-    ? `${pop.period} census · NSO`
-    : `${pop.period} ${statusLabel(pop.status) ?? "estimate"} · UNFPA`;
-}
 
 type Params = { province: string; district: string };
 
@@ -73,6 +66,17 @@ const TOPIC_HEADLINE: Record<string, string> = {
   population: "population",
   education: "literacy_rate",
 };
+
+/*
+  Indicators the fact strip already shows.
+
+  A topic summary whose headline is one of these prints the same number a few
+  hundred pixels below the strip, at a different size -- which reads as two
+  figures a reader has to reconcile rather than as one fact stated once. The
+  section keeps everything the strip cannot carry: the sex split, the
+  benchmark, the definitions.
+*/
+const STRIP_INDICATORS = new Set(["population", "households"]);
 
 /* Measures worth benchmarking against province and nation. Rates and ratios
    only: a district's population against Nepal's is a share, not a comparison. */
@@ -212,11 +216,34 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
   */
   const sections = [
     ...profileSections(profile),
-    ...(pop && pop.bands.length ? [{ id: "age-sex", label: "Age & sex" }] : []),
     ...(units.length ? [{ id: "local-governments", label: "Local governments" }] : []),
     ...(compare ? [{ id: "compare", label: "Compare" }] : []),
     { id: "sources", label: "Sources" },
   ];
+
+  const personsUnit = (await allUnitsFn()).find((u) => u.unit_id === "persons");
+
+  const households = profile
+    .flatMap((t) => t.metrics)
+    .find((m) => m.indicatorId === "households");
+
+  /*
+    Coverage, so an absent topic can explain itself.
+
+    Place pages correctly omit a section with no data for this place, which
+    makes the omission silent: a reader who follows "Health" from here lands
+    on a page with no Dhading in it and concludes the data does not exist. It
+    exists nationally. Saying which is the whole of the fix.
+  */
+  const [obsAll, placesAll, indsAll] = await Promise.all([
+    observations(),
+    places(),
+    indicators(),
+  ]);
+  const coverage = coverageByIndicator(obsAll, placesAll);
+  const nationalOnly = indsAll
+    .filter((i) => coverage.get(i.indicator_id)?.level === "national")
+    .slice(0, 6);
 
   const ownLiteracy = profile
     .flatMap((t) => t.metrics)
@@ -241,34 +268,77 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
         native={place.name_ne}
         meta={
           <>
-            {units.length} local governments · P-code{" "}
-            <code className="font-mono">{place.ocha_pcode}</code>
+            {/*
+              One sentence that says what this place is and where it sits,
+              before any figure. ONS puts the same thing under its area titles,
+              and it is the difference between a page that opens with a record
+              and one that opens with an answer. The P-code is a chip rather
+              than inline code: it is an identifier a reader may need, not a
+              fact about Dhading.
+            */}
+            A district of {prov.name_en} Province, made up of {units.length} local
+            governments. {place.ocha_pcode && <Pcode code={place.ocha_pcode} />}
           </>
         }
       />
 
-      <FactStrip
-        facts={[
+      {/*
+        Headline facts, each carrying its own reference period.
+
+        The strip used to print five numbers with their provenance as grey
+        microcopy of the same size as everything else, which on this page means
+        a 2021 census count sitting beside a density derived from it and a
+        share of a province measured in the same year -- fine here, and exactly
+        the arrangement that goes wrong the moment a projection joins them. A
+        chip bound to each figure is what Data México does and is the cheapest
+        defence against a reader combining two periods by eye.
+
+        Five facts, not every field the record holds.
+      */}
+      <HeadlineMetricGroup
+        columns={5}
+        topRule={false}
+        metrics={[
           {
             label: "Population",
-            value: pop ? formatCompact(pop.total) : "—",
-            sub: pop ? populationProvenance(pop) : null,
+            value: pop ? formatNumber(pop.total) : null,
+            period: pop?.period,
+            status: pop?.status === "actual" ? "census" : "projection",
+            missingNote: "No census population published for this district.",
+            secondary: pop?.laterEstimate
+              ? {
+                  label: "Later projection",
+                  value: formatNumber(pop.laterEstimate.value),
+                  period: pop.laterEstimate.period,
+                  status: "projection" as const,
+                }
+              : null,
           },
-          { label: "Area", value: formatNumber(place.area_sqkm), sub: "km²" },
+          {
+            label: "Households",
+            value: households ? formatNumber(households.value) : null,
+            period: households?.period,
+            status: "census",
+            missingNote: "Not published for this district.",
+          },
+          {
+            label: "Area",
+            value: formatNumber(place.area_sqkm),
+            unit: "km²",
+          },
           {
             label: "Density",
-            value: pop?.density ? formatNumber(pop.density) : "—",
-            sub: "people per km²",
+            value: pop?.density ? formatNumber(pop.density) : null,
+            unit: "per km²",
+            period: pop?.period,
+            status: pop?.status === "actual" ? "census" : "projection",
           },
           {
             label: `Share of ${prov.name_en}`,
-            value: shareProvince ? formatPercent(shareProvince) : "—",
-            sub: "by population",
-          },
-          {
-            label: "Share of Nepal",
-            value: shareNepal ? formatPercent(shareNepal, 2) : "—",
-            sub: "by population",
+            value: shareProvince ? formatPercent(shareProvince) : null,
+            period: pop?.period,
+            status: "census",
+            context: shareNepal ? `${formatPercent(shareNepal, 2)} of Nepal.` : null,
           },
         ]}
       />
@@ -290,12 +360,16 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
           id={t.topic.slug}
           title={t.topic.name_en}
           note={
-            <>
-              {t.topic.description}{" "}
-              <Link href={`/topics/${t.topic.slug}/`}>
-                All {t.topic.name_en} indicators →
-              </Link>
-            </>
+            /*
+              The topic description is written for the national topic page --
+              "How many people live in Nepal, where, and how the population is
+              structured by age and sex" -- and reads as an error under a
+              district heading. The link is what a reader needs here; the
+              definition belongs to the topic page it points at.
+            */
+            <Link href={`/topics/${t.topic.slug}/`}>
+              All {t.topic.name_en} indicators for Nepal →
+            </Link>
           }
         >
           <TopicSummary
@@ -305,7 +379,34 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
               t.metrics.some((m) => m.indicatorId === b.indicatorId),
             )}
             placeName={place.name_en}
+            valueShownAbove={STRIP_INDICATORS.has(
+              TOPIC_HEADLINE[t.topic.slug] ?? t.metrics[0]?.indicatorId ?? "",
+            )}
           />
+
+          {/*
+            Age and sex, inside Population rather than beside it.
+
+            It was a peer AnchoredSection with its own jump-nav entry, which
+            put a chart type at the same level as Education in the topic list.
+            It is sub-structure of a topic. The province page was corrected
+            first; this is the same change, and the build-time page check is
+            what caught that 77 district pages still had the old shape.
+          */}
+          {t.topic.slug === "population" && pop && pop.bands.length > 0 && (
+            <div className="border-line mt-9 border-t pt-7">
+              <h3 className="text-ink mb-1 text-[15px] font-medium">
+                Age and sex structure
+              </h3>
+              <p className="text-ink-faint mb-5 max-w-prose text-[13px] leading-relaxed">
+                Five-year bands from the UNFPA {pop.bandPeriod ?? pop.period}{" "}
+                projection, the only source publishing age detail at this level — a
+                different reference period from the census count above. Both sides share
+                one scale.
+              </p>
+              <AgePyramid bands={pop.bands} period={pop.bandPeriod ?? pop.period} />
+            </div>
+          )}
 
           {/*
             Two additions that a rate alone cannot make: what the rest of the
@@ -362,16 +463,6 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
         </AnchoredSection>
       ))}
 
-      {pop && pop.bands.length > 0 && (
-        <AnchoredSection
-          id="age-sex"
-          title="Age and sex structure"
-          note={`Five-year age bands from the UNFPA ${pop.bandPeriod ?? pop.period} projection, the only source that publishes age detail at this level. Both sides share one scale, so bar lengths are directly comparable.`}
-        >
-          <AgePyramid bands={pop.bands} period={pop.bandPeriod ?? pop.period} />
-        </AnchoredSection>
-      )}
-
       {units.length > 0 && (
         <AnchoredSection
           id="local-governments"
@@ -388,8 +479,18 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
             computed at build time -- none of them depend on the metric -- so the
             client work is recolouring and nothing more.
           */}
+          {/*
+            Map and ranking side by side, reading the same data.
+
+            The map alone sat in a 760px frame inside a 1344px container with
+            nothing beside it, and answered only "where". Eurostat's regional
+            tool puts the distribution next to the map for exactly this reason:
+            "where" and "how much" are different questions and a reader usually
+            has both. The ranking is compact -- it carries no second table,
+            because the map already owns the exact-value disclosure.
+          */}
           {localMap && (
-            <div className="mb-8">
+            <div className="mb-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] lg:gap-12">
               <MetricMap
                 features={localMap.features}
                 metrics={localMap.metrics}
@@ -397,29 +498,51 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
                 height={localMap.height}
                 caption={`${localMap.features.length} local governments of ${place.name_en}, 2021 census.`}
               />
+              <div className="lg:pt-1">
+                <p className="text-label text-ink-faint mb-3 uppercase">
+                  By population, 2021 census
+                </p>
+                <RankedBars
+                  compact
+                  label={`Local governments by population`}
+                  rows={units
+                    .map((u) => ({
+                      name: u.name_en,
+                      nameNe: u.name_ne,
+                      href: `/np/${prov.slug}/${place.slug}/${u.slug}/`,
+                      value: localPop.get(u.place_id) ?? 0,
+                    }))
+                    .filter((r) => r.value > 0)
+                    .sort((a, b) => b.value - a.value)}
+                  unit={personsUnit}
+                  valueLabel="People"
+                />
+              </div>
             </div>
           )}
 
+          {/*
+            The same 13 places, grouped by what they legally are.
+
+            This list used to carry each unit's population too, which the map
+            and the ranking above now both show -- thirteen numbers printed
+            three times on one screen. What only this list says is the type
+            distinction: a municipality and a rural municipality are different
+            kinds of local government, and that is not visible in a ranking.
+            So it keeps the grouping and drops the values.
+          */}
           <div className="space-y-6">
             {typeOrder.map((type) => (
               <div key={type}>
                 <h3 className="text-label text-ink-faint mb-2 uppercase">
                   {TYPE_LABELS[type] ?? type} · {byType.get(type)!.length}
                 </h3>
-                <ul className="divide-line grid grid-cols-1 gap-x-10 text-[13px] sm:grid-cols-2 lg:grid-cols-3">
+                <ul className="grid grid-cols-2 gap-x-10 gap-y-1 text-[13px] sm:grid-cols-3 lg:grid-cols-4">
                   {byType.get(type)!.map((u) => (
-                    <li
-                      key={u.place_id}
-                      className="border-line flex items-baseline justify-between gap-3 border-b py-1.5"
-                    >
+                    <li key={u.place_id} className="border-line border-b py-1.5">
                       <Link href={`/np/${prov.slug}/${place.slug}/${u.slug}/`}>
                         {u.name_en}
                       </Link>
-                      <span className="text-ink-faint tabular shrink-0">
-                        {localPop.has(u.place_id)
-                          ? formatNumber(localPop.get(u.place_id))
-                          : "—"}
-                      </span>
                     </li>
                   ))}
                 </ul>
@@ -433,7 +556,23 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
         <AnchoredSection
           id="compare"
           title={`Compare the local governments of ${place.name_en}`}
-          note="Every published census measure, side by side. Rank by any column, or select rows to compare a few."
+          note={
+            <>
+              Every published census measure, side by side. Rank by any column, or
+              select rows to compare a few.{" "}
+              {/*
+                The cross-parent comparison, from where the intent is.
+
+                This section compares children of one parent, which is the
+                comparison the data made easy rather than the one a reader
+                arrives with. The link carries this place, so /compare opens
+                with it already chosen.
+              */}
+              <Link href={`/compare/?p=${`${prov.slug}/${place.slug}`}`}>
+                Compare {place.name_en} with any place in Nepal →
+              </Link>
+            </>
+          }
         >
           <ComparePanel
             places={compare.places}
@@ -445,6 +584,34 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
       )}
 
       <div id="sources" className="scroll-mt-20">
+        {/*
+          Coverage, stated once and quietly.
+
+          The place-page rule forbids a prominent "not yet covered" section,
+          and it is right: a headline list of absences on all 753 pages is a
+          worse answer than omitting the sections, which is what this page
+          does. But omission alone leaves a reader to conclude the data does
+          not exist, when for most of these it exists nationally. One line
+          beside the sources closes that gap without making absence the
+          subject.
+        */}
+        {nationalOnly.length > 0 && (
+          <p className="text-ink-faint mt-16 max-w-prose text-[13px] leading-relaxed">
+            Measures such as{" "}
+            {nationalOnly.slice(0, 3).map((i, n) => (
+              <span key={i.indicator_id}>
+                {n > 0 && ", "}
+                <Link href={`/indicators/${indicatorSlug(i.indicator_id)}/`}>
+                  {i.name_en.toLowerCase()}
+                </Link>
+              </span>
+            ))}{" "}
+            are published for Nepal as a whole and are not broken down to districts by
+            their source, so they have no section here.{" "}
+            <Link href="/indicators/">All indicators and their coverage →</Link>
+          </p>
+        )}
+
         <SourceNote tables={tables} sources={sourcesFor(tables)} />
       </div>
     </>

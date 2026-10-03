@@ -38,7 +38,7 @@ export default function NotFound() {
           <Link href="/places/">Places</Link>
         </li>
         <li>
-          <Link href="/topics/">Topics</Link>
+          <Link href="/compare/">Compare places</Link>
         </li>
         <li>
           <Link href="/indicators/">Indicators</Link>

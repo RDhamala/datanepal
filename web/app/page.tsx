@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   comparisonFor,
   country,
+  distributionsFor,
   mapFor,
   formatChange,
   formatCompact,
@@ -10,7 +11,6 @@ import {
   indicatorSlug,
   manifest,
   nationalHeadline,
-  partyResultsFor,
   places,
   populationOf,
   seriesFor,
@@ -66,6 +66,7 @@ export default async function Home() {
   const allUnits = await units();
   const personsUnit = allUnits.find((u) => u.unit_id === "persons");
   const nationalProfile = np ? await placeProfile(np) : [];
+  const distributions = np ? await distributionsFor(np.place_id) : [];
   const literacy = nationalProfile
     .flatMap((t) => t.metrics)
     .find((m) => m.indicatorId === "literacy_rate");
@@ -115,6 +116,18 @@ export default async function Home() {
     environment: "protected_areas_pct",
     labour: "unemployment_rate",
     government: "government_revenue_pct_gdp",
+    /*
+      Elections belongs here now, which it could not before.
+
+      Its indicator is dimensioned by party with no total, so the shared
+      headline path used to return whichever party sorted first and the card
+      was dropped rather than print it. nationalHeadline now reports such an
+      indicator as a leading member with its dimension named, so Elections
+      goes through the same code as the other nine instead of carrying a
+      bespoke override here. Seats rather than vote share: seats are what the
+      source states and what decides a parliament.
+    */
+    elections: "hor_fptp_seats_won",
   };
   const topicHeadline: Record<
     string,
@@ -134,6 +147,7 @@ export default async function Home() {
           series,
           profile: nationalProfile,
           units: allUnits,
+          distributions,
         })
       : null;
     if (!h) continue;
@@ -159,37 +173,15 @@ export default async function Home() {
       series.find((s) => s.indicator.indicator_id === indicatorId)?.points ?? [];
 
     topicHeadline[t.topic_id] = {
-      label,
+      label: h.leading
+        ? `Largest ${h.leading.dimensionName.toLowerCase()}, ${h.leading.memberName}`
+        : label,
       value:
         indicatorId === "population"
           ? formatCompact(h.value)
           : formatWithUnit(h.value, h.unit),
       period: `${h.period}${h.status ? ` ${h.status}` : ""}`.trim(),
       points: points.map((p) => ({ year: p.year, value: p.value })),
-    };
-  }
-
-  /*
-    Elections has no entry above, and could not have one.
-
-    Its headline indicator is dimensioned by party, so nationalHeadline -- which
-    has no concept of "highest" -- returns an arbitrary minor party. That is the
-    same trap the topic page hit, and it is why /topics/elections carries a
-    partyRanking override. Without this the card rendered as a name and an
-    indicator count while the other nine carried a figure, which reads as a
-    broken cell rather than as a topic with nothing to say.
-
-    Seats, not vote share: seats are what the source states directly and what
-    decides a parliament. PR seats stay uncomputed here for the same reason they
-    are uncomputed everywhere else in this project.
-  */
-  const winner = (await partyResultsFor("hor_fptp_seats_won"))[0] ?? null;
-  if (winner && liveTopicList.some((t) => t.topic_id === "elections")) {
-    topicHeadline.elections = {
-      label: `Largest party, ${winner.name}`,
-      value: `${formatNumber(winner.value)} seats`,
-      period: "2026 · first-past-the-post",
-      points: [],
     };
   }
 
@@ -238,7 +230,7 @@ export default async function Home() {
 
           <p className="mt-7 flex flex-wrap gap-x-5 gap-y-2 text-[14px]">
             <Link href="/places/">Explore places</Link>
-            <Link href="/topics/">Browse topics</Link>
+            <Link href="/indicators/">Browse indicators</Link>
             <Link href="/datasets/">Dataset catalogue</Link>
           </p>
         </div>

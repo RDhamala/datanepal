@@ -3,10 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "predev": "node scripts/copy-data.mjs && node scripts/build-search-index.mjs",
+    "predev": "node scripts/copy-data.mjs && node scripts/build-search-index.mjs && node scripts/build-compare-index.mjs",
     "dev": "next dev",
-    "prebuild": "node scripts/copy-data.mjs && node scripts/build-search-index.mjs",
+    "prebuild": "node scripts/copy-data.mjs && node scripts/build-search-index.mjs && node scripts/build-compare-index.mjs",
     "build": "next build",
+    "postbuild": "node scripts/check-place-pages.mjs && node scripts/check-index-pages.mjs && node scripts/check-sitemap.mjs",
     "start": "npx serve out",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",

@@ -1,3 +1,11 @@
 # www serves a full duplicate of the site with no canonical tag, which splits
 # search authority between two hostnames and lets either be cited. One name.
 https://www.datanepal.org/* https://datanepal.org/:splat 301
+
+# /topics/ listed the same ten topics with the same indicators and the same
+# headline values as /indicators/, and held a second nav slot to do it. Topic
+# is a filter on /indicators/ now. The topic *pages* are unaffected: they
+# carry charts and a ranking the list cannot, every place page links to one,
+# and they are good landing pages. Exact match only -- /topics/health/ must
+# keep resolving to itself.
+/topics/ /indicators/ 301

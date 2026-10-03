@@ -92,10 +92,38 @@
   --color-rise: #1f6f4a;
   --color-fall: #a33b2a;
 
-  /* ---- type scale ---- */
-  --text-display: 3.25rem;
-  --text-display--line-height: 1.02;
+  /*
+    ---- type scale: explicit roles, largest first ----
+
+    display    page identity. One per page, the h1.
+    stat-lead  the leading figure of a module, where a module has one.
+    stat       a figure in a group: fact strip, tile row, KPI.
+    title      a secondary title -- today the Devanagari pairing under an h1.
+               Not the page title, despite the name; renaming it would touch
+               every consumer, so the role is documented here instead.
+    heading    a section heading.
+    body       15px, set on <body>.
+    label      all-caps micro label above a figure.
+
+    The rule the pages depend on: **a figure outranks the heading above it,
+    and nothing outranks the page title.** That had quietly stopped being true.
+    FactStrip hardcoded its values at 1.35-1.4rem, which at wide viewports is
+    22px -- exactly where --text-heading tops out -- so a district's population
+    rendered at the same size as the words "Population & Demographics" and the
+    strip read as a row of subheadings rather than as the page's facts. Three
+    different ad-hoc number sizes were in play (22, 32, 34) with no rule
+    between them.
+
+    Fluid where the range matters. --text-display was a fixed 52px, which is
+    assertive on a 390px phone; it now starts at 36px and reaches 52px by the
+    time the container is wide enough to carry it.
+  */
+  --text-display: clamp(2.25rem, 1.55rem + 2.4vw, 3.25rem);
+  --text-display--line-height: 1.04;
   --text-display--letter-spacing: -0.035em;
+  --text-stat-lead: clamp(1.75rem, 1.4rem + 1.2vw, 2.25rem);
+  --text-stat-lead--line-height: 1;
+  --text-stat-lead--letter-spacing: -0.03em;
   --text-title: 1.875rem;
   --text-title--line-height: 1.15;
   --text-title--letter-spacing: -0.025em;
@@ -112,7 +140,7 @@
   --text-heading: clamp(1.0625rem, 0.594rem + 0.977vw, 1.375rem);
   --text-heading--line-height: 1.3;
   --text-heading--letter-spacing: -0.014em;
-  --text-stat: 2rem;
+  --text-stat: clamp(1.5rem, 1.3rem + 0.7vw, 1.875rem);
   --text-stat--line-height: 1;
   --text-stat--letter-spacing: -0.03em;
   --text-label: 0.6875rem;

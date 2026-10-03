@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { manifest } from "@/lib/data";
+import { SourceDetail } from "@/components/viz/SourceLine";
 import { Crumbs, PageHeader, Section } from "@/components/ui";
 
 export const metadata: Metadata = {
@@ -8,25 +9,8 @@ export const metadata: Metadata = {
     "Source datasets behind DataNepal, with publisher, acquisition path, licence and reuse terms.",
 };
 
-const TIER_LABEL: Record<string, string> = {
-  A: "Primary authoritative",
-  B: "Authoritative international",
-  C: "Trusted aggregator",
-  D: "Secondary",
-};
-
-const METHOD_LABEL: Record<string, string> = {
-  official_api: "Official API",
-  official_download: "Official download",
-  official_html: "Official web page",
-  undocumented_endpoint: "Undocumented endpoint",
-  mirror: "Mirror",
-  aggregator_api: "Aggregator API",
-  aggregator_download: "Aggregator download",
-  scrape: "Scrape",
-  pdf_extraction: "PDF extraction",
-  manual_entry: "Manual entry",
-};
+/* Tier and acquisition-method labels moved to viz/SourceLine with the
+   provenance block they describe. */
 
 export default function DatasetsIndex() {
   const m = manifest();
@@ -57,109 +41,12 @@ export default function DatasetsIndex() {
                 </span>
               </div>
 
-              <dl className="mt-4 grid grid-cols-1 gap-x-8 gap-y-2 text-[13px] sm:grid-cols-2">
-                <div>
-                  <dt className="text-label text-ink-faint uppercase">Published by</dt>
-                  <dd className="text-ink mt-0.5">
-                    {s.publisher_homepage ? (
-                      <a
-                        href={s.publisher_homepage}
-                        rel="noopener noreferrer"
-                        target="_blank"
-                      >
-                        {s.publisher}
-                      </a>
-                    ) : (
-                      s.publisher
-                    )}
-                    {s.publisher_name_ne && (
-                      <span className="text-ink-faint"> · {s.publisher_name_ne}</span>
-                    )}
-                  </dd>
-                  <dd className="text-ink-faint mt-0.5 text-[12px]">
-                    Tier {s.source_tier} — {TIER_LABEL[s.source_tier ?? ""] ?? ""}
-                  </dd>
-                </div>
-
-                <div>
-                  <dt className="text-label text-ink-faint uppercase">
-                    Acquired by DataNepal
-                  </dt>
-                  <dd className="text-ink mt-0.5">
-                    {METHOD_LABEL[s.acquisition_method ?? ""] ?? s.acquisition_method}
-                    {s.acquired_indirectly && <> via {s.acquired_from}</>}
-                  </dd>
-                  <dd className="text-ink-faint tabular mt-0.5 text-[12px]">
-                    Retrieved {s.retrieved}
-                  </dd>
-                </div>
-
-                <div>
-                  <dt className="text-label text-ink-faint uppercase">Coverage</dt>
-                  <dd className="text-ink tabular mt-0.5">
-                    {s.time_coverage || s.vintage}
-                    {s.geographic_granularity &&
-                      s.geographic_granularity !== "none" && (
-                        <> · to {s.geographic_granularity.replace(/_/g, " ")} level</>
-                      )}
-                  </dd>
-                  {s.update_frequency && (
-                    <dd className="text-ink-faint mt-0.5 text-[12px]">
-                      Updated {s.update_frequency}
-                      {s.revises_published_values && " · publisher revises past values"}
-                    </dd>
-                  )}
-                </div>
-
-                <div>
-                  <dt className="text-label text-ink-faint uppercase">Reuse</dt>
-                  <dd className="text-ink mt-0.5">
-                    {s.licence_statement_url ? (
-                      <a
-                        href={s.licence_statement_url}
-                        rel="noopener noreferrer"
-                        target="_blank"
-                      >
-                        {s.licence}
-                      </a>
-                    ) : (
-                      s.licence
-                    )}
-                  </dd>
-                  <dd className="text-ink-faint mt-0.5 text-[12px]">
-                    Commercial use:{" "}
-                    {(s.commercial_reuse ?? "unclear").replace(/_/g, " ")}
-                  </dd>
-                </div>
-              </dl>
-
-              {s.caveats.length > 0 && (
-                <ul className="text-ink-soft mt-4 space-y-1 text-[12px]">
-                  {s.caveats.map((c, i) => (
-                    <li key={i} className="border-line-strong border-l-2 pl-3">
-                      {c}
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              <p className="mt-4 text-[12px]">
-                <a href={s.url} rel="noopener noreferrer" target="_blank">
-                  View at source
-                </a>
-                {s.methodology_url && (
-                  <>
-                    {" · "}
-                    <a
-                      href={s.methodology_url}
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      Methodology
-                    </a>
-                  </>
-                )}
-              </p>
+              {/*
+                The full provenance chain, shared with the design laboratory
+                so that what is demonstrated there and what ships here cannot
+                drift apart. It lived inline in this file until then.
+              */}
+              <SourceDetail s={s} />
             </li>
           ))}
         </ul>

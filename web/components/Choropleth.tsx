@@ -1,3 +1,4 @@
+import { DataDisclosure } from "./viz/DataDisclosure";
 import Link from "next/link";
 import { formatCompact, formatNumber, type Unit } from "@/lib/data";
 import { parseGeometry, projector, toPath } from "@/lib/geo";
@@ -234,11 +235,15 @@ export function Choropleth({
           ))}
         </g>
 
-        <MapLabels
-          layout={layout}
-          // Dark fills need light ink. The bin decides, not the label.
-          ink={(f) => (bin(f.value) >= 3 ? "var(--color-surface)" : "var(--color-ink)")}
-        />
+        {/*
+          No ink flip. One ink for every label, with the halo carrying it over
+          a saturated fill -- see MapLabels. Flipping to the surface colour on
+          dark bins was correct only while a label stayed inside its shape;
+          once the halo is also the surface colour, a flipped label is white
+          text with a white outline, which is nothing at all. Six of Bagmati's
+          thirteen districts rendered that way.
+        */}
+        <MapLabels layout={layout} />
       </svg>
 
       {/*
@@ -275,47 +280,40 @@ export function Choropleth({
         </figcaption>
       )}
 
-      <details className="mt-4">
-        <summary className="text-ink-faint hover:text-ink-soft cursor-pointer text-[12px]">
-          View data table
-        </summary>
-        <div className="border-line mt-3 max-h-96 overflow-auto rounded-md border">
-          <table className="w-full text-[13px]">
-            <caption className="sr-only">{label}</caption>
-            <thead className="bg-surface-raised sticky top-0">
-              <tr className="border-line border-b">
-                <th
-                  scope="col"
-                  className="text-label text-ink-faint px-3 py-2 text-left uppercase"
-                >
-                  Area
-                </th>
-                <th
-                  scope="col"
-                  className="text-label text-ink-faint px-3 py-2 text-right uppercase"
-                >
-                  {valueLabel}
-                </th>
+      <DataDisclosure count={features.length} noun="areas">
+        <table className="w-full text-[13px]">
+          <caption className="sr-only">{label}</caption>
+          <thead className="bg-surface-raised sticky top-0">
+            <tr className="border-line border-b">
+              <th
+                scope="col"
+                className="text-label text-ink-faint px-3 py-2 text-left uppercase"
+              >
+                Area
+              </th>
+              <th
+                scope="col"
+                className="text-label text-ink-faint px-3 py-2 text-right uppercase"
+              >
+                {valueLabel}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((f) => (
+              <tr key={f.placeId} className="border-line border-b last:border-0">
+                <td className="px-3 py-1.5">
+                  <Link href={f.href}>{f.name}</Link>
+                  {f.nameNe && <span className="text-ink-faint ne"> · {f.nameNe}</span>}
+                </td>
+                <td className="text-ink tabular px-3 py-1.5 text-right">
+                  {f.value === null ? "—" : formatNumber(f.value)}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {sorted.map((f) => (
-                <tr key={f.placeId} className="border-line border-b last:border-0">
-                  <td className="px-3 py-1.5">
-                    <Link href={f.href}>{f.name}</Link>
-                    {f.nameNe && (
-                      <span className="text-ink-faint ne"> · {f.nameNe}</span>
-                    )}
-                  </td>
-                  <td className="text-ink tabular px-3 py-1.5 text-right">
-                    {f.value === null ? "—" : formatNumber(f.value)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </details>
+            ))}
+          </tbody>
+        </table>
+      </DataDisclosure>
     </figure>
   );
 }

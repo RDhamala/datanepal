@@ -41,6 +41,10 @@ data/staging/
 .env.*
 !.env.example
 
+# Claude Code: skills and project settings are committed; the local
+# override carries machine-specific paths (the corporate CA bundle).
+.claude/settings.local.json
+
 # OS / editors
 .DS_Store
 .vscode/

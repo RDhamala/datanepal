@@ -387,9 +387,7 @@ export function FactStrip({
       {facts.map((f) => (
         <div key={f.label} className="lg:px-5 lg:first:pl-0">
           <dt className="text-label text-ink-faint uppercase">{f.label}</dt>
-          <dd className="text-ink tabular mt-1.5 text-[1.35rem] leading-none font-semibold tracking-[-0.02em] sm:text-[1.4rem]">
-            {f.value}
-          </dd>
+          <dd className="text-stat text-ink tabular mt-1.5 font-semibold">{f.value}</dd>
           {f.sub && <dd className="text-ink-faint mt-1.5 text-[12px]">{f.sub}</dd>}
         </div>
       ))}

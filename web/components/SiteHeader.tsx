@@ -28,9 +28,19 @@ import { Search } from "@/components/Search";
   so it stays.
 */
 
+/*
+  Five slots, one question each.
+
+  Topics held the sixth and answered the same question as Indicators: both
+  listed the same ten topics with the same indicators and the same headline
+  values. Topic is a filter on /indicators/ now, and /topics/ redirects there.
+  Individual topic pages keep their URLs -- they are hubs with charts and a
+  ranking, and every place page links to one -- they simply stop competing
+  with Indicators for the same reader.
+*/
 const NAV = [
-  { href: "/topics/", label: "Topics" },
   { href: "/places/", label: "Places" },
+  { href: "/compare/", label: "Compare" },
   { href: "/indicators/", label: "Indicators" },
   { href: "/datasets/", label: "Datasets" },
   { href: "/about/", label: "About" },
@@ -109,10 +119,10 @@ export function SiteFooter() {
             <h2 className="text-label text-ink-faint mb-2 uppercase">Explore</h2>
             <ul className="space-y-1 text-[13px]">
               <li>
-                <Link href="/topics/">Topics</Link>
+                <Link href="/places/">Places</Link>
               </li>
               <li>
-                <Link href="/places/">Places</Link>
+                <Link href="/compare/">Compare places</Link>
               </li>
               <li>
                 <Link href="/indicators/">Indicators</Link>

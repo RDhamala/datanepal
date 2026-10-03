@@ -15,9 +15,11 @@ import { asyncBufferFromFile, parquetReadObjects } from "hyparquet";
 import {
   AGE_BANDS,
   dimensionKey,
+  pickAggregate,
   pickHeadline,
   pickLaterEstimate,
   pickMember,
+  specificity,
   statusLabel,
 } from "./format";
 
@@ -39,6 +41,12 @@ export type Place = {
   area_sqkm: number | null;
   center_lat: number | null;
   center_lon: number | null;
+  /** Half-open validity: `[valid_from, valid_to)`. See docs/adr/0008. */
+  valid_from: string | null;
+  valid_to: string | null;
+  is_current: boolean;
+  /** Set only where a place has exactly one successor; NULL for a split. */
+  superseded_by_place_id: string | null;
 };
 
 export type Observation = {
@@ -216,7 +224,26 @@ function table<T>(file: string): Promise<T[]> {
   return cache.get(file) as Promise<T[]>;
 }
 
-export const places = () => table<Place>("places.parquet");
+/**
+ * Every place, including ones that no longer exist. Rarely what you want --
+ * see `places()`.
+ */
+export const allPlaces = () => table<Place>("places.parquet");
+
+/**
+ * Currently-valid places. This is the default because the alternative failed
+ * open: `places.parquet` gained historical rows in ADR-0008, and every one of
+ * the forty-odd call sites here would have had to remember to exclude them.
+ * The one that forgot would not throw -- it would render an extra map feature,
+ * or statically generate a page for a district abolished in 2015.
+ *
+ * Filtered once, cached separately, so the cost is a single pass per build.
+ */
+let currentPlacesCache: Promise<Place[]> | undefined;
+export const places = (): Promise<Place[]> => {
+  currentPlacesCache ??= allPlaces().then((rows) => rows.filter((p) => p.is_current));
+  return currentPlacesCache;
+};
 export const observations = () => table<Observation>("observations.parquet");
 export const indicators = () => table<Indicator>("indicators.parquet");
 export const units = () => table<Unit>("units.parquet");
@@ -642,6 +669,10 @@ export type HistoryRow = {
   revision: number;
   dataset_id: string;
   indicator_id: string;
+  // Present in the parquet from the first export; declared late, when the
+  // sitemap became the first caller that needed to know which page a revision
+  // belongs to.
+  place_id: string | null;
   period_start: string;
   first_seen_at: string;
   superseded_at: string | null;
@@ -708,6 +739,95 @@ export async function updateLog(): Promise<{
   };
 }
 
+/* -------------------------------------------------------- data freshness */
+
+export type Freshness = {
+  /** Latest data change for each place, rolled up through its descendants. */
+  byPlace: Map<string, string>;
+  /** Latest data change for each indicator. */
+  byIndicator: Map<string, string>;
+  /** The most recent change anywhere, as an ISO date. */
+  latest: string;
+};
+
+/**
+ * When the data behind each page last actually changed.
+ *
+ * Written for the sitemap, where the alternative is the usual one: stamp every
+ * URL with the build time. That is a claim that all 890 pages changed, made
+ * afresh on every deploy, and it is false on almost all of them -- a typo fix
+ * in the footer does not make Humla's census figures newer. Crawlers that
+ * notice a `lastmod` is unreliable stop reading it, so an over-eager one costs
+ * the signal rather than buying attention.
+ *
+ * The honest source is the revision history, which already records when each
+ * observation was first seen and when it was superseded. A page's date is the
+ * most recent change among the observations it renders.
+ *
+ * It rolls up, because a place page is not only about that place: a district
+ * ranks its local governments, so a change in one of them changes the district
+ * page. Nepal therefore inherits the maximum over everything, which is right --
+ * its page shows national rankings.
+ *
+ * What this deliberately does not capture is a template change. Rewriting a
+ * component changes every page without changing a single value, and no
+ * published table knows that happened. The alternatives were to read git
+ * history at build time -- which behaves differently on Cloudflare's shallow
+ * clone than it does here, and would be discovered only in production -- or to
+ * go back to stamping the build time. Reporting data freshness and saying so is
+ * better than either.
+ */
+export async function freshness(): Promise<Freshness> {
+  const m = manifest();
+  const rows = m.history
+    ? await table<HistoryRow>(m.history.parquet)
+    : ([] as HistoryRow[]);
+  const exportDate = m.generated_at.slice(0, 10);
+
+  // A replacement value carries its own first_seen_at, so the maximum over
+  // first_seen_at catches ordinary revisions. superseded_at matters for the
+  // case it misses: a value withdrawn and not replaced.
+  const changedAt = (r: HistoryRow): string =>
+    r.superseded_at && r.superseded_at > r.first_seen_at
+      ? r.superseded_at
+      : r.first_seen_at;
+
+  const bump = (into: Map<string, string>, key: string, date: string) => {
+    const seen = into.get(key);
+    if (!seen || date > seen) into.set(key, date);
+  };
+
+  const direct = new Map<string, string>();
+  const byIndicator = new Map<string, string>();
+  let latest = "";
+  for (const r of rows) {
+    const date = changedAt(r);
+    if (date > latest) latest = date;
+    if (r.place_id) bump(direct, r.place_id, date);
+    if (r.indicator_id) bump(byIndicator, r.indicator_id, date);
+  }
+
+  // Roll each place's date up its ancestry. allPlaces, not places: a historical
+  // district has no page, but it is some province's child, and the date on
+  // which its figures were withdrawn is a real change to that province's page.
+  const all = await allPlaces();
+  const byId = new Map(all.map((p) => [p.place_id, p]));
+  const byPlace = new Map(direct);
+  for (const [placeId, date] of direct) {
+    let cursor = byId.get(placeId);
+    const guard = new Set<string>([placeId]);
+    while (cursor?.parent_place_id && !guard.has(cursor.parent_place_id)) {
+      guard.add(cursor.parent_place_id);
+      bump(byPlace, cursor.parent_place_id, date);
+      cursor = byId.get(cursor.parent_place_id);
+    }
+  }
+
+  // An export with no history yet is the first publication run. Its data is as
+  // new as the export, which is exactly what the export date says.
+  return { byPlace, byIndicator, latest: latest || exportDate };
+}
+
 /* --------------------------------------------------- local-unit geometry */
 
 export type LocalUnitShape = {
@@ -757,6 +877,19 @@ export async function localUnitMapFor(districtPlaceId: string): Promise<{
   };
 }
 
+/**
+ * How a local-unit type is appended to a name when one has to be
+ * distinguished from an ancestor of the same name. Spelled out rather than
+ * derived, because "Metropolitan" is not a suffix anyone writes after a place
+ * name and "Rural Municipality" is.
+ */
+const LOCAL_UNIT_TYPE_SUFFIX: Record<string, string> = {
+  metropolitan: " Metropolitan City",
+  sub_metropolitan: " Sub-Metropolitan City",
+  municipality: " Municipality",
+  rural_municipality: " Rural Municipality",
+};
+
 /** Display order and labels for local-unit types, coarsest first. */
 export const LOCAL_UNIT_TYPES = [
   { type: "metropolitan", label: "Metropolitan city" },
@@ -795,21 +928,6 @@ export type ProfileTopic = {
   topic: Topic;
   metrics: ProfileMetric[];
 };
-
-/**
- * Count of dimension members that are not the total.
- *
- * Used to choose which row represents an indicator on a profile. Preferring the
- * fewest non-total members finds the aggregate without hardcoding a dimension
- * vocabulary — which matters because local units publish population as
- * `residence_type=household|sex=all` while districts publish
- * `residence_type=all|sex=all`, and a profile should show whichever the source
- * actually has rather than know the difference.
- */
-function specificity(dimensionKey: string): number {
-  if (dimensionKey === "none") return 0;
-  return dimensionKey.split("|").filter((part) => !part.endsWith("=all")).length;
-}
 
 function memberOf(dimensionKey: string, dimension: string): string | null {
   if (dimensionKey === "none") return null;
@@ -922,6 +1040,113 @@ export async function placeProfile(place: Place): Promise<ProfileTopic[]> {
     .sort((a, b) => a.topic.sort_order - b.topic.sort_order);
 }
 
+export type DistributionMember = {
+  memberId: string;
+  name: string;
+  nameNe: string | null;
+  value: number;
+};
+
+export type Distribution = {
+  indicatorId: string;
+  dimensionId: string;
+  dimensionName: string;
+  unitId: string;
+  period: number;
+  status: string;
+  /** Descending by value. */
+  members: DistributionMember[];
+};
+
+/**
+ * Indicators that have no aggregate, expressed as what they actually are.
+ *
+ * An indicator dimensioned by party, ministry, commodity or school level has
+ * no total worth printing -- the sum of seats by party is the size of the
+ * house, not a fact about any party -- so `pickAggregate` correctly returns
+ * nothing for them and `placeProfile` skips them entirely. That left three
+ * surfaces with a hole, and the hole was previously filled by whichever row
+ * sorted first.
+ *
+ * This is the generic replacement. It finds, for one place, every indicator
+ * whose rows carry exactly one dimension and no total, and returns the members
+ * ranked. Nothing here knows what a party is: the same code serves the budget
+ * by ministry and the prices by commodity that this platform intends to hold,
+ * which is the point. `partyResultsFor` is now a thin alias over it.
+ */
+export async function distributionsFor(placeId: string): Promise<Distribution[]> {
+  const [obs, inds, dims, members] = await Promise.all([
+    observations(),
+    indicators(),
+    table<{ dimension_id: string; name_en: string }>("dimensions.parquet"),
+    table<{
+      dimension_id: string;
+      member_id: string;
+      name_en: string;
+      name_ne: string | null;
+    }>("dimension_members.parquet"),
+  ]);
+
+  const dimName = new Map(dims.map((d) => [d.dimension_id, d.name_en]));
+  const unitOfIndicator = new Map(inds.map((i) => [i.indicator_id, i.default_unit_id]));
+  const memberInfo = new Map(
+    members.map((m) => [`${m.dimension_id}=${m.member_id}`, m]),
+  );
+
+  const byIndicator = new Map<string, Observation[]>();
+  for (const o of obs) {
+    if (o.place_id !== placeId || o.value_numeric === null) continue;
+    byIndicator.set(o.indicator_id, [...(byIndicator.get(o.indicator_id) ?? []), o]);
+  }
+
+  const out: Distribution[] = [];
+  for (const [indicatorId, rows] of byIndicator) {
+    // Only indicators with no whole. One that has an aggregate -- explicit or
+    // by a dimension that does not vary -- is a scalar with a breakdown, and
+    // belongs on the ordinary headline path. Asking pickAggregate rather than
+    // re-testing the key shape keeps the two definitions from drifting.
+    if (pickAggregate(rows)) continue;
+
+    // Exactly one dimension, the same one throughout. A two-dimension cube
+    // without a total is a different problem and is deliberately not guessed
+    // at here -- it would need a stated denominator to mean anything.
+    const dimensionIds = new Set(
+      rows.map((r) => r.dimension_key.split("=")[0]).filter(Boolean),
+    );
+    if (dimensionIds.size !== 1) continue;
+    if (rows.some((r) => r.dimension_key.split("|").length !== 1)) continue;
+    const dimensionId = [...dimensionIds][0];
+
+    const latest = Math.max(...rows.map((r) => Number(r.period_start.slice(0, 4))));
+    const current = rows.filter((r) => Number(r.period_start.slice(0, 4)) === latest);
+
+    const ranked = current
+      .map((r) => {
+        const info = memberInfo.get(r.dimension_key);
+        const memberId = r.dimension_key.slice(dimensionId.length + 1);
+        return {
+          memberId,
+          name: info?.name_en || info?.name_ne || memberId,
+          nameNe: info?.name_ne ?? null,
+          value: r.value_numeric!,
+        };
+      })
+      .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
+
+    if (!ranked.length) continue;
+    out.push({
+      indicatorId,
+      dimensionId,
+      dimensionName: dimName.get(dimensionId) ?? dimensionId,
+      unitId: unitOfIndicator.get(indicatorId) ?? "count",
+      period: latest,
+      status: current[0].status,
+      members: ranked,
+    });
+  }
+  return out;
+}
+
 export type NationalHeadline = {
   value: number;
   unit: Unit | undefined;
@@ -930,6 +1155,19 @@ export type NationalHeadline = {
   /** Empty when the indicator has no series to plot -- population's headline
    * comes from `populationOf`, which does not expose one. */
   points: SeriesPoint[];
+  /**
+   * Set when the indicator has no aggregate, so `value` is the leading
+   * member rather than a total. A caller that prints `value` without reading
+   * this is stating a part as if it were the whole -- which is the bug this
+   * field exists to make impossible to reintroduce silently.
+   */
+  leading?: {
+    dimensionId: string;
+    dimensionName: string;
+    memberName: string;
+    memberNameNe: string | null;
+    memberCount: number;
+  };
 };
 
 /**
@@ -945,6 +1183,11 @@ export type NationalHeadline = {
  * four rows of the indicators index rendered nothing at all: they only ever
  * checked `population` and a plain series. One function, called from all
  * three, is what keeps that from happening a fourth time.
+ *
+ * `distributions` is the fourth case and the reason this signature changed:
+ * an indicator with no total has no national figure, and each of those three
+ * sites had started to work around that separately. Pass it and they all get
+ * the same honest answer -- a leading member, labelled as one.
  */
 export function nationalHeadline(
   indicatorId: string,
@@ -953,6 +1196,7 @@ export function nationalHeadline(
     series: IndicatorSeries[];
     profile: ProfileTopic[];
     units: Unit[];
+    distributions?: Distribution[];
   },
 ): NationalHeadline | null {
   if (indicatorId === "population" && ctx.pop) {
@@ -986,6 +1230,28 @@ export function nationalHeadline(
       period: String(m.period),
       status: statusLabel(m.status),
       points: [],
+    };
+  }
+
+  // No aggregate anywhere. If the indicator is a distribution, say which
+  // member leads and how many there are; never print the member's value as
+  // though it were the national figure.
+  const d = ctx.distributions?.find((x) => x.indicatorId === indicatorId);
+  if (d?.members.length) {
+    const [leader] = d.members;
+    return {
+      value: leader.value,
+      unit: ctx.units.find((u) => u.unit_id === d.unitId),
+      period: String(d.period),
+      status: statusLabel(d.status),
+      points: [],
+      leading: {
+        dimensionId: d.dimensionId,
+        dimensionName: d.dimensionName,
+        memberName: leader.name,
+        memberNameNe: leader.nameNe,
+        memberCount: d.members.length,
+      },
     };
   }
 
@@ -1049,7 +1315,7 @@ export async function metricMapFor(
   width: number;
   height: number;
 } | null> {
-  const [geo, obs, inds, us, allPlaces] = await Promise.all([
+  const [geo, obs, inds, us, currentPlaces] = await Promise.all([
     boundaries(),
     observations(),
     indicators(),
@@ -1068,7 +1334,10 @@ export async function metricMapFor(
     resolves against the full list, which is why /places had links and every
     topic, indicator and district map did not.
   */
-  const byId = new Map(allPlaces.map((p) => [p.place_id, p]));
+  // `currentPlaces`, not the exported allPlaces(): a map shape for a district
+  // abolished in 2015 has no page to link to. The two names mean opposite
+  // things and this one arrived from a branch that predated the distinction.
+  const byId = new Map(currentPlaces.map((p) => [p.place_id, p]));
   const shapes = geo
     .filter((g) => wanted.has(g.place_id))
     .map((g) => ({
@@ -1280,6 +1549,34 @@ export async function benchmarksFor(
       });
     }
     if (rows.length < 2) continue; // A benchmark of one is not a benchmark.
+
+    /*
+      Qualify an ancestor that shares the subject's name.
+
+      Kathmandu Metropolitan City sits in Kathmandu District, so its benchmark
+      read "Kathmandu 90.5%" above "Kathmandu 89.2%" and a reader had no way
+      to tell which was which. 18 local governments are in this position, and
+      three of them share a name with their *province* rather than their
+      district -- Koshi rural municipality is in Koshi Province, and so are
+      Bagmati and Gandaki in theirs.
+
+      Only the colliding ancestors are qualified, and never the subject: the
+      page is about that place, its name is in the h1 above, and appending a
+      type to it would read as a correction rather than a clarification.
+    */
+    const nameCounts = new Map<string, number>();
+    for (const r of rows) nameCounts.set(r.name, (nameCounts.get(r.name) ?? 0) + 1);
+    for (const r of rows) {
+      if (r.isSubject || (nameCounts.get(r.name) ?? 0) < 2) continue;
+      const type = byId.get(r.placeId)?.place_type;
+      const suffix =
+        type === "district"
+          ? " District"
+          : type === "province"
+            ? " Province"
+            : LOCAL_UNIT_TYPE_SUFFIX[type ?? ""];
+      if (suffix) r.name = `${r.name}${suffix}`;
+    }
 
     // Rank among peers of the same type, which is the other half of "is this
     // high or low" -- 72.4% means more once you know it is 61st of 77.

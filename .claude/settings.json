@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(make catalog)",
+      "Bash(make ingest)",
+      "Bash(make build)",
+      "Bash(make revisions)",
+      "Bash(make publish)",
+      "Bash(make all)",
+      "Bash(make check)",
+      "Bash(make lint)",
+      "Bash(make help)",
+      "Bash(.venv/bin/dbt:*)",
+      "Bash(cd transform && ../.venv/bin/dbt:*)",
+      "Bash(.venv/bin/ruff check:*)",
+      "Bash(.venv/bin/python -m pytest:*)",
+      "Bash(.venv/bin/python -m tests.check_catalog)",
+      "Bash(.venv/bin/python -m catalog.sync_seeds)",
+      "Bash(npm run typecheck)",
+      "Bash(npm run lint)",
+      "Bash(npm run check)",
+      "Bash(npm run palette)",
+      "Bash(npm run format:check)",
+      "Bash(npm run format:ci)",
+      "Bash(npm test)",
+      "Bash(npm run build)",
+      "Bash(npx vitest run:*)",
+      "Bash(node scripts/copy-data.mjs)",
+      "Bash(node scripts/build-search-index.mjs)",
+      "Bash(node scripts/check-palette.mjs)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git ls-files:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(rg:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(wc:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(sed -n:*)",
+      "Bash(strings:*)",
+      "mcp__claude_ai_GitHub_MCP__get_me"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./.dlt/secrets.toml)",
+      "Read(**/voter_list*)",
+      "Read(**/voters*.csv)",
+      "WebFetch(domain:voterlist.election.gov.np)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -c 'if ((.tool_input.file_path // \"\") | test(\"/(transform|ingestion|catalog)/\")) then {hookSpecificOutput:{hookEventName:\"PostToolUse\",additionalContext:\"Warehouse input changed. publish/dist is now stale relative to this edit. web/lib/data.ts reads publish/dist directly, so vitest and next build are both still seeing the PREVIOUS build -- a passing test here proves nothing about this change. Rebuild with: make build && make publish. See the datanepal-build-publish skill.\"}} else empty end'"
+          }
+        ]
+      }
+    ]
+  }
+}
