@@ -27,69 +27,52 @@ export default function About() {
       */}
       <div className="grid gap-x-16 gap-y-10 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="max-w-prose">
-          <p className="text-ink-soft mb-11 text-[15px]">
+          <p className="text-ink-soft mb-11 text-[15px] leading-relaxed">
             Nepal&rsquo;s public statistics are scattered across institutions that each
-            use their own geographic codes, formats and update cycles. That makes any
-            question spanning two datasets harder than it should be. DataNepal conforms
-            them to one geographic spine and publishes the result as open, documented,
-            downloadable data.
+            use their own geographic codes, formats and update cycles. DataNepal
+            conforms them to one geographic spine and publishes the result as open,
+            documented, downloadable data.
           </p>
 
           <Section title="How data gets here" note={undefined}>
-            <p className="text-ink-soft text-[14px]">
+            <p className="text-ink-soft text-[14px] leading-relaxed">
               Every dataset records two separate things:{" "}
               <strong className="text-ink font-medium">who produced it</strong> and{" "}
-              <strong className="text-ink font-medium">
-                where DataNepal obtained this copy
-              </strong>
-              . Those are different questions. Population figures are produced by UNFPA
-              and obtained through the Humanitarian Data Exchange; crediting the
-              platform rather than the producer would misattribute the work.
-            </p>
-            <p className="text-ink-soft mt-4 text-[14px]">
-              We prefer the original authoritative publisher, then official structured
-              downloads, then authoritative international mirrors, then trusted
-              aggregators. Scraping and PDF extraction are last resorts, used only where
-              reuse terms permit. See the{" "}
-              <Link href="/datasets/">dataset catalogue</Link> for the full provenance
-              of every source.
+              <strong className="text-ink font-medium">where we obtained it</strong>.
+              UNFPA produces the population projections; we get them through the
+              Humanitarian Data Exchange. Crediting the platform rather than the
+              producer would misattribute the work. Full provenance for every source is
+              in the <Link href="/datasets/">dataset catalogue</Link>.
             </p>
           </Section>
 
           <Section title="What we do not publish">
-            <p className="text-ink-soft text-[14px]">
-              DataNepal publishes aggregate statistics. It does not ingest, store or
-              publish personal data. Nepal&rsquo;s Privacy Act 2075 (2018) names voter
-              identity card details among protected personal information, and a
-              predecessor of this project served row-level voter records — including
-              parents&rsquo; and spouses&rsquo; names — before that endpoint was
-              removed.
-            </p>
-            <p className="text-ink-soft mt-4 text-[14px]">
-              Publicly reachable somewhere else does not make something appropriate to
-              republish here.
+            <p className="text-ink-soft text-[14px] leading-relaxed">
+              Aggregates only — never personal data. Nepal&rsquo;s Privacy Act 2075
+              (2018) names voter identity card details among protected personal
+              information, and a predecessor of this project served row-level voter
+              records, including parents&rsquo; and spouses&rsquo; names, before that
+              endpoint was removed. Reachable somewhere else does not make something
+              appropriate to republish here.
             </p>
           </Section>
 
-          <Section title="Reference periods and revisions">
-            <p className="text-ink-soft text-[14px]">
+          <Section title="Periods, revisions and reuse">
+            <p className="text-ink-soft text-[14px] leading-relaxed">
               A figure&rsquo;s reference period is not the date we fetched it, and a
-              projection is not a census count. Both are stated wherever a number
-              appears. When a publisher restates a figure, the previous value is kept
-              with the date it was superseded — the full history is{" "}
+              projection is not a census count — both are stated wherever a number
+              appears. Superseded values keep the date they were replaced, and the full
+              history is{" "}
               <a href="/data/observation_history.parquet" download>
                 downloadable
               </a>
               .
             </p>
-          </Section>
-
-          <Section title="Reuse">
-            <p className="text-ink-soft text-[14px]">
-              Each dataset carries its own licence. DataNepal does not relicense
-              upstream data, and attribution requirements travel with it. A published
-              table&rsquo;s effective licence is computed from its sources, taking the
-              most restrictive — you will find it stated alongside every download.
+            <p className="text-ink-soft mt-4 text-[14px] leading-relaxed">
+              Each dataset carries its own licence. We do not relicense upstream data,
+              and attribution travels with it. A published table&rsquo;s effective
+              licence is the most restrictive of its sources, stated alongside every
+              download.
             </p>
           </Section>
         </div>

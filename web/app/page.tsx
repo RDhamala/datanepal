@@ -51,27 +51,12 @@ export default async function Home() {
   return (
     <>
       {/* ------------------------------------------------------------ hero */}
-      <section className="relative pt-2 pb-12">
-        {/*
-          The country itself, as the only ornament on the page.
-
-          Real province geometry at very low contrast -- geography is this
-          platform's identity, and it is the one decoration that is also the
-          subject. No tourism imagery.
-        */}
-        {provinceView.map && (
-          <svg
-            viewBox={`0 0 ${provinceView.map.width} ${provinceView.map.height}`}
-            aria-hidden="true"
-            className="pointer-events-none absolute -top-6 right-0 hidden w-[46%] opacity-[0.07] lg:block"
-          >
-            {provinceView.map.features.map((f) => (
-              <path key={f.placeId} d={f.path} fill="var(--color-brand)" />
-            ))}
-          </svg>
-        )}
-
-        <div className="relative grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,17rem)] lg:gap-16">
+      <section className="pt-4 pb-14">
+        {/* The stats sit next to the text, not at the far edge. A 1fr first
+            column pushed them to the right margin and opened a hole in the
+            middle of the hero; space at the edge reads as room, space in the
+            middle reads as a mistake. */}
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,34rem)_auto] lg:justify-start lg:gap-20">
           <div>
             <h1
               className="text-ink text-[clamp(2.75rem,2rem+3.2vw,4.25rem)] leading-[0.92] font-semibold tracking-[-0.045em]"
@@ -99,36 +84,43 @@ export default async function Home() {
             </div>
           </div>
 
-          {/* Scale as three figures, not a paragraph. */}
-          <aside className="lg:pt-5">
-            <dl className="grid grid-cols-3 gap-4 lg:grid-cols-1 lg:gap-0">
+          {/* Scale as three figures. Number and word sit together; the old
+              version pushed them to opposite ends of a rule, which read as a
+              table of contents rather than as a fact. */}
+          <aside className="lg:pt-6">
+            <dl className="flex gap-10 lg:flex-col lg:gap-7">
               {[
                 [scale.provinces, "Provinces"],
                 [scale.districts, "Districts"],
                 [scale.localGovernments, "Local governments"],
-              ].map(([n, label], i) => (
-                <div
-                  key={String(label)}
-                  className={`border-line lg:flex lg:items-baseline lg:gap-4 lg:py-2.5 ${i > 0 ? "lg:border-t" : ""}`}
-                >
+              ].map(([n, label]) => (
+                <div key={String(label)}>
                   <dt
-                    className="text-ink tabular text-[26px] leading-none font-semibold lg:w-14 lg:text-[21px]"
+                    className="text-ink tabular text-[30px] leading-none font-semibold tracking-[-0.03em]"
                     style={ROLE.leadFigure}
                   >
                     {n as number}
                   </dt>
-                  <dd className="text-ink-soft mt-1 text-[12.5px] lg:mt-0">
-                    <Link href="/places/" className="no-underline hover:underline">
+                  <dd className="text-ink-faint mt-1.5 text-[12px]">
+                    <Link
+                      href="/places/"
+                      className="text-ink-faint hover:text-brand no-underline transition-colors"
+                    >
                       {label as string}
                     </Link>
                   </dd>
                 </div>
               ))}
             </dl>
-            <p className="text-ink-faint mt-4 text-[11.5px] leading-relaxed">
-              <Link href="/indicators/">
-                {scale.indicators} indicators · {scale.subNationalIndicators} below the
-                national level →
+            {/* Coverage, stated rather than implied: five of 36 measures go
+                below the national level. */}
+            <p className="border-line text-ink-faint mt-7 border-t pt-4 text-[11.5px] leading-relaxed lg:max-w-[16rem]">
+              <Link
+                href="/indicators/"
+                className="text-ink-faint hover:text-brand no-underline transition-colors"
+              >
+                {scale.indicators} indicators · {scale.subNationalIndicators} go below
+                the national level <span aria-hidden="true">→</span>
               </Link>
             </p>
           </aside>
@@ -294,7 +286,7 @@ export default async function Home() {
                 <Link href="/datasets/">Browse and download datasets</Link>
               </li>
               <li>
-                <Link href="/compare/">Compare any two to five places</Link>
+                <Link href="/compare/">Compare places on census measures</Link>
               </li>
               <li>
                 <Link href="/about/">Methodology and source policy</Link>
