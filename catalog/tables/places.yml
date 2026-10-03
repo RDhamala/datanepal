@@ -6,7 +6,7 @@ description: >
   country, provinces, districts, local units, and later wards, electoral
   constituencies, and protected areas. Keyed by a stable internal place_id with
   explicit parent relationships.
-sources: [cod-ab-npl, wikidata-np-places]
+sources: [cod-ab-npl, wikidata-np-places, datanepal-internal]
 grain: One row per place.
 geography_level: mixed
 caveats:
@@ -22,3 +22,20 @@ caveats:
     Nepali names cover provinces (hand-verified) and ~66% of local units
     (Wikidata). Districts have none yet. NULL means no verified name exists;
     names are never transliterated.
+  - >
+    This table includes places that no longer exist. Filter on is_current
+    unless you specifically want historical geography. is_current is derived
+    from valid_to being NULL and is never stored separately.
+  - >
+    Validity is the half-open interval [valid_from, valid_to). valid_from is
+    NULL for the country and for protected areas, meaning no verified start
+    date rather than existence without beginning.
+  - >
+    Local units carry valid_from 2017-03-10, the date 744 were gazetted. The
+    count later rose to 753 and the gazette date for the additional nine, all
+    in Madhesh, is not established — so that date is right for 744 of them and
+    possibly early for nine.
+  - >
+    Pre-federal districts have a NULL parent_place_id. They nested under zones
+    and development regions, which are not modelled, and old Nawalparasi
+    spanned what are now two provinces, so naming one would be false.

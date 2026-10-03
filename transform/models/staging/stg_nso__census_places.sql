@@ -56,6 +56,20 @@ corrected as (
        and f.nso_key = {{ nso_norm('a.base_name') }}
 ),
 
+/*
+  The spine this census matches against is the *current* one, and every CTE
+  below says so explicitly.
+
+  The 2021 census enumerated post-restructuring geography, so a historical
+  place has no business appearing here -- and this is a name match, the one
+  place in the platform where an extra candidate row is genuinely dangerous.
+  Old "Rukum" normalises to a key that current "Rukum East" and "Rukum West" do
+  not, so nothing collides today. That is a property of these two names, not a
+  guarantee: the next historical place seeded could easily share a normalised
+  name with a current one, and the failure would be a 1:many fan-out through
+  every census observation. Filtering is cheaper than relying on the coincidence
+  holding.
+*/
 spine_local as (
     select
         p.place_id,
@@ -66,24 +80,26 @@ spine_local as (
     inner join {{ ref('int_places') }} d on d.place_id = p.parent_place_id
     where p.place_type in ('metropolitan', 'sub_metropolitan',
                            'municipality', 'rural_municipality')
+      and {{ place_is_current('p') }}
+      and {{ place_is_current('d') }}
 ),
 
 spine_district as (
     select p.place_id, {{ nso_norm('p.name_en') }} as name_key
     from {{ ref('int_places') }} p
-    where p.place_type = 'district'
+    where p.place_type = 'district' and {{ place_is_current('p') }}
 ),
 
 spine_country as (
     select p.place_id, {{ nso_norm('p.name_en') }} as name_key
     from {{ ref('int_places') }} p
-    where p.place_type = 'country'
+    where p.place_type = 'country' and {{ place_is_current('p') }}
 ),
 
 spine_province as (
     select p.place_id, {{ nso_norm('p.name_en') }} as name_key
     from {{ ref('int_places') }} p
-    where p.place_type = 'province'
+    where p.place_type = 'province' and {{ place_is_current('p') }}
 ),
 
 resolved as (

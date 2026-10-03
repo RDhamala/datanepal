@@ -120,9 +120,68 @@ models:
         tests: [not_null]
       - name: parent_place_id
         description: >
-          Explicit key, not a P-code substring. Null only for the country.
+          Explicit key, not a P-code substring. Null for the country, and for
+          pre-federal districts, which nested under zones this platform does
+          not model.
         tests:
           - relationships: {to: ref('places'), field: place_id}
+      - name: valid_from
+        description: >
+          Start of the half-open validity interval. NULL means no verified
+          start date -- used for the country and protected areas only.
+      - name: valid_to
+        description: >
+          End of the validity interval, exclusive. NULL means currently valid.
+      - name: is_current
+        description: >
+          Derived from valid_to, never stored independently. Almost every
+          consumer wants `where is_current`. See docs/adr/0008.
+        tests: [not_null]
+      - name: superseded_by_place_id
+        description: >
+          Set only where a place has exactly one successor. NULL for a split,
+          where picking one successor would be arbitrary -- use
+          place_successions.
+        tests:
+          - relationships: {to: ref('places'), field: place_id}
+      - name: dataset_id
+        tests:
+          - relationships: {to: ref('datasets'), field: dataset_id}
+
+  - name: place_successions
+    description: >
+      Which places became which, and when. One row per (predecessor,
+      successor): a split is one predecessor with several successors, a merge
+      the reverse.
+    columns:
+      - name: succession_id
+        tests: [unique, not_null]
+      - name: predecessor_place_id
+        tests:
+          - not_null
+          - relationships: {to: ref('places'), field: place_id}
+      - name: successor_place_id
+        tests:
+          - not_null
+          - relationships: {to: ref('places'), field: place_id}
+      - name: succession_type
+        tests:
+          - not_null
+          - accepted_values:
+              values: [split, merged, renamed, reassigned, created, abolished]
+      - name: effective_date
+        tests: [not_null]
+      - name: share_basis
+        description: >
+          What a share_value is a share of. NULL wherever share_value is NULL.
+        tests:
+          - accepted_values:
+              values: [whole_unit, area, population, households]
+              config: {where: "share_basis is not null"}
+      - name: share_value
+        description: >
+          Recorded only where the apportionment is exact. NULL means the
+          platform is declining to estimate, not that the figure is missing.
       - name: dataset_id
         tests:
           - relationships: {to: ref('datasets'), field: dataset_id}

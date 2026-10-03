@@ -12,6 +12,7 @@
 import { describe, expect, it } from "vitest";
 import {
   AGE_BANDS,
+  allPlaces,
   asPercentValue,
   country,
   dimensionKey,
@@ -60,6 +61,33 @@ describe("places", () => {
   it("gives every place a unique surrogate id", async () => {
     const all = await places();
     expect(new Set(all.map((p) => p.place_id)).size).toBe(all.length);
+  });
+
+  it("excludes places that no longer exist", async () => {
+    // places() filters; allPlaces() does not. Every page in the site is
+    // generated from the former, so a historical district leaking through
+    // would statically render a page for a place abolished in 2015 -- which
+    // fails as a 404 that should not exist, not as a build error.
+    const current = await places();
+    expect(current.every((p) => p.is_current)).toBe(true);
+    expect(current.every((p) => p.valid_to === null)).toBe(true);
+  });
+
+  it("keeps historical places available, and out of the default view", async () => {
+    const [current, everything] = await Promise.all([places(), allPlaces()]);
+    const historical = everything.filter((p) => !p.is_current);
+
+    // The seeded pre-2015 districts. If this drops to zero the temporal model
+    // has silently stopped loading, and the succession tests below would then
+    // be asserting over an empty set.
+    expect(historical.length).toBeGreaterThan(0);
+    expect(historical.map((p) => p.name_en).sort()).toContain("Nawalparasi");
+
+    expect(everything.length).toBe(current.length + historical.length);
+    // A historical place must be closed and must not be reachable as current.
+    expect(historical.every((p) => p.valid_to !== null)).toBe(true);
+    const currentIds = new Set(current.map((p) => p.place_id));
+    expect(historical.some((p) => currentIds.has(p.place_id))).toBe(false);
   });
 
   it("uses a surrogate id, not the source P-code", async () => {

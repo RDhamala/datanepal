@@ -1,0 +1,5 @@
+predecessor_id_system,predecessor_id_value,successor_id_system,successor_id_value,succession_type,effective_date,share_basis,share_value,instrument,note
+datanepal_historical,np-hist-district-nawalparasi,ocha_pcode,NP0447,split,2015-09-20,,,Constitution of Nepal 2072 (2015),"Territory east of the Bardaghat Susta line, placed in Gandaki. share_value is deliberately NULL: apportioning the predecessor's statistics between the two halves requires a model, and this platform does not publish modelled figures alongside enumerated ones without labelling them."
+datanepal_historical,np-hist-district-nawalparasi,ocha_pcode,NP0547,split,2015-09-20,,,Constitution of Nepal 2072 (2015),"Territory west of the Bardaghat Susta line, placed in Lumbini. share_value NULL for the same reason."
+datanepal_historical,np-hist-district-rukum,ocha_pcode,NP0552,split,2015-09-20,,,Constitution of Nepal 2072 (2015),"Eastern portion, placed in Lumbini. share_value NULL for the same reason."
+datanepal_historical,np-hist-district-rukum,ocha_pcode,NP0652,split,2015-09-20,,,Constitution of Nepal 2072 (2015),"Western portion, placed in Karnali. share_value NULL for the same reason."

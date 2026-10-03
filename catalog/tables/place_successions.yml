@@ -1,0 +1,26 @@
+table: place_successions
+title: Place successions
+title_ne: स्थान उत्तराधिकार
+description: >
+  Which places became which, and when. One row per (predecessor, successor)
+  edge: a split is one predecessor with several successors, a merge is the
+  reverse. Readable in both directions — filter on predecessor to ask what a
+  place became, on successor to ask what a place was before.
+sources: [datanepal-internal]
+grain: One row per (predecessor place, successor place, effective date).
+geography_level: mixed
+caveats:
+  - >
+    share_value is NULL wherever apportioning the predecessor's statistics
+    across its successors would require a model. That is a deliberate refusal,
+    not missing data: DataNepal does not publish estimates alongside enumerated
+    figures without labelling them. A share is recorded only where the split is
+    exact, and share_basis states what it is a share of.
+  - >
+    Coverage is the 2015 constitutional splits of Nawalparasi and Rukum. The
+    2017 replacement of 3,915 VDCs and 58 municipalities by 753 local units is
+    not yet recorded here.
+  - >
+    An edge asserts succession, not equivalence of territory. Boundaries were
+    also adjusted at these events, so a successor is not simply a subset of its
+    predecessor.

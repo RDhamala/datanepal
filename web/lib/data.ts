@@ -39,6 +39,12 @@ export type Place = {
   area_sqkm: number | null;
   center_lat: number | null;
   center_lon: number | null;
+  /** Half-open validity: `[valid_from, valid_to)`. See docs/adr/0008. */
+  valid_from: string | null;
+  valid_to: string | null;
+  is_current: boolean;
+  /** Set only where a place has exactly one successor; NULL for a split. */
+  superseded_by_place_id: string | null;
 };
 
 export type Observation = {
@@ -216,7 +222,26 @@ function table<T>(file: string): Promise<T[]> {
   return cache.get(file) as Promise<T[]>;
 }
 
-export const places = () => table<Place>("places.parquet");
+/**
+ * Every place, including ones that no longer exist. Rarely what you want --
+ * see `places()`.
+ */
+export const allPlaces = () => table<Place>("places.parquet");
+
+/**
+ * Currently-valid places. This is the default because the alternative failed
+ * open: `places.parquet` gained historical rows in ADR-0008, and every one of
+ * the forty-odd call sites here would have had to remember to exclude them.
+ * The one that forgot would not throw -- it would render an extra map feature,
+ * or statically generate a page for a district abolished in 2015.
+ *
+ * Filtered once, cached separately, so the cost is a single pass per build.
+ */
+let currentPlacesCache: Promise<Place[]> | undefined;
+export const places = (): Promise<Place[]> => {
+  currentPlacesCache ??= allPlaces().then((rows) => rows.filter((p) => p.is_current));
+  return currentPlacesCache;
+};
 export const observations = () => table<Observation>("observations.parquet");
 export const indicators = () => table<Indicator>("indicators.parquet");
 export const units = () => table<Unit>("units.parquet");

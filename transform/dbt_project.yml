@@ -41,6 +41,43 @@ seeds:
         province_code: VARCHAR
         province_id: INTEGER
 
+    # Dates and mostly-empty columns both need declaring: a date column reads
+    # as VARCHAR without this, and comparing it to a DATE then fails at the
+    # point of use rather than at load.
+    place_validity:
+      +column_types:
+        place_type: VARCHAR
+        valid_from: DATE
+        valid_to: DATE
+        instrument: VARCHAR
+        note: VARCHAR
+
+    historical_places:
+      +column_types:
+        historical_id: VARCHAR
+        place_type: VARCHAR
+        admin_level: INTEGER
+        name_en: VARCHAR
+        name_ne: VARCHAR
+        valid_from: DATE
+        valid_to: DATE
+        note: VARCHAR
+
+    # Named _edges because the published mart owns `place_successions`, and
+    # dbt resolves seeds and models in a single namespace.
+    place_succession_edges:
+      +column_types:
+        predecessor_id_system: VARCHAR
+        predecessor_id_value: VARCHAR
+        successor_id_system: VARCHAR
+        successor_id_value: VARCHAR
+        succession_type: VARCHAR
+        effective_date: DATE
+        share_basis: VARCHAR
+        share_value: DOUBLE
+        instrument: VARCHAR
+        note: VARCHAR
+
     # Columns that are entirely empty get inferred as INTEGER, which then
     # collides with VARCHAR in joins and COALESCE. Declare anything nullable.
     place_id_overrides:

@@ -27,4 +27,9 @@ from {{ ref('stg_hdx__boundaries') }} b
 inner join {{ ref('int_place_identifiers') }} pi
     on pi.id_system = 'ocha_pcode' and pi.id_value = b.source_pcode
 inner join {{ ref('places') }} p on p.place_id = pi.place_id
+-- Current only. Historical places have no P-code today, so this changes
+-- nothing yet -- but the realistic next case is a unit that OCHA merges, which
+-- *would* carry the old P-code and would otherwise draw a stale polygon on
+-- every map. See ADR-0008.
+where p.is_current
 order by b.admin_level, b.source_pcode
