@@ -204,7 +204,15 @@ models:
           - accepted_values: {values: [1, 2, 3], quote: false}
 
   - name: place_identifiers
-    description: External identifiers mapped to canonical place_ids.
+    description: >
+      Identifiers by which a place can be addressed, mapped to canonical
+      place_ids. External in every case but one: a pre-federal district that
+      no longer exists has no P-code, no Wikidata item and no NSO code,
+      because every one of those systems describes the geography of today.
+      It still has to be addressable, or a succession edge cannot name the
+      place it points away from, so `datanepal_historical` carries the seed's
+      own key. It is the only internal system here and should stay that way --
+      an internal identifier is a last resort, not a convenience.
     columns:
       - name: place_id
         tests:
@@ -214,7 +222,16 @@ models:
         tests:
           - not_null
           - accepted_values:
-              values: [ocha_pcode, wikidata_qid, iso_3166_2, iso_3166_1_alpha2, nso_code, ec_id]
+              values:
+                [
+                  ocha_pcode,
+                  wikidata_qid,
+                  iso_3166_2,
+                  iso_3166_1_alpha2,
+                  nso_code,
+                  ec_id,
+                  datanepal_historical,
+                ]
       - name: id_value
         tests: [not_null]
     tests:

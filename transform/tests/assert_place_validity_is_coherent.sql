@@ -14,9 +14,21 @@
     and the interval are two statements of the same fact and must agree --
     which is the argument for deriving `is_current` rather than storing it, and
     the reason `is_historical` needs checking against the dates it came from.
-  - A current administrative place has no start date. Only the country and
-    protected areas are allowed an open start, and both are deliberate; a
-    province or local unit without one means the seed lost a row.
+  - An administrative place that still exists has no start date. The country
+    and protected areas are allowed an open start deliberately; a province or
+    local unit without one means the seed lost a row.
+
+    A place that no longer exists is allowed one too, and for the same reason
+    the country is: `valid_from IS NULL` means "valid from before anything
+    this platform covers". Nawalparasi and Rukum were districts under the
+    zonal structure that preceded the 2015 constitution, and the date they
+    were created is not in any source this project holds. Writing 1962 from
+    general knowledge would be inventing a citation, which is the one thing
+    the spine refuses to do -- the same rule that leaves a romanised name
+    without a Devanagari form rather than transliterating it. The gap is the
+    honest record, and assert_observations_use_places_valid_at_period is what
+    keeps an open start from being load-bearing: nothing may attach an
+    observation to a place before it existed, open start or not.
 */
 
 with p as (select * from {{ ref('int_places') }})
@@ -37,6 +49,7 @@ from (
                 then 'currently sourced but carries an end date'
 
             when valid_from is null
+                 and not is_historical
                  and place_type not in ('country', 'protected_area')
                 then 'no start date, and not one of the types allowed an open start'
         end as problem

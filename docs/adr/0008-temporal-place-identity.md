@@ -44,8 +44,14 @@ Three things, in the order they depend on each other.
 
 **1. Every place carries a validity interval.** `[valid_from, valid_to)`,
 half-open. `valid_to IS NULL` means currently valid. `valid_from IS NULL` means
-valid for every period this platform covers — used only for the country, which
-must accept World Bank series back to 1960.
+valid from before anything this platform covers — the country, which must
+accept World Bank series back to 1960, and the pre-federal districts, whose
+creation dates are in no source this project holds. An open start is a
+statement that the beginning is outside our records, not that it is unbounded;
+writing 1962 for Nawalparasi from general knowledge would be inventing a
+citation, which is the same refusal that leaves a romanised name without a
+Devanagari form. `assert_observations_use_places_valid_at_period` is what
+keeps an open start from being load-bearing.
 
 Defaults are seeded per admin level in `place_validity.csv` with the instrument
 that created them, rather than hardcoded in SQL, because they are facts with

@@ -16,8 +16,10 @@ organisations,datanepal-internal
 place_boundaries,cod-ab-npl
 place_identifiers,cod-ab-npl
 place_identifiers,wikidata-np-places
+place_successions,datanepal-internal
 places,cod-ab-npl
 places,wikidata-np-places
+places,datanepal-internal
 protected_areas,cod-ab-npl
 table_sources,datanepal-internal
 topics,datanepal-internal
