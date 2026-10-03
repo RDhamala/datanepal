@@ -216,7 +216,6 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
   */
   const sections = [
     ...profileSections(profile),
-    ...(pop && pop.bands.length ? [{ id: "age-sex", label: "Age & sex" }] : []),
     ...(units.length ? [{ id: "local-governments", label: "Local governments" }] : []),
     ...(compare ? [{ id: "compare", label: "Compare" }] : []),
     { id: "sources", label: "Sources" },
@@ -378,6 +377,30 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
           />
 
           {/*
+            Age and sex, inside Population rather than beside it.
+
+            It was a peer AnchoredSection with its own jump-nav entry, which
+            put a chart type at the same level as Education in the topic list.
+            It is sub-structure of a topic. The province page was corrected
+            first; this is the same change, and the build-time page check is
+            what caught that 77 district pages still had the old shape.
+          */}
+          {t.topic.slug === "population" && pop && pop.bands.length > 0 && (
+            <div className="border-line mt-9 border-t pt-7">
+              <h3 className="text-ink mb-1 text-[15px] font-medium">
+                Age and sex structure
+              </h3>
+              <p className="text-ink-faint mb-5 max-w-prose text-[13px] leading-relaxed">
+                Five-year bands from the UNFPA {pop.bandPeriod ?? pop.period}{" "}
+                projection, the only source publishing age detail at this level — a
+                different reference period from the census count above. Both sides share
+                one scale.
+              </p>
+              <AgePyramid bands={pop.bands} period={pop.bandPeriod ?? pop.period} />
+            </div>
+          )}
+
+          {/*
             Two additions that a rate alone cannot make: what the rest of the
             population consists of, and where this district falls among its
             peers. "Cannot read or write" and "can read only" are materially
@@ -431,16 +454,6 @@ export default async function DistrictPage({ params }: { params: Promise<Params>
           )}
         </AnchoredSection>
       ))}
-
-      {pop && pop.bands.length > 0 && (
-        <AnchoredSection
-          id="age-sex"
-          title="Age and sex structure"
-          note={`Five-year age bands from the UNFPA ${pop.bandPeriod ?? pop.period} projection, the only source that publishes age detail at this level. Both sides share one scale, so bar lengths are directly comparable.`}
-        >
-          <AgePyramid bands={pop.bands} period={pop.bandPeriod ?? pop.period} />
-        </AnchoredSection>
-      )}
 
       {units.length > 0 && (
         <AnchoredSection

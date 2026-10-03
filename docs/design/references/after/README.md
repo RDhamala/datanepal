@@ -32,6 +32,10 @@ design, and the baseline still describes them.
 | `nilkhantha-desktop-overview.png` | Local-government identity and metrics |
 | `nilkhantha-desktop-education.png` | Four-level benchmark: local · district · province · Nepal |
 | `nilkhantha-tablet.png` · `nilkhantha-mobile.png` | 834px and 390px |
+| `kathmandu-desktop.png` | Densest district; age-sex nested, out of the jump nav |
+| `sudur-paschim-desktop.png` | Longest Nepali name in the country |
+| `manang-desktop-local-map.png` | Fewest local governments (4); quantile legend adapts |
+| `sarlahi-mobile-local-map.png` | Most local governments (20), at 390px — all labelled |
 
 **What to look for against `../current/`.** The fact strip's figures went from
 22px — the same size as the section headings above them — to the `stat` role.
@@ -45,6 +49,13 @@ survives. Every disclosure says the same kind of thing in the same place.
 **Measured, not eyeballed.** No horizontal overflow at 390, 834, 1440 or 1920
 on any of the three pages. Type at 1440: h1 52 · stat 30 · heading 22 ·
 body 15. At 834: 45 · 27 · 18. At 390: 36 · 24 · 17. Dhading 4,970 → 4,858.
+
+**Third stage.** All 7 provinces and 77 districts now use the system. Rather
+than open 84 pages, `web/scripts/check-place-pages.mjs` asserts the
+invariants the proof pages established against the built HTML of every one of
+them, and runs as `postbuild` so a regression fails the build. The four
+screenshots at the bottom of the table are the extremes it cannot judge:
+density, name length, and the sparsest and busiest local maps.
 
 **Second stage.** `bagmati-*` and `nilkhantha-*` are the province and
 local-government proof pages. Their "before" is
