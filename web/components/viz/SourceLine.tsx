@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Coverage } from "@/lib/coverage";
+import type { SourceDataset } from "@/lib/data";
 import { TYPE } from "@/lib/viz";
 
 /*
@@ -87,138 +87,132 @@ export function PeriodChip({
   );
 }
 
-/**
- * Coverage as a reader-facing property.
- *
- * Says how deep the data goes, in the reader's words rather than the schema's.
- * Not a colour-only signal: the label is the information.
- */
-export function CoverageBadge({
-  coverage,
-  showNote = false,
-}: {
-  coverage: Coverage;
-  showNote?: boolean;
-}) {
-  return (
-    <span className="inline-flex items-baseline gap-1.5">
-      <span
-        className="border-line text-ink-soft rounded-sm border px-1.5 py-0.5"
-        style={{ fontSize: TYPE.micro }}
-        title={coverage.note}
-      >
-        {coverage.label}
-      </span>
-      {coverage.hasTimeSeries && (
-        <span className="text-ink-faint" style={{ fontSize: TYPE.micro }}>
-          time series
-        </span>
-      )}
-      {showNote && (
-        <span className="text-ink-faint" style={{ fontSize: TYPE.small }}>
-          {coverage.note}
-        </span>
-      )}
-    </span>
-  );
-}
+/*
+  The expanded variant: the full chain, for a dataset or source page.
 
-/**
- * The expanded variant: the full chain, for a dataset or source page.
- *
- * Everything the compact line leaves out, which is most of it. Rendered as a
- * description list because that is what it is, and because a reader scanning
- * for the licence should not have to read the retrieval date first.
- */
-export function SourceDetail({
-  publisher,
-  acquiredFrom,
-  licence,
-  retrieved,
-  vintage,
-  methodologyUrl,
-  revises,
-  caveats = [],
-  downloads = [],
-}: {
-  publisher: string;
-  acquiredFrom?: string | null;
-  licence: string;
-  retrieved: string;
-  vintage: string;
-  methodologyUrl?: string | null;
-  revises?: boolean;
-  caveats?: string[];
-  downloads?: { label: string; href: string }[];
-}) {
-  const rows: [string, React.ReactNode][] = [
-    ["Publisher", publisher],
-    ...(acquiredFrom && acquiredFrom !== publisher
-      ? ([["Acquired from", acquiredFrom]] as [string, React.ReactNode][])
-      : []),
-    ["Reference period", vintage],
-    ["Licence", licence],
-    ["Retrieved", retrieved],
-    ...(revises !== undefined
-      ? ([
-          [
-            "Revisions",
-            revises
-              ? "The publisher revises figures after first release."
-              : "The publisher does not revise released figures.",
-          ],
-        ] as [string, React.ReactNode][])
-      : []),
-    ...(methodologyUrl
-      ? ([
-          [
-            "Methodology",
-            <a key="m" href={methodologyUrl} rel="noopener noreferrer" target="_blank">
-              Publisher’s methodology →
-            </a>,
-          ],
-        ] as [string, React.ReactNode][])
-      : []),
-  ];
+  This is the implementation that was already on /datasets/, lifted here
+  unchanged rather than replaced. The version that briefly lived in this file
+  was written for the design laboratory and was strictly weaker -- no source
+  tier, no acquisition method, no commercial-reuse statement -- so adopting it
+  on /datasets/ would have been a downgrade dressed as consolidation. The
+  laboratory now demonstrates the real thing, which is the only way a
+  laboratory is worth having.
+*/
 
+const TIER_LABEL: Record<string, string> = {
+  A: "Primary authoritative",
+  B: "Authoritative international",
+  C: "Trusted aggregator",
+  D: "Secondary",
+};
+
+const METHOD_LABEL: Record<string, string> = {
+  official_api: "Official API",
+  official_download: "Official download",
+  official_html: "Official web page",
+  undocumented_endpoint: "Undocumented endpoint",
+  mirror: "Mirror",
+  aggregator_api: "Aggregator API",
+  aggregator_download: "Aggregator download",
+  scrape: "Scrape",
+  pdf_extraction: "PDF extraction",
+  manual_entry: "Manual entry",
+};
+
+export function SourceDetail({ s }: { s: SourceDataset }) {
   return (
-    <div className="max-w-prose">
-      <dl className="divide-line border-line divide-y border-y">
-        {rows.map(([k, v]) => (
-          <div key={k} className="grid grid-cols-[9rem_1fr] gap-4 py-2">
-            <dt className="text-label text-ink-faint uppercase">{k}</dt>
-            <dd className="text-ink-soft" style={{ fontSize: TYPE.body }}>
-              {v}
+    <>
+      <dl className="mt-4 grid grid-cols-1 gap-x-8 gap-y-2 text-[13px] sm:grid-cols-2">
+        <div>
+          <dt className="text-label text-ink-faint uppercase">Published by</dt>
+          <dd className="text-ink mt-0.5">
+            {s.publisher_homepage ? (
+              <a href={s.publisher_homepage} rel="noopener noreferrer" target="_blank">
+                {s.publisher}
+              </a>
+            ) : (
+              s.publisher
+            )}
+            {s.publisher_name_ne && (
+              <span className="text-ink-faint"> · {s.publisher_name_ne}</span>
+            )}
+          </dd>
+          <dd className="text-ink-faint mt-0.5 text-[12px]">
+            Tier {s.source_tier} — {TIER_LABEL[s.source_tier ?? ""] ?? ""}
+          </dd>
+        </div>
+
+        <div>
+          <dt className="text-label text-ink-faint uppercase">Acquired by DataNepal</dt>
+          <dd className="text-ink mt-0.5">
+            {METHOD_LABEL[s.acquisition_method ?? ""] ?? s.acquisition_method}
+            {s.acquired_indirectly && <> via {s.acquired_from}</>}
+          </dd>
+          <dd className="text-ink-faint tabular mt-0.5 text-[12px]">
+            Retrieved {s.retrieved}
+          </dd>
+        </div>
+
+        <div>
+          <dt className="text-label text-ink-faint uppercase">Coverage</dt>
+          <dd className="text-ink tabular mt-0.5">
+            {s.time_coverage || s.vintage}
+            {s.geographic_granularity && s.geographic_granularity !== "none" && (
+              <> · to {s.geographic_granularity.replace(/_/g, " ")} level</>
+            )}
+          </dd>
+          {s.update_frequency && (
+            <dd className="text-ink-faint mt-0.5 text-[12px]">
+              Updated {s.update_frequency}
+              {s.revises_published_values && " · publisher revises past values"}
             </dd>
-          </div>
-        ))}
+          )}
+        </div>
+
+        <div>
+          <dt className="text-label text-ink-faint uppercase">Reuse</dt>
+          <dd className="text-ink mt-0.5">
+            {s.licence_statement_url ? (
+              <a
+                href={s.licence_statement_url}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                {s.licence}
+              </a>
+            ) : (
+              s.licence
+            )}
+          </dd>
+          <dd className="text-ink-faint mt-0.5 text-[12px]">
+            Commercial use: {(s.commercial_reuse ?? "unclear").replace(/_/g, " ")}
+          </dd>
+        </div>
       </dl>
 
-      {caveats.length > 0 && (
-        <ul
-          className="text-ink-faint mt-4 list-disc space-y-1 pl-5"
-          style={{ fontSize: TYPE.small }}
-        >
-          {caveats.map((c) => (
-            <li key={c}>{c}</li>
+      {s.caveats.length > 0 && (
+        <ul className="text-ink-soft mt-4 space-y-1 text-[12px]">
+          {s.caveats.map((c, i) => (
+            <li key={i} className="border-line-strong border-l-2 pl-3">
+              {c}
+            </li>
           ))}
         </ul>
       )}
 
-      {downloads.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {downloads.map((d) => (
-            <a
-              key={d.href}
-              href={d.href}
-              download
-              className="border-line-strong text-ink-soft hover:bg-surface-sunken rounded border px-2.5 py-1 font-mono text-[11px] no-underline"
-            >
-              ↓ {d.label}
+      <p className="mt-4 text-[12px]">
+        <a href={s.url} rel="noopener noreferrer" target="_blank">
+          View at source
+        </a>
+        {s.methodology_url && (
+          <>
+            {" · "}
+            <a href={s.methodology_url} rel="noopener noreferrer" target="_blank">
+              Methodology
             </a>
-          ))}
-        </div>
-      )}
-    </div>
+          </>
+        )}
+      </p>
+    </>
   );
 }

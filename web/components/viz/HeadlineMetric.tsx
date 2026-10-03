@@ -44,6 +44,22 @@ export type HeadlineMetricProps = {
   context?: string | null;
   /** Why the value is missing, when it is. */
   missingNote?: string | null;
+  /**
+   * A second figure for the same measure at a different date.
+   *
+   * Nepal publishes a 2021 census count and a 2023 UNFPA projection for every
+   * place. Both are real and neither replaces the other, so the projection
+   * gets its own labelled line with its own period chip rather than being
+   * dropped or folded into the caption. Showing only the census is not wrong;
+   * it is just less than the platform holds, and it was what these pages did
+   * for three commits after the registry renderer was retired.
+   */
+  secondary?: {
+    label: string;
+    value: string;
+    period: string | number;
+    status?: MetricStatus | null;
+  } | null;
 };
 
 export function HeadlineMetric({
@@ -56,6 +72,7 @@ export function HeadlineMetric({
   source,
   context,
   missingNote,
+  secondary,
   lead = false,
 }: HeadlineMetricProps & { lead?: boolean }) {
   const statusWord = status ? STATUS_WORD[status] : null;
@@ -127,6 +144,32 @@ export function HeadlineMetric({
                   {change.text}
                 </span>
               )}
+            </div>
+          )}
+
+          {secondary && (
+            /*
+              Deliberately not the same size as the headline. Two figures at
+              one weight invite a reader to divide them, and dividing a 2023
+              population by 2021 households gives 4.0 people per household
+              instead of 3.75 -- each figure correct, the ratio not.
+            */
+            <div className="mt-3">
+              <div className="text-ink-faint" style={{ fontSize: TYPE.micro }}>
+                {secondary.label}
+              </div>
+              <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                <span
+                  className="text-ink-soft tabular font-medium"
+                  style={{ fontSize: TYPE.body }}
+                >
+                  {secondary.value}
+                </span>
+                <PeriodChip
+                  period={secondary.period}
+                  status={secondary.status ? STATUS_WORD[secondary.status] : null}
+                />
+              </div>
             </div>
           )}
 

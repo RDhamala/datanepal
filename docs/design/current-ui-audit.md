@@ -5,11 +5,9 @@ data build 24 August 2026, using the baselines in `references/current/` plus
 the source and the published Parquet. Every figure below was measured or
 computed, not estimated; the commands are in §11.
 
-Findings §1–§6, §8 and §9 are resolved; §6 and §9 carry corrections, because
-measuring them in the browser showed the original diagnosis was wrong in both
-cases. §7 is resolved in the code but its text here has not been re-verified.
-§10 is partly addressed — every figure now carries a period chip, but
-provenance still has one weight.
+All ten findings are resolved. §6 and §9 carry corrections, because measuring
+them in the browser showed the original diagnosis was wrong in both cases, and
+§7 and §10 were re-verified against the built output rather than assumed.
 
 These are **system-level defects** — defaults, contracts and missing
 abstractions. Each one would reappear in the next feature if only its current
@@ -192,26 +190,32 @@ figure outranks the heading above it, and nothing outranks the page title.*
 `--text-display` also became fluid (36px → 52px), because 52px fixed is
 assertive on a 390px phone.
 
-## 7. Comparative context exists at one of four place levels
+## 7. Comparative context existed at one of four place levels — resolved
 
-**Evidence.** `benchmarksFor` is imported by
-`app/np/[province]/[district]/page.tsx` only. The province page, the
-local-government page and the national page render `PlaceProfile` /
-`TopicSummary` without a benchmark.
+**Evidence.** `benchmarksFor` was imported by
+`app/np/[province]/[district]/page.tsx` only. Province, local-government and
+national pages rendered no comparison.
 
-**Why it is system-level.** The capability is built and the data supports it
-at every level; what is missing is the decision that a place page *always*
-situates its figures. A reader on Bagmati or on Nilkhantha gets a record;
-a reader on Dhading gets a profile. Census Reporter puts the comparison
-inline with every number ("a little higher than the figure in California:
-38.4") and is the reference for what this should feel like.
+**Re-verified 3 October 2026**, from the built HTML rather than from the code,
+because "it is wired up" and "it renders" are different claims:
 
-**Fix.** Make the benchmark module part of the place-page template rather than
-one page's feature, and state the comparison in words — "Dhading's literacy is
-X% against a national median of Y%, Nth of 77" — directly under the fact strip.
+| Level | Lineage shown | Verdict line |
+|---|---|---|
+| Country | *none* | — |
+| Province | Nepal | above the national figure · 1 of 7 by this measure |
+| District | Bagmati, Nepal | below the national figure · 54 of 77 |
+| Local government | Dhading, Bagmati, Nepal | below the national figure · 147 of 276 |
 
-**Touches.** `app/np/[province]/page.tsx`,
-`app/np/[province]/[district]/[local]/page.tsx`, `components/PlaceProfile.tsx`.
+The lineage deepens by one row per level and the rank is against same-type
+peers. **The country's absence is correct, not an omission**: `benchmarksFor`
+walks the parent chain, Nepal has none, and comparing a national figure with
+itself would be a fabrication. So this is three of four by design rather than
+four of four, and `scripts/check-place-pages.mjs` asserts it both ways — every
+other place page must carry a benchmark, and `/np/` must not.
+
+A defect found while doing this: 18 local governments share a name with an
+ancestor, so Kathmandu Metropolitan City listed "Kathmandu 90.5%" above
+"Kathmandu 89.2%". Colliding ancestors are now qualified with their type.
 
 ## 8. Places can be compared only within one parent
 
@@ -262,29 +266,38 @@ label that may be in either place. `tspan` now uses the chosen position.
 `MapLabels`; this change applied the same fix to both rather than merging
 them, which is a refactor the proof page did not need.
 
-## 10. Provenance is present everywhere and weighted nowhere
+## 10. Provenance was present everywhere and weighted nowhere — resolved
 
-**Evidence.** On the Bagmati page the population row reads `6,116,866 Persons`
+**Evidence.** On the Bagmati page the population row read `6,116,866 Persons`
 with `6,487,756 · 2023 projection` beneath it, in grey microcopy at the same
-size as every other caption. Both figures are individually correct and
-correctly labelled; the reference-period difference between them is carried
-entirely by small grey text.
+size as every other caption. Both figures individually correct; the
+reference-period difference carried entirely by small grey text.
 
-**Why it is system-level.** The platform's central hazard is a reader
-combining a 2021 count with a 2023 projection — the household-size example in
-`CLAUDE.md` turns 3.75 into 4.0. The data layer tracks `status` and
-`period_type` rigorously, and the interface then renders that distinction at
-the same visual weight as a unit label. Data México's vintage chip on every
-KPI is the reference for the alternative.
+**Resolved.** Reference period has a visual role of its own. Every figure on a
+place page carries a `PeriodChip` bound to it, and a later projection is a
+labelled secondary line at body size with its own chip — Bagmati now reads
+**6,116,866 · 2021**, then *Later projection* **6,487,756 · 2023 projection**,
+deliberately at a smaller weight, because two figures at one weight invite a
+reader to divide them. A section mixing reference periods says so once, in
+words, through `periodNote`.
 
-**Fix.** Give reference period a visual role of its own — a chip bound to the
-figure, not a caption under it — and make a mixed-period section say so once,
-prominently, rather than relying on the reader to compare two grey strings.
+**A regression found while verifying this.** Retiring the registry renderer
+dropped `laterEstimate` from province, district and national pages entirely:
+for three commits those pages showed the census count and silently omitted the
+projection the platform also publishes. Not wrong, but less than the data
+holds, and exactly the figure this finding was written about. Restored as a
+first-class slot on `HeadlineMetric` rather than as prose.
 
-**Touches.** `components/viz/MetricStrip.tsx`, `components/PlaceProfile.tsx`,
-`lib/format.ts` (`statusLabel`).
-
----
+**Two duplicate implementations retired.** `SourceDetail` and `CoverageBadge`
+were written for the design laboratory and shipped nowhere. `/datasets/`
+already rendered a fuller provenance chain than `SourceDetail` did — source
+tier, acquisition method, commercial-reuse statement — so adopting the
+laboratory's version would have been a downgrade dressed as consolidation.
+The real block moved into `viz/SourceLine` instead and both now use it.
+`CoverageBadge` was deleted outright: `/indicators/` ships coverage as plain
+text in the row meta plus a filter, and a second implementation of coverage
+display is the same hazard as a second map-label renderer was. The laboratory
+demonstrates what ships, which is the only way a laboratory is worth having.
 
 ## Not findings
 

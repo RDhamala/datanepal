@@ -18,6 +18,8 @@ import {
   places,
   populationOf,
   seriesFor,
+  sourcesFor,
+  tablesFor,
   spreadFor,
   units,
 } from "@/lib/data";
@@ -31,12 +33,7 @@ import { Composition, Distribution } from "@/components/viz/Composition";
 import { DataDisclosure, DataGrid } from "@/components/viz/DataDisclosure";
 import { Figure } from "@/components/viz/Figure";
 import { HeadlineMetric, HeadlineMetricGroup } from "@/components/viz/HeadlineMetric";
-import {
-  CoverageBadge,
-  PeriodChip,
-  SourceDetail,
-  SourceLine,
-} from "@/components/viz/SourceLine";
+import { PeriodChip, SourceDetail, SourceLine } from "@/components/viz/SourceLine";
 import { Crumbs, PageHeader } from "@/components/ui";
 import { DESIGN_LAB_ENABLED } from "@/lib/design-lab";
 
@@ -163,6 +160,7 @@ export default async function DesignLab() {
     ["population", "households", "literacy_rate"],
     { maxWidth: 520, maxHeight: 420 },
   );
+  const sources = sourcesFor(tablesFor(["observations", "places", "geography"]));
   const geo = await boundaries();
   const districtShapes = geo
     .filter((g) => g.parent_place_id === bagmati.place_id && g.admin_level === 2)
@@ -590,7 +588,18 @@ export default async function DesignLab() {
                   className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2.5"
                 >
                   <span className="text-ink text-[13px]">{indicator!.name_en}</span>
-                  <CoverageBadge coverage={c!} />
+                  {/*
+                    The treatment /indicators/ actually ships: plain text in
+                    the row's meta line, and a filter above it. A bordered
+                    badge per row was the laboratory's own invention and
+                    nothing used it -- a second implementation of coverage
+                    display is the same hazard as a second map-label
+                    renderer, and this bench is where it would have hidden.
+                  */}
+                  <span className="text-ink-faint text-[12px]">
+                    {c!.label}
+                    {c!.hasTimeSeries && " · time series"}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -602,21 +611,22 @@ export default async function DesignLab() {
 
         <div className="mt-10">
           <Variant label="Expanded — the dataset variant">
-            <SourceDetail
-              publisher="National Statistics Office, Nepal"
-              acquiredFrom="Humanitarian Data Exchange"
-              vintage="2021 census"
-              licence="CC BY 4.0"
-              retrieved="2026-08-24"
-              revises={false}
-              caveats={[
-                "Institutional population is reported at district level only, so local governments sum to 28,925,480 rather than to the national total.",
-                "Two local governments resolve through an explicit name-fix seed rather than an automated match.",
-              ]}
-              downloads={[
-                { label: "observations.parquet", href: "/data/observations.parquet" },
-              ]}
-            />
+            {/*
+              The real provenance block, on a real source.
+
+              This bench used to render a hand-written approximation with
+              fewer fields than /datasets/ actually shows, which made the
+              laboratory a worse reference than the page it was meant to
+              govern. It takes a published SourceDataset now, so what is
+              demonstrated here and what ships are the same component.
+            */}
+            {sources[0] ? (
+              <SourceDetail s={sources[0]} />
+            ) : (
+              <p className="text-ink-faint text-[13px]">
+                No source datasets published.
+              </p>
+            )}
           </Variant>
         </div>
       </Bench>

@@ -218,8 +218,13 @@ export default async function NepalPage() {
             value: pop ? formatNumber(pop.total) : null,
             period: pop?.period,
             status: pop?.status === "actual" ? "census" : "projection",
-            context: pop?.laterEstimate
-              ? `${formatNumber(pop.laterEstimate.value)} projected for ${pop.laterEstimate.period}.`
+            secondary: pop?.laterEstimate
+              ? {
+                  label: "Later projection",
+                  value: formatNumber(pop.laterEstimate.value),
+                  period: pop.laterEstimate.period,
+                  status: "projection" as const,
+                }
               : null,
             missingNote: "No census population published.",
           },

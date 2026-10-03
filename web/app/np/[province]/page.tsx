@@ -203,6 +203,14 @@ export default async function ProvincePage({ params }: { params: Promise<Params>
             period: pop?.period,
             status: pop?.status === "actual" ? "census" : "projection",
             missingNote: "No census population published for this province.",
+            secondary: pop?.laterEstimate
+              ? {
+                  label: "Later projection",
+                  value: formatNumber(pop.laterEstimate.value),
+                  period: pop.laterEstimate.period,
+                  status: "projection" as const,
+                }
+              : null,
           },
           {
             label: "Households",
