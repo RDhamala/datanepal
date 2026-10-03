@@ -95,7 +95,13 @@ export function Section({
     >
       <div className={accent ? "max-w-page mx-auto" : ""}>
         <div className="flex flex-wrap items-baseline justify-between gap-x-8 gap-y-1">
-          <h2 className="flex items-baseline gap-3.5">
+          {/*
+          The number sits beside the heading, not inside it. It is decoration
+          and reads as such to assistive tech; keeping it out of the <h2> also
+          means the heading's text starts where a reader -- or a check on the
+          rendered markup -- expects the title to start.
+        */}
+          <div className="flex items-baseline gap-3.5">
             {n !== undefined && (
               <span
                 className="text-brand tabular text-[11px] font-semibold"
@@ -105,7 +111,7 @@ export function Section({
                 {String(n).padStart(2, "0")}
               </span>
             )}
-            <span
+            <h2
               className="text-ink text-[clamp(1.5rem,1.15rem+1.2vw,2rem)] leading-[1.08] font-semibold tracking-[-0.025em]"
               style={ROLE.section}
             >
@@ -118,8 +124,8 @@ export function Section({
                   {titleNe}
                 </span>
               )}
-            </span>
-          </h2>
+            </h2>
+          </div>
           {action && (
             <Link
               href={action.href}
@@ -309,9 +315,29 @@ export function BenchmarkLine({
   const hi = Math.ceil(Math.max(...values) / 5) * 5 + 5;
   const at = (v: number) => ((v - lo) / (hi - lo)) * 100;
 
+  /*
+    Two marks close together collide.
+
+    Nilkhantha reads 75.8% and Nepal 76.2% -- four tenths of a point apart,
+    which put "75.8%" and "76.2%" on top of each other and printed the two
+    place names as one word. Marks within 9% of the axis get their label
+    raised a row, alternating, so a near-tie stays readable.
+  */
+  const placed = [...rows]
+    .map((r, i) => ({ ...r, pos: at(r.value), i }))
+    .sort((a, b) => a.pos - b.pos);
+  const lift = new Map<number, boolean>();
+  let lastPos = -Infinity;
+  let raised = false;
+  for (const r of placed) {
+    raised = r.pos - lastPos < 9 ? !raised : false;
+    lift.set(r.i, raised);
+    lastPos = r.pos;
+  }
+
   return (
     <div>
-      <div className="relative h-[86px]">
+      <div className="relative h-[112px]">
         <div
           className="bg-line absolute top-11 right-0 left-0 h-px"
           aria-hidden="true"
@@ -319,7 +345,7 @@ export function BenchmarkLine({
         {[lo, hi].map((v, i) => (
           <span
             key={v}
-            className="text-ink-faint tabular absolute top-[52px] text-[11px]"
+            className="text-ink-faint tabular absolute top-[76px] text-[11px]"
             style={{ left: i === 0 ? 0 : undefined, right: i === 1 ? 0 : undefined }}
             aria-hidden="true"
           >
@@ -327,11 +353,14 @@ export function BenchmarkLine({
             {unitSuffix}
           </span>
         ))}
-        {rows.map((r) => (
+        {rows.map((r, i) => (
           <div
             key={r.label + r.level}
-            className="absolute top-0 -translate-x-1/2"
-            style={{ left: `${Math.min(93, Math.max(7, at(r.value)))}%` }}
+            className="absolute -translate-x-1/2"
+            style={{
+              left: `${Math.min(93, Math.max(7, at(r.value)))}%`,
+              top: lift.get(i) ? 0 : 26,
+            }}
           >
             <p
               className={`tabular text-center text-[13px] leading-none whitespace-nowrap ${
@@ -349,7 +378,8 @@ export function BenchmarkLine({
               {r.label}
             </p>
             <div
-              className={`mx-auto mt-1 ${r.isSelf ? "bg-ink h-5 w-[3px]" : "bg-ink-faint h-4 w-px"}`}
+              className={`mx-auto mt-1 ${r.isSelf ? "bg-ink w-[3px]" : "bg-ink-faint w-px"}`}
+              style={{ height: lift.get(i) ? 36 : 10 }}
               aria-hidden="true"
             />
           </div>
