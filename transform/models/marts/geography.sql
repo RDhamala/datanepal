@@ -7,13 +7,25 @@
   Derived from places, which is canonical. This exists because walking the
   parent chain is a real cost for consumers who just want a flat file, not
   because the hierarchy should be stored twice.
+
+  Current geography only. `places` holds abolished places too (ADR-0008), and
+  this table is what `assert_geography_completeness` counts 753 against -- so
+  the filter is load-bearing, not tidiness. A historical local unit reaching
+  here would break that count in a way that reads as a source problem.
 */
 
 with lu as (
-    select * from {{ ref('places') }} where admin_level = 3
+    select * from {{ ref('places') }}
+    where admin_level = 3 and is_current
 ),
-d as (select place_id, name_en, ocha_pcode from {{ ref('places') }} where admin_level = 2),
-p as (select place_id, name_en, name_ne, ocha_pcode from {{ ref('places') }} where admin_level = 1)
+d as (
+    select place_id, name_en, ocha_pcode from {{ ref('places') }}
+    where admin_level = 2 and is_current
+),
+p as (
+    select place_id, name_en, name_ne, ocha_pcode from {{ ref('places') }}
+    where admin_level = 1 and is_current
+)
 
 select
     lu.place_id,

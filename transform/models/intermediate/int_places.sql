@@ -14,10 +14,16 @@
      or a historical unit that was merged. Encoding the hierarchy as data rather
      than as string arithmetic is what keeps those representable.
 
-  `valid_from` / `valid_to` are present and mostly NULL. Nepal's 2017 federal
-  restructuring means historical geography will eventually matter; carrying the
-  columns now costs nothing and avoids a migration that would touch every
-  observation later. Populating them is deliberately out of scope.
+  3. `valid_from` / `valid_to` are populated, and places that no longer exist
+     stay here rather than disappearing. See docs/adr/0008. Validity defaults
+     come from `place_validity` keyed on place_type, because they are facts with
+     citations rather than constants; historical places carry their own dates
+     from `historical_places` and are deliberately *not* coalesced against the
+     defaults, or old Nawalparasi would inherit the 2015 date that abolished it.
+
+  `superseded_by_place_id` is not set here. It is derived in the `places` mart
+  from `int_place_successions`, which depends on this model -- computing it here
+  would be a cycle. The edge table is authoritative either way.
 */
 
 with units as (
@@ -109,18 +115,70 @@ all_places as (
     union all select * from protected
 ),
 
+/*
+  Identity is derived from `identity_value`, which is the P-code for a current
+  place and the seeded `historical_id` for a place that no longer exists. For
+  current places this is byte-identical to the previous expression, so existing
+  place_ids are unchanged -- which matters, because every observation
+  references them.
+*/
+current_places as (
+    select
+        a.*,
+        a.source_pcode        as identity_value,
+        false                 as is_historical,
+        cast(null as date)    as seed_valid_from,
+        cast(null as date)    as seed_valid_to
+    from all_places a
+),
+
+/*
+  Places that no longer exist. Seeded rather than derived: the COD publishes
+  current geography only, so there is no source to read these from.
+*/
+historical as (
+    select
+        h.place_type,
+        cast(null as varchar) as source_pcode,
+        -- Pre-federal districts nested under zones and development regions,
+        -- which this platform does not model. NULL rather than a current
+        -- province: old Nawalparasi spanned two of them.
+        cast(null as varchar) as parent_pcode,
+        h.name_en,
+        h.name_ne             as name_ne_seed,
+        h.admin_level,
+        cast(null as double)  as area_sqkm,
+        cast(null as double)  as center_lat,
+        cast(null as double)  as center_lon,
+        h.historical_id       as identity_value,
+        true                  as is_historical,
+        h.valid_from          as seed_valid_from,
+        h.valid_to            as seed_valid_to
+    from {{ ref('historical_places') }} h
+),
+
+combined as (
+    select * from current_places
+    union all by name
+    select * from historical
+),
+
 with_ids as (
     select
-        coalesce(o.place_id, {{ derive_place_id('a.place_type', 'a.source_pcode') }})
+        coalesce(o.place_id, {{ derive_place_id('a.place_type', 'a.identity_value') }})
                                   as place_id,
         a.*
-    from all_places a
+    from combined a
     left join overrides o
         on o.id_system = 'ocha_pcode' and o.id_value = a.source_pcode
 ),
 
 parents as (
-    select source_pcode, place_id from with_ids
+    select source_pcode, place_id from with_ids where source_pcode is not null
+),
+
+validity as (
+    select place_type, valid_from, valid_to from {{ ref('place_validity') }}
 )
 
 select
@@ -140,11 +198,21 @@ select
     w.center_lat,
     w.center_lon,
 
-    cast(null as date)                 as valid_from,
-    cast(null as date)                 as valid_to,
-    cast(null as varchar)              as superseded_by_place_id,
+    -- Historical places carry their own dates and are not defaulted. A
+    -- coalesce here would give an abolished district the valid_from of the
+    -- instrument that abolished it.
+    case when w.is_historical then w.seed_valid_from else v.valid_from end
+                                       as valid_from,
+    case when w.is_historical then w.seed_valid_to   else v.valid_to   end
+                                       as valid_to,
+    w.is_historical,
 
-    'cod-ab-npl'                       as dataset_id
+    -- Historical places come from the seed, not the COD, and must say so:
+    -- the licence of a published table is computed from the dataset_ids its
+    -- rows carry.
+    case when w.is_historical then 'datanepal-internal' else 'cod-ab-npl' end
+                                       as dataset_id
 
 from with_ids w
-left join parents p on w.parent_pcode = p.source_pcode
+left join parents p  on w.parent_pcode = p.source_pcode
+left join validity v on w.place_type = v.place_type

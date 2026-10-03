@@ -1,6 +1,57 @@
 version: 2
 
 seeds:
+  - name: place_validity
+    description: >
+      When each kind of place came into existence, keyed on place_type, with
+      the instrument that created it. Seeded rather than hardcoded in SQL
+      because these are facts with citations, and one of them is uncertain: 744
+      local units were gazetted on 10 March 2017 and the count later rose to
+      753. The gazette date for the additional nine, all in Madhesh, is not
+      established, so all 753 carry 2017-03-10 — right for 744 and possibly
+      early for nine. Correct it from the gazette rather than by inference.
+    columns:
+      - name: place_type
+        tests: [unique, not_null]
+
+  - name: historical_places
+    description: >
+      Places that no longer exist. Seeded because no source publishes them: the
+      OCHA COD carries current geography only. Two rows today — the pre-2015
+      Nawalparasi and Rukum districts — which is enough to exercise the whole
+      temporal model against verifiable history. See docs/adr/0008.
+    columns:
+      - name: historical_id
+        description: >
+          Stable identifier in the `datanepal_historical` namespace. Hashed
+          into a place_id the same way a P-code is, so a historical place is
+          keyed exactly like a current one.
+        tests: [unique, not_null]
+      - name: name_en
+        tests: [not_null]
+      - name: valid_to
+        description: The date the place ceased to exist. Required.
+        tests: [not_null]
+
+  - name: place_succession_edges
+    description: >
+      Edges from a predecessor place to its successors. Both endpoints are
+      named by (id_system, id_value) and resolved through place_identifiers, so
+      a row can point from a historical place with no P-code to a current one
+      with no historical id.
+    columns:
+      - name: predecessor_id_value
+        tests: [not_null]
+      - name: successor_id_value
+        tests: [not_null]
+      - name: succession_type
+        tests:
+          - not_null
+          - accepted_values:
+              values: [split, merged, renamed, reassigned, created, abolished]
+      - name: effective_date
+        tests: [not_null]
+
   - name: np_provinces
     description: >
       Nepal's seven federal provinces, hand-verified. This is the only part of

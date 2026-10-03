@@ -1,0 +1,9 @@
+place_type,valid_from,valid_to,instrument,note
+country,,,,"Open start. Nepal predates every series this platform holds, and World Bank data attaches to the country back to 1960; a valid_from here would fail every observation before it."
+province,2015-09-20,,Constitution of Nepal 2072 (2015),"Promulgated 20 September 2015. Schedule 4 created the seven provinces; names were assigned later and are not a change of identity."
+district,2015-09-20,,Constitution of Nepal 2072 (2015),"Same instrument. The 75-district structure became 77 here: Nawalparasi and Rukum were each split across a new provincial boundary."
+metropolitan,2017-03-10,,Nepal Gazette 10 March 2017,"744 local units were gazetted on this date; the count later rose to 753. See the caveat on the additional nine."
+sub_metropolitan,2017-03-10,,Nepal Gazette 10 March 2017,"744 local units were gazetted on this date; the count later rose to 753. See the caveat on the additional nine."
+municipality,2017-03-10,,Nepal Gazette 10 March 2017,"744 local units were gazetted on this date; the count later rose to 753. See the caveat on the additional nine."
+rural_municipality,2017-03-10,,Nepal Gazette 10 March 2017,"744 local units were gazetted on this date; the count later rose to 753. See the caveat on the additional nine."
+protected_area,,,,"Open start. Protected areas were established individually over decades, not by the federal restructuring, and per-area establishment dates are not held here. NULL is the absence of a verified date, not a claim that they are timeless."

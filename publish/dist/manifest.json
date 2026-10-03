@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-24T22:30:07.907152+00:00",
-  "table_count": 16,
+  "generated_at": "2026-10-03T20:06:54.624832+00:00",
+  "table_count": 17,
   "tables": [
     {
       "table": "datasets",
@@ -169,7 +169,7 @@
       "row_count": 43360,
       "parquet": "observation_dimensions.parquet",
       "json": null,
-      "bytes": 506675
+      "bytes": 506639
     },
     {
       "table": "observations",
@@ -288,10 +288,36 @@
       "caveats": [
         "Identifier values are unique within their system, not globally. Always qualify a lookup by id_system.\n"
       ],
-      "row_count": 1351,
+      "row_count": 1353,
       "parquet": "place_identifiers.parquet",
       "json": "place_identifiers.json",
-      "bytes": 21355
+      "bytes": 21486
+    },
+    {
+      "table": "place_successions",
+      "title": "Place successions",
+      "title_ne": "स्थान उत्तराधिकार",
+      "description": "Which places became which, and when. One row per (predecessor, successor) edge: a split is one predecessor with several successors, a merge is the reverse. Readable in both directions — filter on predecessor to ask what a place became, on successor to ask what a place was before.",
+      "grain": "One row per (predecessor place, successor place, effective date).",
+      "geography_level": "mixed",
+      "sources": [
+        "datanepal-internal"
+      ],
+      "effective_licence": "cc0-1.0",
+      "share_alike": false,
+      "contributing_licences": [
+        "cc0-1.0"
+      ],
+      "attribution": [],
+      "caveats": [
+        "share_value is NULL wherever apportioning the predecessor's statistics across its successors would require a model. That is a deliberate refusal, not missing data: DataNepal does not publish estimates alongside enumerated figures without labelling them. A share is recorded only where the split is exact, and share_basis states what it is a share of.\n",
+        "Coverage is the 2015 constitutional splits of Nawalparasi and Rukum. The 2017 replacement of 3,915 VDCs and 58 municipalities by 753 local units is not yet recorded here.\n",
+        "An edge asserts succession, not equivalence of territory. Boundaries were also adjusted at these events, so a successor is not simply a subset of its predecessor.\n"
+      ],
+      "row_count": 4,
+      "parquet": "place_successions.parquet",
+      "json": "place_successions.json",
+      "bytes": 3532
     },
     {
       "table": "places",
@@ -302,7 +328,8 @@
       "geography_level": "mixed",
       "sources": [
         "cod-ab-npl",
-        "wikidata-np-places"
+        "wikidata-np-places",
+        "datanepal-internal"
       ],
       "effective_licence": "cc-by-igo-3.0",
       "share_alike": false,
@@ -317,12 +344,16 @@
       "caveats": [
         "place_id is a DataNepal surrogate, not a source code. Source identifiers (OCHA P-codes, Wikidata QIDs) live in place_identifiers so a place survives a source renumbering its codes.\n",
         "Parent relationships are explicit foreign keys, not derived from P-code substrings. Substring nesting works for the administrative hierarchy and breaks for constituencies and protected areas.\n",
-        "Nepali names cover provinces (hand-verified) and ~66% of local units (Wikidata). Districts have none yet. NULL means no verified name exists; names are never transliterated.\n"
+        "Nepali names cover provinces (hand-verified) and ~66% of local units (Wikidata). Districts have none yet. NULL means no verified name exists; names are never transliterated.\n",
+        "This table includes places that no longer exist. Filter on is_current unless you specifically want historical geography. is_current is derived from valid_to being NULL and is never stored separately.\n",
+        "Validity is the half-open interval [valid_from, valid_to). valid_from is NULL for the country and for protected areas, meaning no verified start date rather than existence without beginning.\n",
+        "Local units carry valid_from 2017-03-10, the date 744 were gazetted. The count later rose to 753 and the gazette date for the additional nine, all in Madhesh, is not established — so that date is right for 744 of them and possibly early for nine.\n",
+        "Pre-federal districts have a NULL parent_place_id. They nested under zones and development regions, which are not modelled, and old Nawalparasi spanned what are now two provinces, so naming one would be false.\n"
       ],
-      "row_count": 860,
+      "row_count": 862,
       "parquet": "places.parquet",
       "json": "places.json",
-      "bytes": 65160
+      "bytes": 65645
     },
     {
       "table": "protected_areas",
@@ -368,10 +399,10 @@
       ],
       "attribution": [],
       "caveats": [],
-      "row_count": 23,
+      "row_count": 25,
       "parquet": "table_sources.parquet",
       "json": "table_sources.json",
-      "bytes": 736
+      "bytes": 759
     },
     {
       "table": "topics",

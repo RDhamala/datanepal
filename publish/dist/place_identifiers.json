@@ -1,4 +1,6 @@
 [
+	{"place_id":"pl_5df531843000","id_system":"datanepal_historical","id_value":"np-hist-district-nawalparasi","is_authoritative":true,"valid_from":null,"valid_to":null,"dataset_id":"datanepal-internal"},
+	{"place_id":"pl_160ef0c8190e","id_system":"datanepal_historical","id_value":"np-hist-district-rukum","is_authoritative":true,"valid_from":null,"valid_to":null,"dataset_id":"datanepal-internal"},
 	{"place_id":"pl_2946c32a7cba","id_system":"iso_3166_1_alpha2","id_value":"NP","is_authoritative":true,"valid_from":null,"valid_to":null,"dataset_id":"datanepal-internal"},
 	{"place_id":"pl_68d0989db919","id_system":"iso_3166_2","id_value":"NP-P1","is_authoritative":false,"valid_from":null,"valid_to":null,"dataset_id":"datanepal-internal"},
 	{"place_id":"pl_16d1405381bf","id_system":"iso_3166_2","id_value":"NP-P2","is_authoritative":false,"valid_from":null,"valid_to":null,"dataset_id":"datanepal-internal"},
