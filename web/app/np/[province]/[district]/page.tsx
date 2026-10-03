@@ -27,7 +27,7 @@ import {
 } from "@/lib/data";
 import { AgePyramid } from "@/components/AgePyramid";
 import { MetricMap } from "@/components/MetricMap";
-import { profileSections } from "@/components/PlaceProfile";
+import { profileSections } from "@/lib/profile";
 import { TopicSummary } from "@/components/viz/TopicSummary";
 import { ComparePanel } from "@/components/viz/ComparePanel";
 import { Composition, Distribution } from "@/components/viz/Composition";

@@ -39,6 +39,9 @@ design, and the baseline still describes them.
 | `lg-kathmandu-metropolitan-desktop.png` | A metropolitan city named after its own district |
 | `lg-longest-nepali-desktop.png` | बाह्रगाउँ मुक्तिक्षेत्र गाउँपालिका — longest Nepali name |
 | `lg-longest-english-mobile.png` | Diktel Rupakot Majhuwagadhi at 390px — 27 characters, two lines |
+| `nepal-desktop-overview.png` | Nepal's own page: identity, metrics, ten topic sections |
+| `nepal-desktop-elections.png` | Elections as a distribution, and the province map with its ranking |
+| `nepal-tablet.png` · `nepal-mobile-age-sex.png` | 834px and 390px |
 
 **What to look for against `../current/`.** The fact strip's figures went from
 22px — the same size as the section headings above them — to the `stat` role.
@@ -52,6 +55,19 @@ survives. Every disclosure says the same kind of thing in the same place.
 **Measured, not eyeballed.** No horizontal overflow at 390, 834, 1440 or 1920
 on any of the three pages. Type at 1440: h1 52 · stat 30 · heading 22 ·
 body 15. At 834: 45 · 27 · 18. At 390: 36 · 24 · 17. Dhading 4,970 → 4,858.
+
+**Fifth stage.** Nepal's own page, at `/np/`. It had never existed: every
+level below the country had a profile and the country did not, because the
+homepage looks like it fills that role and does not. It is the only page with
+all 36 indicators, so it carries ten topic sections where every other place
+carries two, and the only page with no benchmark — Nepal has no ancestor, and
+comparing a national figure with itself would be a fabrication.
+
+Elections is the section worth opening. All three of its indicators are
+dimensioned by party with no total, so a profile built from scalars drops the
+topic entirely — on the one page in the country where the election happened.
+It renders the ranked parties instead, saying plainly that they are components
+rather than a total.
 
 **Fourth stage.** All 753 local-government pages. `check-place-pages.mjs`
 now covers 837 pages in under a second and the vitest counterpart walks every

@@ -88,7 +88,20 @@ export default async function PlacesIndex() {
         eyebrow="Browse"
         title="Places"
         native="स्थानहरू"
-        meta={`7 provinces · 77 districts · ${localCount} local units, on the OCHA P-code spine`}
+        meta={
+          <>
+            {/*
+              The top of the hierarchy, linked.
+
+              Nepal gained a place page of its own and nothing pointed at it.
+              An unreachable page is worse than a missing one: it is in the
+              sitemap, it is in search results, and no reader arrives at it
+              from the site.
+            */}
+            <Link href="/np/">Nepal</Link> · 7 provinces · 77 districts · {localCount}{" "}
+            local units, on the OCHA P-code spine
+          </>
+        }
       />
 
       {/* Search first, because it is the only route to the 753 local units. */}

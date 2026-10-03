@@ -5,7 +5,7 @@ import type { Benchmark as BenchmarkData, ProfileTopic } from "@/lib/data";
 import { COLOR, TYPE } from "@/lib/viz";
 import { Benchmark } from "./Benchmark";
 import { HeadlineMetric } from "./HeadlineMetric";
-import { periodNote } from "../PlaceProfile";
+import { periodNote } from "@/lib/profile";
 import { PairedBars } from "./MetricStrip";
 
 /*

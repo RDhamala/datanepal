@@ -20,6 +20,7 @@ import {
   benchmarksFor,
   boundaries,
   country,
+  distributionsFor,
   districtsOf,
   localUnitsOf,
   placeProfile,
@@ -42,6 +43,41 @@ async function allPlaces() {
 }
 
 describe("every place page has what it needs", () => {
+  it("gives Nepal every topic, and no benchmark to compare itself against", async () => {
+    /*
+      The top of the hierarchy, and the only level that differs in kind.
+
+      Nepal carries all 36 indicators where every place below it carries five,
+      so its page has ten topic sections rather than two. And it has no
+      ancestor: benchmarksFor walks the parent chain, finds nothing above the
+      country, and must return nothing rather than compare Nepal with itself.
+    */
+    const np = await country();
+    expect(np).toBeDefined();
+    expect(np!.parent_place_id).toBeNull();
+
+    const profile = await placeProfile(np!);
+    const slugs = profile.map((t) => t.topic.slug);
+    expect(slugs).toContain("population");
+    expect(slugs).toContain("education");
+    expect(slugs).toContain("economy");
+    expect(slugs).toContain("health");
+    expect(profile.length).toBeGreaterThanOrEqual(9);
+
+    expect(await benchmarksFor(np!, BENCHMARKED)).toEqual([]);
+
+    // Elections is the topic a scalar profile cannot carry: all three of its
+    // indicators are dimensioned by party with no total, so placeProfile drops
+    // it and the page has to render the distribution instead. If this ever
+    // starts appearing in the profile, the page's separate Elections section
+    // becomes a duplicate.
+    expect(slugs).not.toContain("elections");
+    const seats = (await distributionsFor(np!.place_id)).find(
+      (d) => d.indicatorId === "hor_fptp_seats_won",
+    );
+    expect(seats?.members.length).toBeGreaterThan(1);
+  });
+
   it("has exactly 7 provinces, 77 districts and 753 local governments", async () => {
     const { provs, districts, locals } = await allPlaces();
     expect(provs.length).toBe(7);

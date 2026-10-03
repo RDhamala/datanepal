@@ -24,7 +24,7 @@ import {
 import Link from "next/link";
 import { Choropleth } from "@/components/Choropleth";
 import { AgePyramid } from "@/components/AgePyramid";
-import { profileSections } from "@/components/PlaceProfile";
+import { profileSections } from "@/lib/profile";
 import { ComparePanel } from "@/components/viz/ComparePanel";
 import { TopicSummary } from "@/components/viz/TopicSummary";
 import { HeadlineMetricGroup } from "@/components/viz/HeadlineMetric";

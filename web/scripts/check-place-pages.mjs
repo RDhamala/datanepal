@@ -58,13 +58,19 @@ const fail = (page, msg) => failures.push(`${page}: ${msg}`);
  * no further, so a local government has no pyramid to nest. Asserting it
  * anyway would have made 753 pages fail for being correct.
  */
-function checkCommon(page, html, { name, requireAgeSex = true }) {
+function checkCommon(
+  page,
+  html,
+  { name, requireAgeSex = true, requireBenchmark = true },
+) {
   if (!new RegExp(`<h1[^>]*>${name}`).test(html)) {
     fail(page, `h1 does not open with "${name}"`);
   }
 
   // The identity chip. A P-code rendered as bare text was the old treatment.
-  if (!/class="[^"]*font-mono[^"]*"[^>]*>NP\d{2,}/.test(html)) {
+  // Nepal's P-code is "NP" with no digits at all -- the code is positional and
+  // the country is the empty prefix, so the digit count is the level.
+  if (!/class="[^"]*font-mono[^"]*"[^>]*>NP\d*</.test(html)) {
     fail(page, "P-code chip missing");
   }
 
@@ -79,17 +85,32 @@ function checkCommon(page, html, { name, requireAgeSex = true }) {
   }
 
   // Comparative context. Without it a place page is a record, not a profile.
-  if (
-    !/above the national figure|below the national figure|matches the national figure/.test(
+  // Nepal is the exception and must stay one: it has no ancestor, and a
+  // national figure compared against itself would be a fabrication.
+  const hasBenchmark =
+    /above the national figure|below the national figure|matches the national figure/.test(
       html,
-    )
-  ) {
+    );
+  if (requireBenchmark && !hasBenchmark) {
     fail(page, "no benchmark against the national figure");
   }
+  if (!requireBenchmark && hasBenchmark) {
+    fail(page, "benchmarks itself against the national figure");
+  }
 
-  // Coverage, stated once. Not a "not yet covered" section -- that is the
-  // thing the place-page rule forbids.
-  if (!html.includes("are published for Nepal as a whole")) {
+  /*
+    Coverage, stated once, in whichever direction is useful at this level.
+
+    Below the nation the useful statement is which measures stop there; on
+    Nepal's own page it is which ones go deeper, because that is what decides
+    whether a reader's district has an answer. Either phrasing satisfies this;
+    neither may be a "not yet covered" section, which the place-page rule
+    forbids and which this check exists to keep out.
+  */
+  if (
+    !html.includes("are published for Nepal as a whole") &&
+    !/measures are published below the national level/.test(html)
+  ) {
     fail(page, "coverage note missing");
   }
   if (/Not yet covered/i.test(html)) fail(page, 'renders a "Not yet covered" section');
@@ -132,6 +153,45 @@ function checkCommon(page, html, { name, requireAgeSex = true }) {
     if (!/^(View all \d+ [a-z ]+|View the numbers|What these measure)$/.test(s)) {
       fail(page, `unrecognised disclosure label "${s}"`);
     }
+  }
+}
+
+/* ---------------------------------------------------------------- country */
+
+const countryFile = path.join(OUT, "index.html");
+if (!fs.existsSync(countryFile)) {
+  fail("np/", "no index.html — Nepal has no place page");
+} else {
+  const html = render(countryFile);
+  checkCommon("np/", html, {
+    name: "Nepal",
+    requireBenchmark: false,
+  });
+
+  if (
+    !/A federal democratic republic of 7 provinces, 77 districts and 753 local governments/.test(
+      html,
+    )
+  ) {
+    fail("np/", "locator sentence missing or malformed");
+  }
+  if (!/lang="ne"/.test(html)) fail("np/", "Nepali name missing");
+  if (!html.includes("Provinces by population"))
+    fail("np/", "province map/ranking missing");
+
+  // The only page with every topic, and the only one where Elections can be
+  // shown at all -- all three of its indicators are distribution-only, so a
+  // profile built from scalars drops the topic entirely.
+  for (const topic of ["Economy", "Health", "Elections", "Government &amp; Budgets"]) {
+    if (!html.includes(topic)) fail("np/", `missing topic section "${topic}"`);
+  }
+  if (!/seats won by each party/i.test(html)) {
+    fail("np/", "Elections section does not explain that it has no total");
+  }
+
+  // Coverage the other way up: which measures go deeper, not which stop here.
+  if (html.includes("are published for Nepal as a whole")) {
+    fail("np/", "coverage note is phrased for a sub-national page");
   }
 }
 
@@ -281,7 +341,7 @@ if (districtCount !== EXPECTED.districts) {
 
 /* ------------------------------------------------------------------ report */
 
-const checked = provinceDirs.length + districtCount + localCount;
+const checked = 1 + provinceDirs.length + districtCount + localCount;
 if (failures.length) {
   console.error(
     `\ncheck-place-pages: ${failures.length} failures across ${checked} pages\n`,
@@ -293,6 +353,6 @@ if (failures.length) {
 }
 
 console.log(
-  `check-place-pages ok — ${provinceDirs.length} provinces, ${districtCount} districts, ` +
-    `${localCount} local governments`,
+  `check-place-pages ok — Nepal, ${provinceDirs.length} provinces, ` +
+    `${districtCount} districts, ${localCount} local governments`,
 );

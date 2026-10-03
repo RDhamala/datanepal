@@ -22,7 +22,7 @@ import {
   tablesFor,
 } from "@/lib/data";
 import { ReferenceMap } from "@/components/ReferenceMap";
-import { profileSections } from "@/components/PlaceProfile";
+import { profileSections } from "@/lib/profile";
 import { TopicSummary } from "@/components/viz/TopicSummary";
 import { HeadlineMetricGroup } from "@/components/viz/HeadlineMetric";
 import { coverageByIndicator } from "@/lib/coverage";
