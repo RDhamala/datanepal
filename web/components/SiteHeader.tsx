@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Search } from "@/components/Search";
+import { ROLE } from "@/components/editorial/system";
 
 /*
   Global header.
@@ -53,7 +54,10 @@ export function SiteHeader() {
     <header className="border-line bg-surface/90 sticky top-0 z-40 border-b backdrop-blur">
       <div className="max-w-page mx-auto flex flex-wrap items-center gap-x-8 gap-y-2 px-5 py-3.5 sm:px-8">
         <Link href="/" className="group flex items-baseline gap-2.5 no-underline">
-          <span className="text-ink text-[17px] font-semibold tracking-[-0.02em]">
+          <span
+            className="text-ink text-[19px] font-semibold tracking-[-0.02em]"
+            style={ROLE.masthead}
+          >
             DataNepal
           </span>
           <span aria-hidden className="bg-line-strong h-4 w-px self-center" />
@@ -104,7 +108,12 @@ export function SiteFooter() {
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="flex items-baseline gap-2">
-              <span className="text-ink text-[15px] font-semibold">DataNepal</span>
+              <span
+                className="text-ink text-[16px] font-semibold"
+                style={ROLE.masthead}
+              >
+                DataNepal
+              </span>
               <span lang="ne" className="text-ink-soft ne text-[15px]">
                 तथ्याङ्क नेपाल
               </span>

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
   geographyScale,
@@ -7,34 +8,37 @@ import {
   recentUpdates,
   topicCards,
 } from "@/lib/editorial";
-import { Figure, ROLE, Section, StatRow } from "@/components/editorial/system";
+import {
+  Figure,
+  ROLE,
+  Section,
+  StatRow,
+  UnifiedShell,
+} from "@/components/design-reset/unified";
 import { GeoExplorer } from "@/components/editorial/GeoExplorer";
 import {
   coverageSentence,
   figureText,
+  PrototypeBar,
+  prototypeRobots,
   SourceNote,
-} from "@/components/editorial/format";
+} from "@/components/design-reset/shared";
 import { TrendChart } from "@/components/charts";
 import { Search } from "@/components/Search";
 
+export const metadata: Metadata = {
+  title: "Unified · Homepage",
+  robots: prototypeRobots,
+};
+
 /*
-  Homepage.
+  Unified homepage. A's reading order, roughly half its height.
 
-  Five sections in an order that argues something: here is the country now,
-  here is how it divides, here is every domain we hold, here is what has moved,
-  here is how to take the data away. The previous homepage was nine sections of
-  equal weight with no order, so a reader could not tell when they had finished.
-
-  The geography section is a linked map and ranking -- pointing at either
-  highlights both -- which is the one interaction a static publication layout
-  cannot offer and the one a reader looking for their own place actually needs.
-
-  Serif is for the title, the section headings and figures that stand alone.
-  Everything dense or columnar is sans with `.tabular`. See
-  components/editorial/system.tsx for why that rule is the way round it is.
+  What was cut: the LeadStat + two-chart trend chapter became one row of three
+  charts; the province map/ranking pair became one GeoExplorer; topics lost
+  their per-row descriptions; updates and data access share a row.
 */
-
-export default async function Home() {
+export default async function UnifiedHome() {
   const [snapshot, trends, topics, scale, updates, provinceView] = await Promise.all([
     nationalSnapshot(),
     nationalTrends(),
@@ -53,9 +57,15 @@ export default async function Home() {
     .filter((f): f is NonNullable<typeof f> => Boolean(f));
 
   return (
-    <>
+    <UnifiedShell>
+      <PrototypeBar
+        direction="Unified — A's system, B's geography"
+        other="/design-reset/"
+        otherLabel="Compare with A and B"
+      />
+
       {/* ------------------------------------------------------------ hero */}
-      <section className="pb-9">
+      <section className="max-w-page mx-auto px-5 pt-10 pb-9 sm:px-8">
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,19rem)] lg:gap-14">
           <div>
             <h1
@@ -64,11 +74,6 @@ export default async function Home() {
             >
               Nepal, in data.
             </h1>
-            {/*
-              The Nepali is a second line of the title, not a grey subtitle.
-              On a bilingual national platform, setting one language as chrome
-              for the other is a statement, and not the one we want to make.
-            */}
             <p
               className="text-brand ne mt-2 text-[clamp(1.375rem,1.05rem+1.3vw,1.875rem)] leading-tight font-medium"
               lang="ne"
@@ -89,12 +94,7 @@ export default async function Home() {
             </div>
           </div>
 
-          {/*
-            Geographic scale as the frame the data sits in, not as four more
-            statistics. An indicator count is a fact about this platform, not
-            about Nepal, and putting it beside inflation invites reading it as
-            one -- so it goes below, quietly.
-          */}
+          {/* Geographic frame, not four more statistics. */}
           <aside className="lg:pt-3">
             <p
               className="text-ink-faint text-[11px] uppercase"
@@ -129,9 +129,8 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* -------------------------------------------- 01 national snapshot */}
+      {/* ------------------------------------------------ 01 national snapshot */}
       <Section
-        contained={false}
         n={1}
         title="Nepal today"
         intro="Current national figures, each with its publisher and reference period."
@@ -140,9 +139,8 @@ export default async function Home() {
         <StatRow figures={snapshot} />
       </Section>
 
-      {/* ------------------------------------------------- 02 explore Nepal */}
+      {/* --------------------------------------------------- 02 explore Nepal */}
       <Section
-        contained={false}
         n={2}
         title="Explore Nepal"
         titleNe="नेपाल अन्वेषण"
@@ -173,11 +171,10 @@ export default async function Home() {
         )}
       </Section>
 
-      {/* ------------------------------------------------------ 03 domains */}
+      {/* -------------------------------------------------------- 03 domains */}
       <Section
-        contained={false}
         n={3}
-        title={`${topics.length} domains`}
+        title="Ten domains"
         intro="Every topic here holds published indicators. Tourism and Geography hold none yet, so they are not listed."
         action={{ href: "/indicators/", label: "Indicator index" }}
       >
@@ -213,9 +210,7 @@ export default async function Home() {
                     </span>
                   </>
                 ) : (
-                  /* Elections is dimensioned by party and has no national
-                     total: the sum of seats is the size of the house, not a
-                     fact about the country. */
+                  /* Elections is dimensioned by party and has no national total. */
                   <span className="text-ink-faint text-[11px]">
                     {t.indicatorCount} indicators
                   </span>
@@ -226,9 +221,8 @@ export default async function Home() {
         </ul>
       </Section>
 
-      {/* ------------------------------------------------------- 04 trends */}
+      {/* --------------------------------------------------------- 04 trends */}
       <Section
-        contained={false}
         n={4}
         title="What has changed"
         intro="Income per head has roughly tripled since 2000."
@@ -258,12 +252,8 @@ export default async function Home() {
       </Section>
 
       {/* ---------------------------------------------- 05 updates + access */}
-      <Section contained={false} n={5} title="Recent changes, and taking the data">
+      <Section n={5} title="Recent changes, and taking the data">
         <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,17rem)] md:gap-12">
-          {/*
-            Sentences, not a warehouse table. Cadence, licence and revision
-            counts belong on the dataset pages, which is where this links.
-          */}
           <ul className="divide-line border-line divide-y border-t text-[13px]">
             {updates.map((u) => (
               <li
@@ -302,13 +292,12 @@ export default async function Home() {
                 <Link href="/about/">Methodology and source policy</Link>
               </li>
             </ul>
-            {/* No API link: there is no API. */}
             <p className="text-ink-faint mt-3 text-[11px] leading-relaxed">
               Parquet and CSV, with licence and retrieval date attached.
             </p>
           </aside>
         </div>
       </Section>
-    </>
+    </UnifiedShell>
   );
 }

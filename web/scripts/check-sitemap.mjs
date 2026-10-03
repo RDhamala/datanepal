@@ -33,6 +33,19 @@ const ORIGIN = "https://datanepal.org";
  */
 const EXPECTED_ABSENT = new Set(["/topics/", "/404/"]);
 
+/**
+ * Route prefixes that are prototypes, not pages.
+ *
+ * /design-lab and /design-reset only exist in dev and in a Cloudflare branch
+ * preview, where this checker still runs. They are deliberately not in the
+ * sitemap -- advertising a prototype is worse than not shipping one -- so the
+ * totality check has to know they are allowed to be absent. They cannot appear
+ * in a production build at all; next.config.mjs is what guarantees that, and
+ * the assertion further down is what proves it.
+ */
+const PROTOTYPE_PREFIXES = ["/design-lab/", "/design-reset/"];
+const isPrototype = (p) => PROTOTYPE_PREFIXES.some((x) => p.startsWith(x));
+
 const failures = [];
 const fail = (msg) => failures.push(msg);
 
@@ -104,7 +117,9 @@ function emittedPages(dir = OUT, found = []) {
 const emitted = new Set(emittedPages());
 const listed = new Set(paths);
 
-const missing = [...emitted].filter((p) => !listed.has(p) && !EXPECTED_ABSENT.has(p));
+const missing = [...emitted].filter(
+  (p) => !listed.has(p) && !EXPECTED_ABSENT.has(p) && !isPrototype(p),
+);
 if (missing.length) {
   fail(
     `${missing.length} pages exist but are not in the sitemap (${missing.sort().slice(0, 5).join(", ")})`,
@@ -121,8 +136,9 @@ if (phantom.length) {
 for (const excluded of EXPECTED_ABSENT) {
   if (listed.has(excluded)) fail(`${excluded} must not be advertised`);
 }
-if (paths.some((p) => p.includes("design-lab"))) {
-  fail("the design laboratory is in the sitemap");
+// A prototype must never be advertised, in any build.
+for (const p of paths) {
+  if (isPrototype(p)) fail(`prototype route in the sitemap: ${p}`);
 }
 
 /* ------------------------------------------------------- the known counts */
@@ -164,7 +180,9 @@ if (failures.length) {
   process.exit(1);
 }
 
+const prototypes = [...emitted].filter(isPrototype).length;
 console.log(
   `check-sitemap ok — ${locs.length} URLs, ${(bytes / 1024).toFixed(0)} KB, ` +
-    `matching the ${emitted.size - EXPECTED_ABSENT.size} pages built`,
+    `matching the ${emitted.size - EXPECTED_ABSENT.size - prototypes} public pages built` +
+    (prototypes ? ` (+${prototypes} prototype routes, deliberately unlisted)` : ""),
 );
