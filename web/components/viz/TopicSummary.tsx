@@ -1,9 +1,11 @@
 import { DataDisclosure } from "./DataDisclosure";
 import Link from "next/link";
-import { formatNumber, formatWithUnit, statusLabel } from "@/lib/format";
+import { formatNumber, formatWithUnit } from "@/lib/format";
 import type { Benchmark as BenchmarkData, ProfileTopic } from "@/lib/data";
 import { COLOR, TYPE } from "@/lib/viz";
 import { Benchmark } from "./Benchmark";
+import { HeadlineMetric } from "./HeadlineMetric";
+import { periodNote } from "../PlaceProfile";
 import { PairedBars } from "./MetricStrip";
 
 /*
@@ -78,18 +80,28 @@ export function TopicSummary({
             {headline.name}
           </Link>
         </p>
+        {/*
+          The same metric component the fact strip uses, rather than a fourth
+          number style. The label is rendered above as a link to the
+          indicator, so this one is suppressed to avoid printing it twice.
+        */}
         {!valueShownAbove && (
-          <>
-            <p className="text-stat-lead text-ink tabular mt-1.5 font-semibold">
-              {formatWithUnit(headline.value, headline.unit)}
-            </p>
-            <p className="text-ink-faint mt-2" style={{ fontSize: TYPE.small }}>
-              {headline.period}
-              {headline.periodType === "instant" ? " census" : ""}
-              {statusLabel(headline.status) ? ` ${statusLabel(headline.status)}` : ""}
-              {!headline.isAdditive && " · not additive across places"}
-            </p>
-          </>
+          <HeadlineMetric
+            lead
+            label=""
+            value={formatWithUnit(headline.value, headline.unit)}
+            period={headline.period}
+            status={
+              headline.status === "actual"
+                ? headline.periodType === "instant"
+                  ? "census"
+                  : "final"
+                : headline.status === "projection"
+                  ? "projection"
+                  : "estimate"
+            }
+            context={headline.isAdditive ? null : "Not additive across places."}
+          />
         )}
 
         {hasGap && (
@@ -121,6 +133,20 @@ export function TopicSummary({
 
       <div className="space-y-7">
         {benchmark && <Benchmark data={benchmark} />}
+
+        {/*
+          Mixed reference periods, said once and in words.
+
+          A section showing 2021 households beside a 2023 population is two
+          correct figures whose ratio is not: 4.0 people per household instead
+          of 3.75. The per-figure chips make each date visible; this makes the
+          invitation to divide them explicit, which the chips alone cannot.
+        */}
+        {periodNote(topic.metrics) && (
+          <p className="border-line-strong text-ink-soft max-w-prose border-l-2 pl-3 text-[12px] leading-relaxed">
+            {periodNote(topic.metrics)}
+          </p>
+        )}
 
         {supporting.length > 0 && (
           <div>

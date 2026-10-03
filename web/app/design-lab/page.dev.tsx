@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import {
   benchmarksFor,
   boundaries,
@@ -37,6 +38,7 @@ import {
   SourceLine,
 } from "@/components/viz/SourceLine";
 import { Crumbs, PageHeader } from "@/components/ui";
+import { DESIGN_LAB_ENABLED } from "@/lib/design-lab";
 
 /*
   The component laboratory.
@@ -56,6 +58,21 @@ export const metadata: Metadata = {
   description: "Internal component reference. Not part of the published site.",
   robots: { index: false, follow: false },
 };
+
+/*
+  This file is `page.dev.tsx`, not `page.tsx`.
+
+  Next only treats a file as a route if its extension is in `pageExtensions`,
+  and next.config.mjs adds `dev.tsx` to that list only when the laboratory is
+  wanted. So an ordinary production build does not see a route here at all:
+  no HTML, no 404 body, no unlinked file on the CDN -- the page is not
+  compiled.
+
+  An earlier attempt used an optional catch-all returning no params, which
+  reads as the obvious thing to do and is rejected outright: `output: export`
+  treats an empty params list as a missing generateStaticParams and fails the
+  build.
+*/
 
 function Bench({
   n,
@@ -100,6 +117,10 @@ function Variant({ label, children }: { label: string; children: React.ReactNode
 }
 
 export default async function DesignLab() {
+  // Belt and braces: if the route is ever reached in a build that did not ask
+  // for it, it is a 404 rather than an internal page served quietly.
+  if (!DESIGN_LAB_ENABLED) notFound();
+
   const np = await country();
   const bagmati = await placeBySlug("province", "bagmati");
   const dhading = bagmati

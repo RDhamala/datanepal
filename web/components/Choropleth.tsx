@@ -228,11 +228,15 @@ export function Choropleth({
           ))}
         </g>
 
-        <MapLabels
-          layout={layout}
-          // Dark fills need light ink. The bin decides, not the label.
-          ink={(f) => (bin(f.value) >= 3 ? "var(--color-surface)" : "var(--color-ink)")}
-        />
+        {/*
+          No ink flip. One ink for every label, with the halo carrying it over
+          a saturated fill -- see MapLabels. Flipping to the surface colour on
+          dark bins was correct only while a label stayed inside its shape;
+          once the halo is also the surface colour, a flipped label is white
+          text with a white outline, which is nothing at all. Six of Bagmati's
+          thirteen districts rendered that way.
+        */}
+        <MapLabels layout={layout} />
       </svg>
 
       {/*

@@ -23,6 +23,8 @@ import {
   indicators,
   nationalHeadline,
   observations,
+  localUnitBySlug,
+  placeBySlug,
   placeProfile,
   populationOf,
   seriesFor,
@@ -256,6 +258,89 @@ describe("national headline — a part is never reported as the whole", () => {
       if (!isDistribution && h.leading) unexplained.push(i.indicator_id);
     }
     expect(unexplained).toEqual([]);
+  });
+});
+
+describe("every headline surface, audited", () => {
+  /*
+    The five surfaces that render "what is this indicator now":
+    the homepage topic cards, the topics index, the indicators index, the
+    indicator detail page, and a place profile. Four of them call
+    nationalHeadline and the fifth reads placeProfile. Each was patched
+    separately at some point in this project's history, which is exactly why
+    the contract is asserted here once rather than trusted five times.
+  */
+  const ctx = async () => {
+    const np = await country();
+    const [pop, series, profile, us, distributions] = await Promise.all([
+      populationOf(np!),
+      seriesFor(np!),
+      placeProfile(np!),
+      units(),
+      distributionsFor(np!.place_id),
+    ]);
+    return { pop, series, profile, units: us, distributions };
+  };
+
+  it("never returns a figure a caller could mistake for a total", async () => {
+    const c = await ctx();
+    const inds = await indicators();
+    for (const i of inds) {
+      const h = nationalHeadline(i.indicator_id, c);
+      if (!h) continue;
+      const noAggregate = c.distributions.some((d) => d.indicatorId === i.indicator_id);
+      // The whole contract in one line: a figure without a total must say so.
+      expect(noAggregate ? Boolean(h.leading) : !h.leading, i.indicator_id).toBe(true);
+    }
+  });
+
+  it("is deterministic — two identical calls agree", async () => {
+    const [a, b] = await Promise.all([ctx(), ctx()]);
+    const inds = await indicators();
+    for (const i of inds) {
+      const x = nationalHeadline(i.indicator_id, a);
+      const y = nationalHeadline(i.indicator_id, b);
+      expect(x?.value, i.indicator_id).toBe(y?.value);
+      expect(x?.leading?.memberName, i.indicator_id).toBe(y?.leading?.memberName);
+    }
+  });
+
+  it("gives a distribution-only indicator a leading member on every surface", async () => {
+    // Without distributions in the context -- how the indicator detail page
+    // called it until this audit -- the surface renders nothing at all. Not a
+    // wrong number, but a page that declines to answer its own question.
+    const c = await ctx();
+    const withOut = { ...c, distributions: [] };
+    expect(nationalHeadline("hor_fptp_seats_won", withOut)).toBeNull();
+    const withIt = nationalHeadline("hor_fptp_seats_won", c);
+    expect(withIt?.leading?.memberCount).toBeGreaterThan(1);
+  });
+
+  it("does not let a place page present a category member as a total", async () => {
+    // Province, district and local-government pages all build from
+    // placeProfile. An indicator with no aggregate must be absent from every
+    // one of them, at every level.
+    const np = await country();
+    const bagmati = await placeBySlug("province", "bagmati");
+    const dhading = await placeBySlug("district", "dhading", bagmati!.place_id);
+    // localUnitBySlug, not placeBySlug with a guessed type: Nilkhantha is a
+    // municipality, and naming the wrong type here would silently return
+    // undefined and quietly drop the local level out of this assertion.
+    const nilkhantha = await localUnitBySlug(dhading!.place_id, "nilkhantha");
+    expect(nilkhantha, "nilkhantha must resolve").toBeDefined();
+    const distributionIds = new Set(
+      (await distributionsFor(np!.place_id)).map((d) => d.indicatorId),
+    );
+    expect(distributionIds.size).toBeGreaterThan(0);
+
+    for (const place of [np, bagmati, dhading, nilkhantha].filter(Boolean)) {
+      const ids = (await placeProfile(place!))
+        .flatMap((t) => t.metrics)
+        .map((m) => m.indicatorId);
+      for (const id of ids) {
+        expect(distributionIds.has(id), `${place!.name_en}/${id}`).toBe(false);
+      }
+    }
   });
 });
 

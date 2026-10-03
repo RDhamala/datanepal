@@ -44,7 +44,7 @@ import { AnchoredSection } from "@/components/ui";
   So the section says so once, in words, rather than relying on a reader
   noticing two small grey dates.
 */
-function periodNote(
+export function periodNote(
   metrics: { period: number; status: string; periodType: string }[],
 ): string | null {
   const periods = [...new Set(metrics.map((m) => m.period))].sort();

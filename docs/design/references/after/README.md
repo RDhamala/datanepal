@@ -24,6 +24,14 @@ design, and the baseline still describes them.
 | `dhading-mobile.png` | 390px, top |
 | `dhading-mobile-age-sex.png` | Chart-heavy at 390px |
 | `dhading-mobile-local-map.png` | Map-heavy at 390px, "Dhunibenshi" legible |
+| `indicator-elections-desktop.png` | A distribution-only indicator: labelled leading member, ranked members |
+| `bagmati-desktop-overview.png` | Province identity, metric strip, age-sex nested under Population |
+| `bagmati-desktop-education.png` | Bagmati vs Nepal benchmark |
+| `bagmati-desktop-districts.png` | District map and linked ranking; all 13 labels legible |
+| `bagmati-tablet.png` · `bagmati-mobile.png` · `bagmati-mobile-districts.png` | 834px and 390px |
+| `nilkhantha-desktop-overview.png` | Local-government identity and metrics |
+| `nilkhantha-desktop-education.png` | Four-level benchmark: local · district · province · Nepal |
+| `nilkhantha-tablet.png` · `nilkhantha-mobile.png` | 834px and 390px |
 
 **What to look for against `../current/`.** The fact strip's figures went from
 22px — the same size as the section headings above them — to the `stat` role.
@@ -34,6 +42,18 @@ list reduced to the type grouping only, which is the one thing neither of the
 other two says. Map labels carry a halo, so a name that overhangs its polygon
 survives. Every disclosure says the same kind of thing in the same place.
 
-**Measured, not eyeballed.** No horizontal overflow at 390, 834, 1440 or 1920.
-Type at 1440: h1 52 · stat 30 · heading 22 · body 15. At 390: h1 36 · stat 24.
-Page height 4,970 → 4,858 desktop.
+**Measured, not eyeballed.** No horizontal overflow at 390, 834, 1440 or 1920
+on any of the three pages. Type at 1440: h1 52 · stat 30 · heading 22 ·
+body 15. At 834: 45 · 27 · 18. At 390: 36 · 24 · 17. Dhading 4,970 → 4,858.
+
+**Second stage.** `bagmati-*` and `nilkhantha-*` are the province and
+local-government proof pages. Their "before" is
+`../current/province-desktop.png` and `../current/nilkhantha-desktop-overview.png`
+— the latter captured by checking the page file back out at `acee412`, because
+no baseline had ever been taken at that level.
+
+The district map labels are the change most worth looking at twice. Six of
+Bagmati's thirteen districts — Kathmandu, Lalitpur, Bhaktapur, Kavrepalanchok,
+Makwanpur and Chitawan — rendered as white text with a white halo and were
+invisible, on every province page and the national map. One ink plus a halo
+fixed all of them.

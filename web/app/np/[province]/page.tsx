@@ -1,33 +1,40 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import {
+  benchmarksFor,
   comparisonFor,
   country,
   districtsOf,
-  formatCompact,
   formatNumber,
   formatPercent,
+  indicatorSlug,
+  indicators,
   localUnitsOf,
   mapFor,
+  observations,
   placeBySlug,
+  places,
   compareFor,
   placeProfile,
   populationOf,
   provinces,
   sourcesFor,
-  statusLabel,
   tablesFor,
 } from "@/lib/data";
+import Link from "next/link";
 import { Choropleth } from "@/components/Choropleth";
 import { AgePyramid } from "@/components/AgePyramid";
-import { PlaceProfile, profileSections } from "@/components/PlaceProfile";
+import { profileSections } from "@/components/PlaceProfile";
 import { ComparePanel } from "@/components/viz/ComparePanel";
+import { TopicSummary } from "@/components/viz/TopicSummary";
+import { HeadlineMetricGroup } from "@/components/viz/HeadlineMetric";
 import { RankedBars } from "@/components/charts";
+import { coverageByIndicator } from "@/lib/coverage";
 import {
   AnchoredSection,
   Crumbs,
-  FactStrip,
   PageHeader,
+  Pcode,
   SectionNav,
   SourceNote,
 } from "@/components/ui";
@@ -40,22 +47,25 @@ import {
   data yet, so none of their headings appear. An empty section reads as a broken
   page; a missing section reads as scope.
 
-  The one honest statement we do make about absence is at the bottom, where we
-  name what is not yet covered rather than leaving a reader guessing.
+  Coverage is stated once beside the sources rather than as a section of its
+  own: a headline list of absences on every province page is a worse answer
+  than omitting the sections, and the place-page rule says so.
+
+  Age and sex sits inside Population & Demographics, not beside it. It is
+  sub-structure of a topic, not a peer of Education, and letting a chart type
+  become a top-level domain is how a topic list stops meaning anything.
 */
 
-/**
- * Who published the headline population figure, and how it was arrived at.
- *
- * Derived rather than hardcoded: these pages said "UNFPA" unconditionally,
- * which was right while the projection was the only figure and became wrong the
- * moment the census supplied the count.
- */
-function populationProvenance(pop: { period: number; status: string }): string {
-  return pop.status === "actual"
-    ? `${pop.period} census · NSO`
-    : `${pop.period} ${statusLabel(pop.status) ?? "estimate"} · UNFPA`;
-}
+/* Which indicator leads each topic. Inferring it from row order would mean a
+   page's emphasis changed whenever ingestion order did. */
+const TOPIC_HEADLINE: Record<string, string> = {
+  population: "population",
+  education: "literacy_rate",
+};
+
+/* Indicators the fact strip already shows. A topic summary leading with one of
+   these would print the same number twice on one screen. */
+const STRIP_INDICATORS = new Set(["population", "households"]);
 
 type Params = { province: string };
 
@@ -103,6 +113,22 @@ export default async function ProvincePage({ params }: { params: Promise<Params>
       ]),
     ),
   ]);
+  const [benchmarks, obsAll, placesAll, indsAll] = await Promise.all([
+    // Rates and ratios only: a province's population against Nepal's is a
+    // share, not a comparison.
+    benchmarksFor(place, ["literacy_rate", "population_density"]),
+    observations(),
+    places(),
+    indicators(),
+  ]);
+  const coverage = coverageByIndicator(obsAll, placesAll);
+  const nationalOnly = indsAll.filter(
+    (i) => coverage.get(i.indicator_id)?.level === "national",
+  );
+  const households = profile
+    .flatMap((t) => t.metrics)
+    .find((m) => m.indicatorId === "households");
+
   const national = np ? await populationOf(np) : null;
   const share =
     pop && national && national.total > 0 ? pop.total / national.total : null;
@@ -128,7 +154,6 @@ export default async function ProvincePage({ params }: { params: Promise<Params>
   */
   const sections = [
     ...profileSections(profile),
-    ...(pop && pop.bands.length ? [{ id: "age-sex", label: "Age & sex" }] : []),
     ...(districtRows.length ? [{ id: "districts", label: "Districts" }] : []),
     ...(compare ? [{ id: "compare", label: "Compare" }] : []),
     { id: "sources", label: "Sources" },
@@ -152,56 +177,121 @@ export default async function ProvincePage({ params }: { params: Promise<Params>
         native={place.name_ne}
         meta={
           <>
-            {districtList.length} districts · {localUnits.length} local governments ·
-            P-code <code className="font-mono">{place.ocha_pcode}</code>
+            {/* What this place is and where it sits, before any figure. */}
+            One of Nepal&rsquo;s seven provinces, made up of {districtList.length}{" "}
+            districts and {localUnits.length} local governments.{" "}
+            {place.ocha_pcode && <Pcode code={place.ocha_pcode} />}
           </>
         }
       />
 
-      <FactStrip
-        facts={[
+      {/*
+        Headline facts, each carrying its own reference period.
+
+        The same strip as a district page, one level up. The chips matter more
+        here than almost anywhere: a province shows a 2021 census count beside
+        a working-age share derived from the 2023 projection, and those are
+        two different kinds of number.
+      */}
+      <HeadlineMetricGroup
+        columns={5}
+        topRule={false}
+        metrics={[
           {
             label: "Population",
-            value: pop ? formatCompact(pop.total) : "—",
-            sub: pop ? populationProvenance(pop) : null,
+            value: pop ? formatNumber(pop.total) : null,
+            period: pop?.period,
+            status: pop?.status === "actual" ? "census" : "projection",
+            missingNote: "No census population published for this province.",
+          },
+          {
+            label: "Households",
+            value: households ? formatNumber(households.value) : null,
+            period: households?.period,
+            status: "census",
+            missingNote: "Not published for this province.",
           },
           {
             label: "Area",
-            value: `${formatNumber(place.area_sqkm)}`,
-            sub: "km²",
+            value: formatNumber(place.area_sqkm),
+            unit: "km²",
           },
           {
             label: "Density",
-            value: pop?.density ? formatNumber(pop.density) : "—",
-            sub: "people per km²",
+            value: pop?.density ? formatNumber(pop.density) : null,
+            unit: "per km²",
+            period: pop?.period,
+            status: pop?.status === "actual" ? "census" : "projection",
           },
           {
             label: "Share of Nepal",
-            value: share ? formatPercent(share) : "—",
-            sub: "by population",
-          },
-          {
-            label: "Working age",
-            value: pop?.workingAgeShare ? formatPercent(pop.workingAgeShare, 0) : "—",
-            sub: "aged 15–64",
+            value: share ? formatPercent(share) : null,
+            period: pop?.period,
+            status: "census",
+            /*
+              No working-age share here.
+
+              It is derived from the 2023 projection, and putting it under a
+              2021 chip is precisely the mixed-period confusion the chips
+              exist to prevent -- a caveat in the caption does not undo a
+              contradiction in the label. The age pyramid below carries it
+              with its own period stated.
+            */
           },
         ]}
       />
 
       <SectionNav sections={sections} />
 
-      {/* Every topic this province has data for, rendered generically. */}
-      <PlaceProfile profile={profile} placeName={place.name_en} />
+      {/*
+        One visual summary per topic, with age and sex nested inside the
+        population topic rather than standing beside it.
 
-      {pop && pop.bands.length > 0 && (
+        This page used to render every indicator as a row of name, definition,
+        value, sex split and provenance -- the registry form. A province with
+        five census measures produced five near-identical rows and an age
+        pyramid in a section of its own, which made "Age & sex" look like a
+        peer of Education in the jump nav. It is sub-structure of Population.
+      */}
+      {profile.map((t) => (
         <AnchoredSection
-          id="age-sex"
-          title="Age and sex structure"
-          note={`Five-year age bands from the UNFPA ${pop.bandPeriod ?? pop.period} projection, the only source that publishes age detail at this level. Both sides share one scale, so bar lengths are directly comparable.`}
+          key={t.topic.topic_id}
+          id={t.topic.slug}
+          title={t.topic.name_en}
+          note={
+            <Link href={`/topics/${t.topic.slug}/`}>
+              All {t.topic.name_en} indicators for Nepal →
+            </Link>
+          }
         >
-          <AgePyramid bands={pop.bands} period={pop.bandPeriod ?? pop.period} />
+          <TopicSummary
+            topic={t}
+            headlineId={TOPIC_HEADLINE[t.topic.slug] ?? t.metrics[0]?.indicatorId ?? ""}
+            benchmark={benchmarks.find((b) =>
+              t.metrics.some((m) => m.indicatorId === b.indicatorId),
+            )}
+            placeName={place.name_en}
+            valueShownAbove={STRIP_INDICATORS.has(
+              TOPIC_HEADLINE[t.topic.slug] ?? t.metrics[0]?.indicatorId ?? "",
+            )}
+          />
+
+          {t.topic.slug === "population" && pop && pop.bands.length > 0 && (
+            <div className="border-line mt-9 border-t pt-7">
+              <h3 className="text-ink mb-1 text-[15px] font-medium">
+                Age and sex structure
+              </h3>
+              <p className="text-ink-faint mb-5 max-w-prose text-[13px] leading-relaxed">
+                Five-year bands from the UNFPA {pop.bandPeriod ?? pop.period}{" "}
+                projection, the only source publishing age detail at this level — a
+                different reference period from the census count above. Both sides share
+                one scale.
+              </p>
+              <AgePyramid bands={pop.bands} period={pop.bandPeriod ?? pop.period} />
+            </div>
+          )}
         </AnchoredSection>
-      )}
+      ))}
 
       {districtRows.length > 0 && (
         <AnchoredSection
@@ -263,6 +353,27 @@ export default async function ProvincePage({ params }: { params: Promise<Params>
       )}
 
       <div id="sources" className="scroll-mt-20">
+        {/*
+          Coverage, stated once and quietly. Omitting a topic with no data is
+          right; letting a reader conclude the data does not exist is not.
+        */}
+        {nationalOnly.length > 0 && (
+          <p className="text-ink-faint mt-16 max-w-prose text-[13px] leading-relaxed">
+            Measures such as{" "}
+            {nationalOnly.slice(0, 3).map((i, n) => (
+              <span key={i.indicator_id}>
+                {n > 0 && ", "}
+                <Link href={`/indicators/${indicatorSlug(i.indicator_id)}/`}>
+                  {i.name_en.toLowerCase()}
+                </Link>
+              </span>
+            ))}{" "}
+            are published for Nepal as a whole and are not broken down to provinces by
+            their source, so they have no section here.{" "}
+            <Link href="/indicators/">All indicators and their coverage →</Link>
+          </p>
+        )}
+
         <SourceNote tables={tables} sources={sourcesFor(tables)} />
       </div>
     </>

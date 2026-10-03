@@ -3,11 +3,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   allLocalUnitPaths,
+  benchmarksFor,
   comparisonFor,
   formatNumber,
   formatPercent,
   compareFor,
+  indicatorSlug,
+  indicators,
   localUnitBySlug,
+  observations,
+  places,
   localUnitMapFor,
   localUnitsOf,
   placeBySlug,
@@ -17,13 +22,16 @@ import {
   tablesFor,
 } from "@/lib/data";
 import { ReferenceMap } from "@/components/ReferenceMap";
-import { PlaceProfile, profileSections } from "@/components/PlaceProfile";
+import { profileSections } from "@/components/PlaceProfile";
+import { TopicSummary } from "@/components/viz/TopicSummary";
+import { HeadlineMetricGroup } from "@/components/viz/HeadlineMetric";
+import { coverageByIndicator } from "@/lib/coverage";
 import { ComparePanel } from "@/components/viz/ComparePanel";
 import {
   AnchoredSection,
   Crumbs,
-  FactStrip,
   PageHeader,
+  Pcode,
   SectionNav,
   SourceNote,
 } from "@/components/ui";
@@ -48,6 +56,15 @@ import {
   that grain yet, so no ward section appears. A heading over an empty section
   reads as a broken page.
 */
+
+/* Which indicator leads each topic. */
+const TOPIC_HEADLINE: Record<string, string> = {
+  population: "population",
+  education: "literacy_rate",
+};
+
+/* Indicators the fact strip already carries. */
+const STRIP_INDICATORS = new Set(["population", "households"]);
 
 type Params = { province: string; district: string; local: string };
 
@@ -156,6 +173,29 @@ export default async function LocalUnitPage({ params }: { params: Promise<Params
     ? districtCmp.rows.findIndex((r) => r.place.place_id === place.place_id) + 1
     : null;
 
+  /*
+    Benchmarks against the lineage this place actually has.
+
+    benchmarksFor walks the parent chain, so a local government gets district,
+    province and Nepal where each publishes the measure -- and silently omits
+    any ancestor that does not. Rates only: a local government's population
+    against Nepal's is a share, not a comparison, and the fact strip already
+    carries the share.
+  */
+  const [benchmarks, obsAll, placesAll, indsAll] = await Promise.all([
+    benchmarksFor(place, ["literacy_rate", "population_density"]),
+    observations(),
+    places(),
+    indicators(),
+  ]);
+  const coverage = coverageByIndicator(obsAll, placesAll);
+  const nationalOnly = indsAll.filter(
+    (i) => coverage.get(i.indicator_id)?.level === "national",
+  );
+  const households = profile
+    .flatMap((t) => t.metrics)
+    .find((m) => m.indicatorId === "households");
+
   const districtPop = await populationOf(dist);
   const share =
     ownValue && districtPop && districtPop.total > 0
@@ -189,33 +229,63 @@ export default async function LocalUnitPage({ params }: { params: Promise<Params
         native={place.name_ne}
         meta={
           <>
-            {prov.name_en} Province · P-code{" "}
-            <code className="font-mono">{place.ocha_pcode}</code>
+            {/*
+              The full chain, in a sentence. A local government is the one
+              level where a reader genuinely may not know where they are, and
+              the breadcrumb alone is navigation rather than context.
+            */}
+            A {label.toLowerCase()} in {dist.name_en} District, {prov.name_en} Province,
+            one of {siblings.length} local governments there.{" "}
+            {place.ocha_pcode && <Pcode code={place.ocha_pcode} />}
           </>
         }
       />
 
-      <FactStrip
-        facts={[
+      {/*
+        Four facts, each with its reference period.
+
+        A local government's identity facts are different from a district's:
+        the share and the rank are what place it, and both are census-derived,
+        so the chips say 2021 three times rather than hiding a mixed period.
+        Area is not published for local units, so it is not here -- a blank
+        slot would be worse than four honest ones.
+      */}
+      <HeadlineMetricGroup
+        columns={4}
+        topRule={false}
+        metrics={[
           {
             label: "Population",
-            value: ownValue ? formatNumber(ownValue.value) : "—",
-            sub: ownValue ? `${districtCmp.period} census · NSO` : null,
+            value: ownValue ? formatNumber(ownValue.value) : null,
+            period: districtCmp.period,
+            status: "census",
+            missingNote: `No census population published for ${place.name_en}.`,
           },
           {
-            label: "Share of district",
-            value: share ? formatPercent(share) : "—",
-            sub: `of ${dist.name_en}`,
+            label: "Households",
+            value: households ? formatNumber(households.value) : null,
+            period: households?.period,
+            status: "census",
+            missingNote: "Not published for this local government.",
           },
           {
-            label: `Rank among ${TYPE_PLURAL[place.place_type] ?? "local governments"}`,
-            value: nationalRank ? `${nationalRank} of ${districtCmp.rows.length}` : "—",
-            sub: "nationally, by population",
+            label: `Share of ${dist.name_en}`,
+            value: share ? formatPercent(share) : null,
+            period: districtCmp.period,
+            status: "census",
           },
           {
-            label: "Local governments here",
-            value: String(siblings.length),
-            sub: `in ${dist.name_en}`,
+            // "Rank among municipalities" wraps to two lines in a 2-column
+            // mobile strip and knocks its value out of line with the cell
+            // beside it. The type is in the context line below instead.
+            label: "Rank nationally",
+            value: nationalRank
+              ? `${nationalRank} of ${districtCmp.rows.length}`
+              : null,
+            period: districtCmp.period,
+            status: "census",
+            context: `By population, among Nepal's ${TYPE_PLURAL[place.place_type] ?? "local governments"}.`,
+            missingNote: "Not ranked: no published population.",
           },
         ]}
       />
@@ -223,10 +293,38 @@ export default async function LocalUnitPage({ params }: { params: Promise<Params
       <SectionNav sections={sections} />
 
       {/*
-        The generic profile. Every topic with data for this place, rendered from
-        observations rather than from any knowledge of which sources exist.
+        One visual summary per topic, the same as a district and a province.
+
+        This page rendered the registry form -- every indicator as a row of
+        name, definition, value, sex split and provenance. For a local
+        government that is five near-identical rows and no comparison at all,
+        which is the one thing a reader at this level most needs: 58,828 means
+        nothing without Dhading, Bagmati and Nepal beside it.
       */}
-      <PlaceProfile profile={profile} placeName={place.name_en} />
+      {profile.map((t) => (
+        <AnchoredSection
+          key={t.topic.topic_id}
+          id={t.topic.slug}
+          title={t.topic.name_en}
+          note={
+            <Link href={`/topics/${t.topic.slug}/`}>
+              All {t.topic.name_en} indicators for Nepal →
+            </Link>
+          }
+        >
+          <TopicSummary
+            topic={t}
+            headlineId={TOPIC_HEADLINE[t.topic.slug] ?? t.metrics[0]?.indicatorId ?? ""}
+            benchmark={benchmarks.find((b) =>
+              t.metrics.some((m) => m.indicatorId === b.indicatorId),
+            )}
+            placeName={place.name_en}
+            valueShownAbove={STRIP_INDICATORS.has(
+              TOPIC_HEADLINE[t.topic.slug] ?? t.metrics[0]?.indicatorId ?? "",
+            )}
+          />
+        </AnchoredSection>
+      ))}
 
       <AnchoredSection
         id="context"
@@ -326,6 +424,23 @@ export default async function LocalUnitPage({ params }: { params: Promise<Params
       )}
 
       <div id="sources" className="scroll-mt-20">
+        {nationalOnly.length > 0 && (
+          <p className="text-ink-faint mt-16 max-w-prose text-[13px] leading-relaxed">
+            Measures such as{" "}
+            {nationalOnly.slice(0, 3).map((i, n) => (
+              <span key={i.indicator_id}>
+                {n > 0 && ", "}
+                <Link href={`/indicators/${indicatorSlug(i.indicator_id)}/`}>
+                  {i.name_en.toLowerCase()}
+                </Link>
+              </span>
+            ))}{" "}
+            are published for Nepal as a whole and are not broken down to local
+            governments by their source, so they have no section here.{" "}
+            <Link href="/indicators/">All indicators and their coverage →</Link>
+          </p>
+        )}
+
         <SourceNote tables={tables} sources={sourcesFor(tables)} />
       </div>
     </>

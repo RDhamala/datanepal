@@ -186,6 +186,7 @@ export function RankedBars({
   unit,
   label,
   valueLabel = "Value",
+  noun = "places",
   max: maxOverride,
   compact = false,
 }: {
@@ -193,6 +194,8 @@ export function RankedBars({
   unit?: Unit;
   label: string;
   valueLabel?: string;
+  /** What the rows are, for the disclosure label. Places, parties, years. */
+  noun?: string;
   max?: number;
   /** Narrow column beside a map: tighter grid, no duplicate table. */
   compact?: boolean;
@@ -237,10 +240,10 @@ export function RankedBars({
       </ul>
 
       {!compact && (
-        <DataDisclosure count={rows.length} noun="places">
+        <DataDisclosure count={rows.length} noun={noun}>
           <DataGrid
             caption={label}
-            columns={["Place", "नेपाली", valueLabel]}
+            columns={[noun === "places" ? "Place" : "Name", "नेपाली", valueLabel]}
             rows={rows.map((r) => [r.name, r.nameNe ?? "—", fmt(r.value)])}
           />
         </DataDisclosure>

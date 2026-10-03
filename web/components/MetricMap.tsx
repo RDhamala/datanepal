@@ -1,6 +1,7 @@
 "use client";
 
 import { DataDisclosure } from "./viz/DataDisclosure";
+import { MapLabelLayer } from "./MapLabels";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { formatWithUnit } from "@/lib/format";
@@ -181,78 +182,23 @@ export function MetricMap({
 
         {outlinePath && <path d={outlinePath} className="geo-province-outline" />}
 
-        {features.map((f) =>
-          f.dot ? (
-            <circle
-              key={`dot-${f.placeId}`}
-              cx={f.dot.x}
-              cy={f.dot.y}
-              r={1.3}
-              fill="var(--color-ink-soft)"
-              pointerEvents="none"
-            />
-          ) : null,
-        )}
-
-        {features.map((f) => {
-          if (!f.label) return null;
-          /*
-            One ink for every label, with a surface halo behind it.
-
-            The previous rule flipped a label to the surface colour on the two
-            darkest classes, which is correct only while the label stays inside
-            its shape. A name wider than its polygon overhangs onto the page,
-            and a surface-coloured label on the page is nothing at all -- which
-            is how "Dhunibenshi" came to look clipped. Flipping the halo
-            instead does not help: the overhanging half would still be the
-            wrong way round.
-
-            So the atlas answer: dark ink always, a halo in the page colour
-            thick enough to carry it over a saturated fill. Legible on every
-            class of the ramp and on the page between them, which is the only
-            rule that holds for a label that may be in either place.
-          */
-          const top =
-            f.label.y - ((f.label.lines.length - 1) * f.label.fontSize * 1.15) / 2;
-          return (
-            <text
-              key={`label-${f.placeId}`}
-              x={f.label.x}
-              y={top + f.label.fontSize * 0.35}
-              textAnchor="middle"
-              className="font-medium"
-              fontSize={f.label.fontSize}
-              fill="var(--color-ink)"
-              pointerEvents="none"
-              /*
-                Halo, for the same reason as in MapLabels: a name longer than
-                its shape overhangs onto the page, and ink chosen for a dark
-                fill is then invisible. "Dhunibenshi" on Dhading's local-unit
-                map inks white, runs past the municipality's eastern edge, and
-                the tail of the word was white on white -- which reads as a
-                clipped label and sent the audit looking at the frame check,
-                which was correct all along.
-
-                paint-order keeps the stroke behind the glyphs instead of
-                eroding them.
-              */
-              stroke="var(--color-surface)"
-              strokeWidth={Math.max(2.5, f.label.fontSize * 0.3)}
-              strokeLinejoin="round"
-              style={{ paintOrder: "stroke fill" }}
-            >
-              {f.label.lines.map((line, j) => (
-                <tspan
-                  key={j}
-                  x={f.label!.x}
-                  dy={j === 0 ? 0 : f.label!.fontSize * 1.15}
-                >
-                  {line}
-                </tspan>
-              ))}
-            </text>
-          );
-        })}
+        {/*
+          One renderer for dots and labels, shared with the choropleth and the
+          reference map. This file used to carry its own copy, which is how a
+          halo fix landed in a file this page does not render.
+        */}
+        <MapLabelLayer
+          labels={features
+            .filter((f) => f.label)
+            .map((f) => ({
+              at: { x: f.label!.x, y: f.label!.y },
+              lines: f.label!.lines,
+              fontSize: f.label!.fontSize,
+            }))}
+          dots={features
+            .filter((f) => f.dot)
+            .map((f) => ({ x: f.dot!.x, y: f.dot!.y }))}
+        />
       </svg>
 
       <figcaption className="mt-4">

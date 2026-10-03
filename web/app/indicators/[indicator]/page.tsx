@@ -10,6 +10,7 @@ import {
   indicators,
   indicatorsOfTopic,
   metricMapFor,
+  distributionsFor,
   nationalHeadline,
   places,
   placeProfile,
@@ -114,12 +115,25 @@ export default async function IndicatorPage({ params }: { params: Promise<Params
     quietly reintroduce the gap.
   */
   const profile = !pop && !series?.latest && np ? await placeProfile(np) : [];
+  /*
+    The fifth surface, and the one that was still silent.
+
+    An indicator with no aggregate -- seats by party -- is skipped by
+    placeProfile, correctly, because it has no scalar. Without distributions
+    here that meant this page rendered no "Latest value" block at all: not a
+    wrong number, but a page that answers "what is this indicator" and then
+    declines to say anything about it. The leading member, labelled as one, is
+    the honest answer.
+  */
+  const distributions = np ? await distributionsFor(np.place_id) : [];
   const headline = nationalHeadline(ind.indicator_id, {
     pop,
     series: nationalSeries,
     profile,
     units: us,
+    distributions,
   });
+  const distribution = distributions.find((d) => d.indicatorId === ind.indicator_id);
 
   const related = (await indicatorsOfTopic(ind.topic_id)).filter(
     (i) => i.indicator_id !== ind.indicator_id,
@@ -153,9 +167,18 @@ export default async function IndicatorPage({ params }: { params: Promise<Params
           <Headline
             value={headline.value}
             unit={unit}
-            label="Latest value"
+            label={
+              headline.leading
+                ? `Largest ${headline.leading.dimensionName.toLowerCase()}`
+                : "Latest value"
+            }
             period={headline.period}
             status={headline.status}
+            note={
+              headline.leading
+                ? `${headline.leading.memberName} — largest of ${headline.leading.memberCount}. This indicator has no national total.`
+                : undefined
+            }
           />
           <div>
             <div className="text-label text-ink-faint uppercase">Unit</div>
@@ -335,7 +358,35 @@ export default async function IndicatorPage({ params }: { params: Promise<Params
       )}
 
       {/* Honest statement when there is no subnational breakdown. */}
-      {provinceCmp.rows.length === 0 && (
+      {/*
+        A distribution instead of a map.
+
+        An indicator with no aggregate has no national figure to shade a map
+        with, and until now this page offered nothing in its place. The ranked
+        members are what the indicator actually is -- and the exact-value
+        fallback comes free, because RankedBars composes the shared
+        disclosure.
+      */}
+      {distribution && (
+        <Section
+          title={`By ${distribution.dimensionName.toLowerCase()}`}
+          note={`Every ${distribution.dimensionName.toLowerCase()} with a published value, ${distribution.period}. These are components, not a total: summing them gives the size of the whole contest, which is not a fact about any one of them.`}
+        >
+          <RankedBars
+            label={`${ind.name_en} by ${distribution.dimensionName.toLowerCase()}, ${distribution.period}`}
+            rows={distribution.members.map((m) => ({
+              name: m.name,
+              nameNe: m.nameNe,
+              value: m.value,
+            }))}
+            unit={unit}
+            valueLabel={unit?.name_en ?? "Value"}
+            noun={`${distribution.dimensionName.toLowerCase()} entries`}
+          />
+        </Section>
+      )}
+
+      {provinceCmp.rows.length === 0 && !distribution && (
         <Section title="Geographic coverage">
           <p className="text-ink-soft max-w-2xl text-[14px]">
             This indicator is published for Nepal as a whole. No provincial or district
