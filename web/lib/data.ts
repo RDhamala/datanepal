@@ -669,6 +669,10 @@ export type HistoryRow = {
   revision: number;
   dataset_id: string;
   indicator_id: string;
+  // Present in the parquet from the first export; declared late, when the
+  // sitemap became the first caller that needed to know which page a revision
+  // belongs to.
+  place_id: string | null;
   period_start: string;
   first_seen_at: string;
   superseded_at: string | null;
@@ -733,6 +737,95 @@ export async function updateLog(): Promise<{
     totalCurrent: rows.filter((r) => r.is_current).length,
     totalRevised: rows.filter((r) => r.superseded_at !== null).length,
   };
+}
+
+/* -------------------------------------------------------- data freshness */
+
+export type Freshness = {
+  /** Latest data change for each place, rolled up through its descendants. */
+  byPlace: Map<string, string>;
+  /** Latest data change for each indicator. */
+  byIndicator: Map<string, string>;
+  /** The most recent change anywhere, as an ISO date. */
+  latest: string;
+};
+
+/**
+ * When the data behind each page last actually changed.
+ *
+ * Written for the sitemap, where the alternative is the usual one: stamp every
+ * URL with the build time. That is a claim that all 890 pages changed, made
+ * afresh on every deploy, and it is false on almost all of them -- a typo fix
+ * in the footer does not make Humla's census figures newer. Crawlers that
+ * notice a `lastmod` is unreliable stop reading it, so an over-eager one costs
+ * the signal rather than buying attention.
+ *
+ * The honest source is the revision history, which already records when each
+ * observation was first seen and when it was superseded. A page's date is the
+ * most recent change among the observations it renders.
+ *
+ * It rolls up, because a place page is not only about that place: a district
+ * ranks its local governments, so a change in one of them changes the district
+ * page. Nepal therefore inherits the maximum over everything, which is right --
+ * its page shows national rankings.
+ *
+ * What this deliberately does not capture is a template change. Rewriting a
+ * component changes every page without changing a single value, and no
+ * published table knows that happened. The alternatives were to read git
+ * history at build time -- which behaves differently on Cloudflare's shallow
+ * clone than it does here, and would be discovered only in production -- or to
+ * go back to stamping the build time. Reporting data freshness and saying so is
+ * better than either.
+ */
+export async function freshness(): Promise<Freshness> {
+  const m = manifest();
+  const rows = m.history
+    ? await table<HistoryRow>(m.history.parquet)
+    : ([] as HistoryRow[]);
+  const exportDate = m.generated_at.slice(0, 10);
+
+  // A replacement value carries its own first_seen_at, so the maximum over
+  // first_seen_at catches ordinary revisions. superseded_at matters for the
+  // case it misses: a value withdrawn and not replaced.
+  const changedAt = (r: HistoryRow): string =>
+    r.superseded_at && r.superseded_at > r.first_seen_at
+      ? r.superseded_at
+      : r.first_seen_at;
+
+  const bump = (into: Map<string, string>, key: string, date: string) => {
+    const seen = into.get(key);
+    if (!seen || date > seen) into.set(key, date);
+  };
+
+  const direct = new Map<string, string>();
+  const byIndicator = new Map<string, string>();
+  let latest = "";
+  for (const r of rows) {
+    const date = changedAt(r);
+    if (date > latest) latest = date;
+    if (r.place_id) bump(direct, r.place_id, date);
+    if (r.indicator_id) bump(byIndicator, r.indicator_id, date);
+  }
+
+  // Roll each place's date up its ancestry. allPlaces, not places: a historical
+  // district has no page, but it is some province's child, and the date on
+  // which its figures were withdrawn is a real change to that province's page.
+  const all = await allPlaces();
+  const byId = new Map(all.map((p) => [p.place_id, p]));
+  const byPlace = new Map(direct);
+  for (const [placeId, date] of direct) {
+    let cursor = byId.get(placeId);
+    const guard = new Set<string>([placeId]);
+    while (cursor?.parent_place_id && !guard.has(cursor.parent_place_id)) {
+      guard.add(cursor.parent_place_id);
+      bump(byPlace, cursor.parent_place_id, date);
+      cursor = byId.get(cursor.parent_place_id);
+    }
+  }
+
+  // An export with no history yet is the first publication run. Its data is as
+  // new as the export, which is exactly what the export date says.
+  return { byPlace, byIndicator, latest: latest || exportDate };
 }
 
 /* --------------------------------------------------- local-unit geometry */

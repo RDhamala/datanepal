@@ -164,6 +164,16 @@ CVD separation, sequential ramps for lightness monotonicity, and grouping tints
 for label contrast. It is wired into `npm run check`, and it has already caught
 a blue-on-blue pair that landed on the Bagmati/Gandaki border.
 
+**Every page is in the sitemap, and the sitemap is checked against the
+output.** 838 place pages have almost no inbound links -- a rural municipality
+in Humla is four clicks from the homepage and nowhere else on the web -- so
+discovery by crawl alone reaches the long tail slowly or never. `app/sitemap.ts`
+lists all 890 URLs with a `lastmod` taken from the revision history rather than
+the build clock, because stamping every page as changed on every deploy is a
+claim crawlers learn to ignore. `scripts/check-sitemap.mjs` asserts the sitemap
+and the emitted HTML are the *same set*, in both directions: a sitemap that
+quietly lost the 753 is still valid XML and still passes a spot-check.
+
 **Look at the rendered page.** Status codes and geometry checks do not tell you
 whether something looks right. Use the Chrome DevTools MCP.
 
