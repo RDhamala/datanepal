@@ -43,7 +43,20 @@ select
     p.place_type,
     p.admin_level,
     p.name_en,
-    p.name_ne,
+    /*
+      NSO outranks Wikidata for a local unit's Nepali name: it is the publisher
+      of record, it covers all 753, and it keys each name by the same
+      romanisation the census tables use, so no spelling is matched across two
+      independent transliterations. Wikidata remains the fallback and still
+      supplies three of the four units excluded from NSO for a transcoding or
+      truncation defect -- see nso_name_exclusions.csv.
+
+      Resolved here rather than in int_places because the bridge to the spine
+      runs through stg_nso__census_places, which is downstream of int_places,
+      so feeding a name back would close a cycle. Every other mart reads names
+      from this model, so coalescing once here reaches all of them.
+    */
+    coalesce(ln.name_ne, p.name_ne) as name_ne,
     s.slug,
 
     p.parent_place_id,
@@ -63,6 +76,7 @@ select
     p.dataset_id
 
 from places p
+left join {{ ref('int_local_unit_names') }} ln on ln.place_id = p.place_id
 join slugs s               on p.place_id = s.place_id
 left join places par       on p.parent_place_id = par.place_id
 left join slugs pslug      on p.parent_place_id = pslug.place_id

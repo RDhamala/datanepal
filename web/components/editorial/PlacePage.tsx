@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { EditorialPlace } from "@/lib/editorial";
-import { TYPE_LABEL } from "@/lib/editorial";
+import { TYPE_LABEL, TYPE_NAME } from "@/lib/editorial";
 import { BenchmarkLine, Figure, LeadStat, ROLE, Section, StackedBar } from "./system";
 import { GeoExplorer } from "./GeoExplorer";
 import { ordinal } from "./format";
@@ -58,12 +58,6 @@ export function PlacePage({ data }: { data: EditorialPlace }) {
     out rather than derived: "Metropolitan City" is not the title case of
     "metropolitan", and "one of Nepal's seven provinces" is not a template.
   */
-  const CASED: Record<string, string> = {
-    metropolitan: "Metropolitan City",
-    sub_metropolitan: "Sub-Metropolitan City",
-    municipality: "Municipality",
-    rural_municipality: "Rural Municipality",
-  };
   const LOWER: Record<string, string> = {
     metropolitan: "metropolitan city",
     sub_metropolitan: "sub-metropolitan city",
@@ -83,7 +77,7 @@ export function PlacePage({ data }: { data: EditorialPlace }) {
       ? "Province"
       : place.place_type === "district"
         ? `District · ${parent?.name_en} Province`
-        : `${CASED[place.place_type] ?? typeLabel} · ${parent?.name_en} District`;
+        : `${TYPE_NAME[place.place_type] ?? typeLabel} · ${parent?.name_en} District`;
   const locator = isNepal
     ? `A federal democratic republic of ${children?.rows.length ?? 7} provinces, 77 districts and 753 local governments.`
     : place.place_type === "province"

@@ -19,12 +19,18 @@ caveats:
     substrings. Substring nesting works for the administrative hierarchy and
     breaks for constituencies and protected areas.
   - >
-    Nepali names cover the country, all 7 provinces and all 77 districts, and
-    64% of local units. Districts come from Wikidata: 67 of 77 by name, and 10
-    through district_name_fixes.csv because the two sources romanise them
-    differently (Dhanusa/Dhanusha) or name them differently outright
-    (Nawalparasi East/Nawalpur). NULL means no verified name exists; names are
-    never transliterated.
+    Nepali names cover the country, all 7 provinces, all 77 districts and 752
+    of 753 local units. Local units come from NSO, the publisher of record,
+    which keys each Devanagari name by the same romanisation its census tables
+    use -- so the two join on a string both sides already agree on rather than
+    being matched across independent transliterations. Wikidata is the fallback
+    and supplies three units whose NSO row is excluded for a transcoding or
+    truncation defect (nso_name_exclusions.csv). Districts come from Wikidata,
+    67 of 77 by name and 10 through district_name_fixes.csv. One local unit,
+    Pariwartan, has no name: NSO's Nepali for it is a different name rather
+    than a different spelling, and nothing available here settles which is
+    current. NULL means no verified name exists; names are never
+    transliterated.
   - >
     This table includes places that no longer exist. Filter on is_current
     unless you specifically want historical geography. is_current is derived

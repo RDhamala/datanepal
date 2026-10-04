@@ -3,11 +3,16 @@
 /*
   Nepali names for Nepal's 77 current districts, from Wikidata (CC0).
 
-  Both labels carry a type suffix the COD does not: Wikidata writes "Taplejung
-  District" and "ताप्लेजुङ जिल्ला", the spine writes "Taplejung". Both come
-  off, so the stored name_ne sits at the same granularity as name_en -- a
-  consumer joining or printing the two columns should not get one bare form
-  and one suffixed.
+  The English label carries a type suffix the COD does not -- Wikidata writes
+  "Taplejung District" where the spine writes "Taplejung" -- so that comes off
+  before matching.
+
+  The Nepali suffix stays. जिल्ला was briefly stripped, to make name_ne
+  parallel the bare name_en, and that was wrong in context: every other level
+  keeps its own type word, because every publisher writes it. Provinces are
+  "कोशी प्रदेश" from the seed and 99.8% of local units are "... गाउँपालिका"
+  from NSO. Stripping only the districts made them the one level out of step
+  with the rest of the column.
 
   The abolished pair is already excluded upstream, by Wikidata's own P576
   statement rather than by us deciding which names look historical.
@@ -21,7 +26,7 @@ cleaned as (
     select
         qid,
         trim(regexp_replace(name_en, '\s+District$', '', 'i')) as name_en,
-        trim(regexp_replace(name_ne, '\s*जिल्ला\s*$', ''))      as name_ne,
+        trim(name_ne)                                           as name_ne,
         cast(lat as double)                                     as lat,
         cast(lon as double)                                     as lon
     from source

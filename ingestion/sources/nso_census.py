@@ -50,7 +50,9 @@ in transform/seeds/nso_name_fixes.csv.
 from __future__ import annotations
 
 import io
+import json
 import logging
+import re
 import time
 from collections.abc import Iterator
 from typing import Any
@@ -64,6 +66,11 @@ from ingestion import http
 logger = logging.getLogger(__name__)
 
 BASE = "https://censusresults.nsonepal.gov.np/files/province/P{province}/{table}.xlsx"
+
+# The Nepali edition of the results site. Its translation bundle carries the
+# Devanagari name of every local unit, keyed by the unit's romanised name --
+# the same romanisation the XLSX tables above use.
+NEPALI_PAGE = "https://censusresults.nsonepal.gov.np/np/local-level"
 
 # nsonepal.gov.np publishes `Crawl-delay: 10`. The census subdomain serves no
 # robots.txt at all, but honouring the parent domain's delay is the polite read
@@ -444,6 +451,91 @@ def census_literacy() -> Iterator[dict[str, Any]]:
         )
 
 
+# The romanised unit-type suffixes NSO appends to a local unit's name. Used
+# only to recognise which translation keys are place names rather than UI
+# strings -- never to classify a unit, which goes by the P-code type digit.
+_UNIT_SUFFIX = re.compile(
+    r"\s(?:gaunpalika|gaupalika|nagarpalika|municipality"
+    r"|(?:sub[-\s]?)?metropolit(?:i)?an\s+city)\s*$",
+    re.IGNORECASE,
+)
+
+
+@dlt.resource(name="local_unit_names", write_disposition="replace", primary_key="name_en")
+def local_unit_names() -> Iterator[dict[str, Any]]:
+    """Yield the Devanagari name of every local unit, from NSO's Nepali site.
+
+    Why this source rather than Wikidata
+    ------------------------------------
+    Wikidata reaches 64% of local units and is community-maintained. NSO is the
+    publisher of record for Nepal's statistics and has all 753, so it outranks
+    Wikidata on authority -- and on something more practical: it keys each name
+    by the unit's *romanised* name, in the same romanisation as the census
+    tables this connector already loads. That turns a cross-source
+    transliteration problem into a join on a string both sides already agree
+    on, which is the whole reason the local-unit gap was still open.
+
+    NSO even publishes the alias set itself: "Phaktanglung Gaunpalika" and
+    "Phaktanlung Gaunpalika" both map to फक्ताङ्लुङ्ग, so a spelling the census
+    tables use is matched even when it is not the spelling the site prefers.
+
+    Why the embedded bundle rather than a file
+    ------------------------------------------
+    NSO publishes no Nepali-language data file. Checked: the per-province XLSX
+    tables and the longform CSVs are romanised throughout, and the COD's
+    multilingual name columns are empty. The names exist only in the site's
+    own translation bundle, which is served inside the page as JSON -- read
+    from the HTML rather than from /_next/data/<buildId>/, because the build
+    ID changes on every NSO deploy and the page path does not.
+
+    Known defects are not corrected here. They are excluded downstream in
+    transform/seeds/nso_name_exclusions.csv with a reason each, because
+    repairing a publisher's value is a guess wearing a tidy jumper.
+    """
+    with httpx.Client(
+        timeout=120,
+        follow_redirects=True,
+        verify=http.verify(),
+        headers={"User-Agent": "DataNepalBot/1.0 (+https://datanepal.org)"},
+    ) as session:
+        response = http.client_get(session, NEPALI_PAGE, what="NSO Nepali local-level page")
+
+    match = re.search(
+        r'id="__NEXT_DATA__"[^>]*>(.*?)</script>', response.text, re.DOTALL
+    )
+    if not match:
+        raise ValueError(
+            "No __NEXT_DATA__ payload on NSO's Nepali local-level page; "
+            "the site has been rebuilt and this connector needs rechecking."
+        )
+
+    store = (
+        json.loads(match.group(1))["props"]["pageProps"]["_nextI18Next"]
+        ["initialI18nStore"]["np"]["common"]
+    )
+
+    emitted = 0
+    for name_en, name_ne in store.items():
+        if not isinstance(name_ne, str) or not _UNIT_SUFFIX.search(name_en):
+            continue
+        emitted += 1
+        yield {
+            "name_en": name_en.strip(),
+            # Collapse runs of whitespace: NSO's values carry a double space
+            # before the unit type for most rural municipalities.
+            "name_ne": re.sub(r"\s+", " ", name_ne).strip(),
+        }
+
+    logger.info("census names: %d local-unit name aliases", emitted)
+    # 753 units plus NSO's own spelling aliases. A short read means the bundle
+    # changed shape, which would silently shrink name coverage rather than fail.
+    if emitted < EXPECTED_LOCAL_UNITS:
+        raise ValueError(
+            f"NSO Nepali bundle yielded {emitted} local-unit names, "
+            f"expected at least {EXPECTED_LOCAL_UNITS}"
+        )
+
+
 @dlt.source(name="nso_census")
 def nso_census_source():
-    return [census_population(), census_literacy()]
+    return [census_population(), census_literacy(), local_unit_names()]

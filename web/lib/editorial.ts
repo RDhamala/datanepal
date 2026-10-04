@@ -1067,6 +1067,24 @@ export async function editorialPlace(
 }
 
 /** Reader-facing label for a place type. */
+/**
+ * The type as it reads *inside* a proper name: "Kathmandu Metropolitan City".
+ *
+ * Separate from TYPE_LABEL, which is sentence case because it stands alone in
+ * a chip or a table cell. Using the standalone form inside a name produced
+ * "Kathmandu Metropolitan city" in the <title> of 477 pages -- the half-cased
+ * middle ground that looks like a typo in a browser tab and a search result.
+ */
+export const TYPE_NAME: Record<string, string> = {
+  country: "Nepal",
+  province: "Province",
+  district: "District",
+  metropolitan: "Metropolitan City",
+  sub_metropolitan: "Sub-Metropolitan City",
+  municipality: "Municipality",
+  rural_municipality: "Rural Municipality",
+};
+
 export const TYPE_LABEL: Record<string, string> = {
   country: "Nepal",
   province: "Province",

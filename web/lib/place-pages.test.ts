@@ -228,18 +228,23 @@ describe("every place page has what it needs", () => {
     // pages rather than one of them being theoretical.
     //
     // Districts were 0 of 77 until the Wikidata connector started collecting
-    // them -- their names were in a response it was already fetching. The
-    // local-unit figure moves with upstream Wikidata, so it is asserted as a
-    // floor; a hard number here would fail the build every time a volunteer
-    // edits an item, which is noise rather than signal.
+    // them -- their names were in a response it was already fetching. Local
+    // units were 64% until NSO's Nepali edition replaced Wikidata as the
+    // source: NSO keys each name by the same romanisation its census tables
+    // use, so the two join rather than being matched across independent
+    // transliterations.
+    //
+    // A ceiling on the gap, not a hard count. One unit has no name today
+    // (Pariwartan, where NSO's Nepali is a different name rather than a
+    // different spelling) and the exclusions list may grow or shrink as NSO
+    // fixes its own data, which is movement this test should tolerate. What it
+    // must catch is coverage collapsing -- a renamed translation key would
+    // leave the join finding nothing, with nothing else looking broken.
     const { provs, districts, locals } = await allPlaces();
     for (const p of provs) expect(p.name_ne, p.name_en).toBeTruthy();
     for (const d of districts) expect(d.name_ne, d.name_en).toBeTruthy();
     expect(districts.length).toBe(77);
-    // A floor, and a ceiling that proves the gap is still real: if either end
-    // is crossed, the thing to check is whether names are being guessed.
-    expect(locals.filter((l) => l.name_ne).length).toBeGreaterThanOrEqual(470);
-    expect(locals.filter((l) => !l.name_ne).length).toBeGreaterThan(0);
+    expect(locals.filter((l) => !l.name_ne).length).toBeLessThanOrEqual(3);
   });
 
   it("keeps names unique only within a parent, which is why URLs are hierarchical", async () => {

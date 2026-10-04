@@ -1,0 +1,5 @@
+name_en,defect,reason
+Shailung Gaunpalika,transcoding,"NSO publishes शैलुड० गाउँपालिका. The ड० is a legacy Devanagari font artefact for ङ -- the name is शैलुङ -- but repairing a publisher's value is a guess, so the row is dropped and the Wikidata name is used instead."
+Panchpokhari Thangpal Gaunpalika,transcoding,"NSO publishes पाँचपोखरी थाड०पाल गाउँपालिका, the same ड० for ङ artefact. Dropped rather than repaired."
+Likhu Tamakoshi Gaunpalika,truncated,"NSO maps this to लिखु गाउँपालिका, dropping तामाकोशी. That is also the name of two other rural municipalities called Likhu, so accepting it would give three distinct places one name and lose the distinction Likhu Tamakoshi is named for."
+Pariwartan Gaunpalika,mismatch,"NSO maps Pariwartan Gaunpalika to दुईखोली गाउँपालिका -- Duikholi, which is a different name entirely rather than a different spelling. One of the two is out of date and no authority available here settles which, so the name is left unset rather than guessed."
