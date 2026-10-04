@@ -10,12 +10,14 @@
  * every one of them either runs JavaScript or does not look at these routes.
  * This is the check that would have caught it.
  *
- * **Their length is bounded by structure, not by ingestion.** /indicators/ was
- * 6,686px on a desktop and 10,685px on a phone because it rendered 36
- * indicator rows in a run, and the platform intends to hold many times 36.
- * Collapsing by topic makes the height O(topics); this asserts that no
- * indicator row has escaped back out of a disclosure, which is how that
- * property would quietly be lost.
+ * **Their rows stay compact.** /indicators/ was 6,686px on a desktop because
+ * each of 36 rows carried its definition as a paragraph -- 185px a row. It was
+ * collapsed behind one <details> per topic to hide that, which bounded the
+ * height and also meant the page's first impression was ten grey lids and no
+ * data. The list is open again and the rows are compact instead, so the budget
+ * has to be asserted on the thing that actually drives height: how much each
+ * row carries. A definition paragraph creeping back in would restore the
+ * original page without anything else looking wrong.
  *
  * Runs as postbuild, so a regression fails the build rather than reaching the
  * CDN.
@@ -64,27 +66,39 @@ if (!indicators) {
     }
 
     const topics = Number(stated[2]);
-    const disclosures = (indicators.match(/<details/g) ?? []).length;
-    if (disclosures !== topics) {
-      fail("indicators", `${disclosures} disclosures for ${topics} topics`);
+    // One hub link per topic section. Counting <h2> would also catch the
+    // footer's, which is a different kind of heading on the same page.
+    const sections = (indicators.match(/charts and rankings/g) ?? []).length;
+    if (sections !== topics) {
+      fail("indicators", `${sections} topic sections for ${topics} topics`);
     }
 
     /*
-      No indicator row outside a disclosure.
+      The length budget, as a testable property.
 
-      This is the length budget as a testable property: every row lives inside
-      a collapsed topic, so the page's height is set by the number of topics
-      and not by the number of indicators. A row rendered in a bare <ul>
-      would restore the 10,685px page without anything else looking wrong.
+      Rendered text per indicator row is the proxy for row height, and it is
+      the quantity that went wrong: definitions averaged ~170 characters a row
+      on top of ~90 for the name, unit, coverage, publisher, value and period.
+      The compact row runs about 110. 150 leaves room for longer measure names
+      and publishers without leaving room for a paragraph.
     */
-    const outside = indicators.replace(/<details[\s\S]*?<\/details>/g, "");
-    const escaped = [...outside.matchAll(/href="\/indicators\/([a-z0-9-]+)\/"/g)].map(
-      (m) => m[1],
-    );
-    if (escaped.length) {
+    const rows = [...indicators.matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/g)]
+      .map((m) => m[1])
+      .filter((html) => /href="\/indicators\/[a-z0-9-]+\//.test(html))
+      .map((html) =>
+        html
+          .replace(/<[^>]+>/g, " ")
+          .replace(/\s+/g, " ")
+          .trim(),
+      );
+    const perRow = rows.length
+      ? Math.round(rows.reduce((a, r) => a + r.length, 0) / rows.length)
+      : 0;
+    const BUDGET = 150;
+    if (perRow > BUDGET) {
       fail(
         "indicators",
-        `${escaped.length} indicator rows outside a disclosure (${escaped.slice(0, 3).join(", ")})`,
+        `${perRow} rendered characters per indicator row (budget ${BUDGET}) -- rows have grown back`,
       );
     }
   }
