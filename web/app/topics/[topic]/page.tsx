@@ -25,11 +25,10 @@ import {
   units,
 } from "@/lib/data";
 import { AgePyramid } from "@/components/AgePyramid";
-import { RankedBars, TrendChart } from "@/components/charts";
+import { PairedBars, RankedBars, TrendChart } from "@/components/charts";
 import { MetricMap } from "@/components/MetricMap";
 import { Composition } from "@/components/viz/Composition";
 import { Figure, FigureCell, FigureRow, FigureTable } from "@/components/viz/Figure";
-import { PairedBars } from "@/components/viz/MetricStrip";
 import { DataDisclosure } from "@/components/viz/DataDisclosure";
 import { Crumbs, PageHeader, Section, SourceNote } from "@/components/ui";
 import { TYPE } from "@/lib/viz";

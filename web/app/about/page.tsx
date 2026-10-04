@@ -24,8 +24,12 @@ export default function About() {
         screen empty. The sidebar carries real figures already computed for
         the closing paragraph below, promoted to where they're visible without
         scrolling, rather than decoration invented to fill the space.
+
+        The prose track is sized to the prose. As `1fr` it stretched to 928px
+        around a max-w-prose child, so 314px of nothing opened up between the
+        text and a rail that then read as belonging to neither column.
       */}
-      <div className="grid gap-x-16 gap-y-10 lg:grid-cols-[minmax(0,1fr)_18rem]">
+      <div className="grid gap-x-16 gap-y-10 lg:grid-cols-[minmax(0,40rem)_18rem] lg:justify-start">
         <div className="max-w-prose">
           <p className="text-ink-soft mb-11 text-[15px] leading-relaxed">
             Nepal&rsquo;s public statistics are scattered across institutions that each

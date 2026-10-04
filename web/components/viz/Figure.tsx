@@ -1,4 +1,4 @@
-import { COLOR, TYPE } from "@/lib/viz";
+import { TYPE } from "@/lib/viz";
 import { DataDisclosure } from "./DataDisclosure";
 
 /*
@@ -147,50 +147,6 @@ export function LegendItem({
 export function Legend({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">{children}</div>
-  );
-}
-
-/**
- * A sequential ramp legend with its real class boundaries labelled.
- *
- * Labelling the breaks rather than only the range ends is what makes a quantile
- * scale honest: the classes are unevenly spaced, and a smooth bar with only two
- * numbers on it implies they are not.
- */
-export function RampLegend({
-  breaks,
-  low,
-  high,
-  format,
-  label,
-}: {
-  breaks: number[];
-  low: number;
-  high: number;
-  format: (v: number) => string;
-  label?: string;
-}) {
-  return (
-    <div className="max-w-md">
-      <div className="flex h-2.5 gap-px overflow-hidden rounded-sm">
-        {COLOR.sequential.map((c) => (
-          <span key={c} className="flex-1" style={{ background: c }} />
-        ))}
-      </div>
-      <div
-        className="text-ink-faint tabular mt-1.5 flex justify-between"
-        style={{ fontSize: TYPE.micro }}
-      >
-        {[low, ...breaks, high].map((v, i) => (
-          <span key={i}>{format(v)}</span>
-        ))}
-      </div>
-      {label && (
-        <p className="text-ink-faint mt-1" style={{ fontSize: TYPE.small }}>
-          {label}
-        </p>
-      )}
-    </div>
   );
 }
 

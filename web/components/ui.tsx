@@ -80,14 +80,6 @@ export function PageHeader({
   );
 }
 
-export function Pcode({ code }: { code: string }) {
-  return (
-    <code className="bg-surface-sunken text-ink-soft rounded px-1.5 py-0.5 font-mono text-[11px]">
-      {code}
-    </code>
-  );
-}
-
 /* --------------------------------------------------------------- stat tiles */
 
 /**
@@ -129,17 +121,6 @@ export function Tile({
   );
 }
 
-export function TileRow({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      className="bg-surface border-line divide-line mb-10 grid grid-cols-2 overflow-hidden rounded-xl border sm:grid-cols-3 lg:grid-cols-6"
-      style={{ boxShadow: "var(--shadow-raise)" }}
-    >
-      {children}
-    </div>
-  );
-}
-
 /* ----------------------------------------------------------------- sections */
 
 export function Section({
@@ -173,42 +154,6 @@ export function Section({
       {!note && <div className="mb-6" />}
       {children}
     </section>
-  );
-}
-
-export function Callout({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="border-line-strong bg-surface-sunken text-ink-soft mb-10 rounded-r border-l-2 px-4 py-3 text-[13px]">
-      {children}
-    </div>
-  );
-}
-
-export function Row({ children }: { children: React.ReactNode }) {
-  return (
-    <tr className="border-line hover:bg-surface-sunken border-b last:border-0">
-      {children}
-    </tr>
-  );
-}
-
-export function Cell({
-  children,
-  numeric,
-  strong,
-}: {
-  children: React.ReactNode;
-  numeric?: boolean;
-  strong?: boolean;
-}) {
-  return (
-    <td
-      className={`px-4 py-2.5 ${numeric ? "tabular text-right" : "text-left"} ${
-        strong ? "text-ink font-medium" : "text-ink-soft"
-      }`}
-    >
-      {children}
-    </td>
   );
 }
 
@@ -323,41 +268,6 @@ export function SourceNote({
 
 /* -------------------------------------------------------- section jump nav */
 
-/**
- * In-page navigation for a place's sections.
- *
- * Anchors, not tabs. Tabs would need client JavaScript, hide content from
- * search engines, and break deep linking — and on a static site with SEO as the
- * primary discovery path, all three matter. Anchors give a keyboard-navigable
- * jump list, work with no script, and let a reader link to a specific section.
- *
- * Only sections that actually have data are listed. A place page offering an
- * "Economy" jump link that lands on nothing is worse than not offering it.
- */
-export function SectionNav({
-  sections,
-}: {
-  sections: { id: string; label: string }[];
-}) {
-  if (sections.length < 2) return null;
-  return (
-    <nav aria-label="On this page" className="border-line mb-10 border-y py-2.5">
-      <ul className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[13px]">
-        {sections.map((s) => (
-          <li key={s.id}>
-            <a
-              href={`#${s.id}`}
-              className="text-ink-soft hover:text-ink no-underline hover:underline"
-            >
-              {s.label}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </nav>
-  );
-}
-
 /* --------------------------------------------------------------- KPI strip */
 
 /**
@@ -387,31 +297,5 @@ export function FactStrip({
         </div>
       ))}
     </dl>
-  );
-}
-
-/** A section that can be linked to from SectionNav. */
-export function AnchoredSection({
-  id,
-  title,
-  note,
-  children,
-}: {
-  id: string;
-  title: string;
-  note?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <section id={id} className="mb-11 scroll-mt-20">
-      <h2 className="text-heading text-ink font-semibold">{title}</h2>
-      {note && (
-        <p className="text-ink-faint mt-1 mb-4 max-w-prose text-[13px] leading-relaxed">
-          {note}
-        </p>
-      )}
-      {!note && <div className="mb-4" />}
-      {children}
-    </section>
   );
 }
