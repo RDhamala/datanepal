@@ -44,7 +44,6 @@ export function GeoExplorer({
   rows,
   width,
   height,
-  outlinePath,
   title,
   source,
 }: {
@@ -53,7 +52,6 @@ export function GeoExplorer({
   rows: GeoRow[];
   width: number;
   height: number;
-  outlinePath?: string;
   title: string;
   source?: React.ReactNode;
 }) {
@@ -95,12 +93,27 @@ export function GeoExplorer({
             const v = metric?.values[f.placeId];
             const bin = binOf(v);
             const on = activeId === f.placeId;
+            /*
+              The resting hairline comes from `.geo-shape`, not from here. A
+              surface-coloured stroke -- which is what this drew before --
+              disappears against the pale end of the ramp, and the pale end is
+              already within 1.1:1 of the page it sits on. The result was that
+              the least-populated municipalities had neither a fill you could
+              see nor a border, on 838 pages.
+
+              The active state goes through `style` rather than attributes
+              because a CSS rule beats an SVG presentation attribute, and the
+              highlight is driven by React state (a row hover in the charts
+              below lights up the map) rather than by `:hover`.
+            */
             const shape = (
               <path
                 d={f.path}
+                className="geo-shape"
                 fill={bin === null ? "var(--color-surface-inset)" : RAMP[bin]}
-                stroke={on ? "var(--color-ink)" : "var(--color-surface)"}
-                strokeWidth={on ? 1.8 : 0.5}
+                style={
+                  on ? { stroke: "var(--color-ink)", strokeWidth: 1.4 } : undefined
+                }
               />
             );
             return f.href ? (
@@ -119,15 +132,6 @@ export function GeoExplorer({
               <g key={f.placeId}>{shape}</g>
             );
           })}
-
-          {outlinePath && (
-            <path
-              d={outlinePath}
-              fill="none"
-              stroke="var(--color-ink-faint)"
-              strokeWidth={0.9}
-            />
-          )}
 
           {/*
             Labels off below 640px. At 390px a 14px label lands near 5px --
