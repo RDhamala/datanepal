@@ -71,10 +71,17 @@ export function PageHeader({
           {native}
         </p>
       )}
+      {/*
+        A paragraph, not a div. Every caller passes a sentence, and two of them
+        put a link inside it -- which in a div got no underline, because the
+        prose rule in globals.css is scoped to real text elements. Colour alone
+        is not a distinguishing signal (WCAG 1.4.1), and the link here measured
+        1.25:1 against its surrounding text.
+      */}
       {meta && (
-        <div className="text-ink-soft mt-4 max-w-[70ch] text-[14px] leading-relaxed">
+        <p className="text-ink-soft mt-4 max-w-[70ch] text-[14px] leading-relaxed">
           {meta}
-        </div>
+        </p>
       )}
     </header>
   );

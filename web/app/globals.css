@@ -33,7 +33,10 @@
   /* ---- ink. Text wears these, never a series colour. ---- */
   --color-ink: #0f0f0e;
   --color-ink-soft: #4d4c49;
-  --color-ink-faint: #77766e;
+  /* 4.67:1 on surface-inset, the darkest surface it lands on. It was #77766e,
+     which is 3.93:1 there and 4.18:1 on surface-sunken -- the year chip beside
+     every headline figure, under the 4.5:1 floor for text this size. */
+  --color-ink-faint: #6b6a63;
 
   /*
     ---- brand & action ----
@@ -278,6 +281,33 @@
   }
   a:hover {
     text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  /*
+    A link inside running text has to be findable without colour (WCAG 1.4.1).
+    Colour alone was the only signal, so a reader with any colour-vision
+    deficiency read the sources paragraph as a flat sentence with no way in.
+
+    Scoped to prose rather than applied to every `a`, because navigation, cards,
+    table rows and map shapes are not running text: they sit in a list of
+    links, where position already says "link", and underlining all of them
+    would make the page look like a 1996 directory. Anything in prose that is
+    really a control can still opt out with `no-underline`.
+
+    `td` is in the list because those cells mix a linked name with an unlinked
+    Nepali one, which is the same problem in a table: the blue against the
+    surrounding ink is 2.79:1, and no link colour clears 3:1 against ink while
+    staying readable on white. Row headers are excluded -- a `th` holds only
+    the name.
+  */
+  p a:not(.no-underline),
+  dd a:not(.no-underline),
+  td a:not(.no-underline),
+  figcaption a:not(.no-underline),
+  blockquote a:not(.no-underline) {
+    text-decoration: underline;
+    text-decoration-thickness: from-font;
     text-underline-offset: 2px;
   }
 

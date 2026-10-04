@@ -73,16 +73,27 @@ export default function ComparePage() {
         </p>
       </noscript>
 
-      <Suspense
-        fallback={<p className="text-ink-faint text-[14px]">Loading places…</p>}
-      >
-        {/*
+      {/*
+        The reserved height is what keeps this from being the only page on the
+        site with a layout shift. The fallback is one line and the explorer it
+        becomes is a search box, two chips and a six-column table, so the swap
+        moved the footer by most of a screen -- CLS 0.115, against a 0.1 budget.
+
+        A floor, not a fixed height: the table grows with each place added, and
+        it should.
+      */}
+      <div className="min-h-[34rem] sm:min-h-[30rem]">
+        <Suspense
+          fallback={<p className="text-ink-faint text-[14px]">Loading places…</p>}
+        >
+          {/*
           Nepal and its largest district, so the page demonstrates itself
           rather than opening on an empty frame. Any `?p=` in the address
           replaces this.
         */}
-        <CompareExplorer initial={["nepal", "bagmati/kathmandu"]} />
-      </Suspense>
+          <CompareExplorer initial={["nepal", "bagmati/kathmandu"]} />
+        </Suspense>
+      </div>
     </>
   );
 }
