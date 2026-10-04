@@ -64,15 +64,28 @@ provinces as (
 ),
 
 districts as (
+    /*
+      Districts carried a hardcoded NULL here, so all 77 district pages said
+      "No Nepali name is published for this place" -- not because no name
+      exists, but because nothing had ever been wired up. The names were in a
+      response the Wikidata connector was already fetching: its local-unit
+      query binds ?district to find each palika's parent and kept only the
+      English label.
+
+      Resolved in int_district_names, which does not simply join on the name:
+      Wikidata's romanisation disagrees with the COD on ten of the 77.
+    */
     select
         'district'            as place_type,
         u.pcode               as source_pcode,
         u.parent_pcode,
         u.name_en,
-        cast(null as varchar) as name_ne_seed,
+        w.name_ne             as name_ne_seed,
         2                     as admin_level,
         u.area_sqkm, u.center_lat, u.center_lon
     from units u
+    left join {{ ref('int_district_names') }} w
+        on u.pcode = w.source_pcode
     where u.admin_level = 2
 ),
 

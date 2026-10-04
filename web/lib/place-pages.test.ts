@@ -222,15 +222,24 @@ describe("every place page has what it needs", () => {
 
   it("publishes a Nepali name where the source has one, and no guess where it does not", async () => {
     // Not an oversight: a romanised name with no agreed Devanagari form in the
-    // source is left as a gap rather than transliterated. Every province has
-    // one, no district has one, and local governments are split -- which means
-    // both rendering paths are exercised across the 753 pages rather than one
-    // of them being theoretical.
+    // source is left as a gap rather than transliterated. The country, every
+    // province and every district now has one; local governments are split,
+    // which means both rendering paths are still exercised across the 753
+    // pages rather than one of them being theoretical.
+    //
+    // Districts were 0 of 77 until the Wikidata connector started collecting
+    // them -- their names were in a response it was already fetching. The
+    // local-unit figure moves with upstream Wikidata, so it is asserted as a
+    // floor; a hard number here would fail the build every time a volunteer
+    // edits an item, which is noise rather than signal.
     const { provs, districts, locals } = await allPlaces();
     for (const p of provs) expect(p.name_ne, p.name_en).toBeTruthy();
-    expect(districts.filter((d) => d.name_ne).length).toBe(0);
-    expect(locals.filter((l) => l.name_ne).length).toBe(483);
-    expect(locals.filter((l) => !l.name_ne).length).toBe(270);
+    for (const d of districts) expect(d.name_ne, d.name_en).toBeTruthy();
+    expect(districts.length).toBe(77);
+    // A floor, and a ceiling that proves the gap is still real: if either end
+    // is crossed, the thing to check is whether names are being guessed.
+    expect(locals.filter((l) => l.name_ne).length).toBeGreaterThanOrEqual(470);
+    expect(locals.filter((l) => !l.name_ne).length).toBeGreaterThan(0);
   });
 
   it("keeps names unique only within a parent, which is why URLs are hierarchical", async () => {

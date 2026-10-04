@@ -33,6 +33,10 @@ ocha as (
 ),
 
 wikidata as (
+    -- Local units and districts come from two crosswalks, and both record the
+    -- item each name was taken from. That is the point of keeping the QID: a
+    -- name sourced from a community-maintained project has to stay
+    -- re-checkable, and "which item said this" is the only way to check it.
     select
         p.place_id,
         'wikidata_qid'        as id_system,
@@ -42,6 +46,18 @@ wikidata as (
     from {{ ref('int_place_names_raw') }} n
     inner join places p on n.source_pcode = p.source_pcode
     where n.wikidata_qid is not null
+
+    union all
+
+    select
+        p.place_id,
+        'wikidata_qid'        as id_system,
+        d.wikidata_qid        as id_value,
+        'wikidata-np-places'  as dataset_id,
+        false                 as is_authoritative
+    from {{ ref('int_district_names') }} d
+    inner join places p on d.source_pcode = p.source_pcode
+    where d.wikidata_qid is not null
 ),
 
 iso_subdivision as (

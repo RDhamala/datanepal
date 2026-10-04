@@ -19,9 +19,12 @@ caveats:
     substrings. Substring nesting works for the administrative hierarchy and
     breaks for constituencies and protected areas.
   - >
-    Nepali names cover provinces (hand-verified) and ~66% of local units
-    (Wikidata). Districts have none yet. NULL means no verified name exists;
-    names are never transliterated.
+    Nepali names cover the country, all 7 provinces and all 77 districts, and
+    64% of local units. Districts come from Wikidata: 67 of 77 by name, and 10
+    through district_name_fixes.csv because the two sources romanise them
+    differently (Dhanusa/Dhanusha) or name them differently outright
+    (Nawalparasi East/Nawalpur). NULL means no verified name exists; names are
+    never transliterated.
   - >
     This table includes places that no longer exist. Filter on is_current
     unless you specifically want historical geography. is_current is derived

@@ -1,11 +1,13 @@
-"""Nepali names for Nepal's local units, from Wikidata.
+"""Nepali names for Nepal's districts and local units, from Wikidata.
 
 Source: https://query.wikidata.org
 Licence: CC0
 
-The geography spine comes from the OCHA COD, which publishes English only. A
-bilingual platform needs Nepali names for all 753 local units, and no single
-source has them.
+The geography spine comes from the OCHA COD, which publishes English only --
+verified rather than assumed: the COD's XLSX carries adm1_name1/2/3 and
+lang1/2/3 columns for exactly this purpose and every one of them is empty, with
+`lang` declared "en". A bilingual platform needs Nepali names for 77 districts
+and 753 local units, and no single source has them all.
 
 Wikidata is preferred over OpenStreetMap here on licensing grounds, not
 coverage. OSM carries Nepali names for ~55% of units but is ODbL, whose
@@ -129,6 +131,84 @@ def place_names() -> Iterator[dict[str, Any]]:
         )
 
 
+# Abolished districts are excluded at the source, by Wikidata's own statement
+# that they were dissolved (P576), not by us guessing which names look
+# historical. Nepal's 2017 restructuring split Nawalparasi and Rukum in two;
+# both parents still have items, and both sit inside one of their successors'
+# boundaries, so a geometry match would confidently attach a dead district's
+# name to a living one. Filtering on P576 leaves exactly 77 items for 77
+# districts.
+DISTRICT_QUERY = f"""
+SELECT ?item ?en ?ne ?coord WHERE {{
+  ?item wdt:P31 wd:{DISTRICT_OF_NEPAL} .
+  OPTIONAL {{ ?item rdfs:label ?en FILTER(lang(?en) = "en") }}
+  OPTIONAL {{ ?item rdfs:label ?ne FILTER(lang(?ne) = "ne") }}
+  ?item wdt:P625 ?coord .
+  FILTER NOT EXISTS {{ ?item wdt:P576 ?abolished }}
+}}
+"""
+
+
+@dlt.resource(name="district_names", write_disposition="replace", primary_key="qid")
+def district_names() -> Iterator[dict[str, Any]]:
+    """Yield Nepal's districts with English and Nepali labels.
+
+    The place_names query above already walks these items -- it binds ?district
+    to find each local unit's parent -- and kept only the English label to
+    disambiguate palika names. The districts' own Nepali labels were sitting one
+    column away in a response we were already fetching, while all 77 district
+    pages said "No Nepali name is published for this place".
+
+    District names are unique nationally, where 22 local-unit names are shared
+    across districts -- but that does not make the name sufficient. Wikidata's
+    romanisation disagrees with the COD on ten of the 77: Dhanusa/Dhanusha,
+    Kapilbastu/Kapilvastu, Terhathum/Tehrathum, and four post-2017 districts
+    the two sources name entirely differently (our "Nawalparasi East" is their
+    "Nawalpur"). That is the same failure that got Open Knowledge Nepal's
+    boundary release rejected, so the coordinate is carried too and the
+    transformation layer resolves the residue by geometry rather than by
+    guessing at spellings.
+    """
+    payload = http.get_json(
+        SPARQL_ENDPOINT,
+        what="Wikidata SPARQL district names",
+        params={"query": DISTRICT_QUERY},
+        headers={"Accept": "application/sparql-results+json"},
+        timeout=180,
+    )
+    bindings = payload["results"]["bindings"]
+
+    emitted = 0
+    seen: set[str] = set()
+    for row in bindings:
+        qid = row["item"]["value"].rsplit("/", 1)[-1]
+        if qid in seen:
+            continue
+        seen.add(qid)
+        lat, lon = _parse_point(row.get("coord", {}).get("value"))
+        emitted += 1
+        yield {
+            "qid": qid,
+            "name_en": row.get("en", {}).get("value"),
+            "name_ne": row.get("ne", {}).get("value"),
+            "lat": lat,
+            "lon": lon,
+        }
+
+    logger.info("Emitted %d district candidates", emitted)
+    # Nepal has exactly 77 districts, and with the abolished pair filtered out
+    # this query returns exactly 77 items. Asserting the external expectation
+    # rather than a floor: more than 77 means a district gained a duplicate
+    # item or lost its P576, and fewer means a truncated response that still
+    # returned 200.
+    if emitted != 77:
+        raise ValueError(
+            f"Expected 77 current districts from Wikidata, got {emitted}. "
+            "Either the response was truncated or Wikidata's set has changed; "
+            "check before trusting this load."
+        )
+
+
 @dlt.source(name="wikidata_names")
 def wikidata_names_source():
-    return [place_names()]
+    return [place_names(), district_names()]

@@ -13,3 +13,4 @@ routine choices belong in code comments, not here.
 | [0006](0006-provenance-enforcement.md) | Provenance enforced at the publication boundary | Accepted |
 | [0007](0007-licensing-boundaries.md) | Licence computed per table; share-alike is a tested boundary | Accepted |
 | [0008](0008-temporal-place-identity.md) | Places are valid over an interval; successions are data | Accepted |
+| [0009](0009-robots-txt-and-data-apis.md) | `robots.txt` governs crawling, not documented data APIs | Accepted |

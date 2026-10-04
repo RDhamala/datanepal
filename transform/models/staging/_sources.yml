@@ -47,12 +47,17 @@ sources:
   - name: raw_wikidata_names
     schema: raw_wikidata_names
     description: >
-      Nepali names for local units, from Wikidata (CC0). Preferred over
-      OpenStreetMap on licensing grounds: OSM is ODbL, whose share-alike terms
-      would propagate to the published database.
+      Nepali names for districts and local units, from Wikidata (CC0).
+      Preferred over OpenStreetMap on licensing grounds: OSM is ODbL, whose
+      share-alike terms would propagate to the published database.
     tables:
       - name: place_names
         description: Candidate local units with English and Nepali labels and coordinates.
+      - name: district_names
+        description: >
+          Nepal's districts with English and Nepali labels. 79 rows: the 77
+          current districts plus the two abolished pre-2017 ones, Nawalparasi
+          and Rukum, which Wikidata still holds items for.
 
   - name: raw_worldbank
     schema: raw_worldbank
