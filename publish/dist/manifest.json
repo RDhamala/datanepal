@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-04T04:23:28.406749+00:00",
+  "generated_at": "2026-10-04T04:27:35.571252+00:00",
   "table_count": 17,
   "tables": [
     {
@@ -169,7 +169,7 @@
       "row_count": 43360,
       "parquet": "observation_dimensions.parquet",
       "json": null,
-      "bytes": 506702
+      "bytes": 506432
     },
     {
       "table": "observations",
@@ -288,10 +288,10 @@
       "caveats": [
         "Identifier values are unique within their system, not globally. Always qualify a lookup by id_system.\n"
       ],
-      "row_count": 1352,
+      "row_count": 1429,
       "parquet": "place_identifiers.parquet",
       "json": "place_identifiers.json",
-      "bytes": 21472
+      "bytes": 22164
     },
     {
       "table": "place_successions",
