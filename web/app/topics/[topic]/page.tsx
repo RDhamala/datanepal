@@ -330,7 +330,7 @@ export default async function TopicPage({ params }: { params: Promise<Params> })
           <RankedBars
             label={view.partyRanking.label}
             valueLabel={view.partyRanking.valueLabel}
-            rowLabel="Party"
+            noun="parties"
             rows={partyResults.map((r) => ({
               name: r.name,
               nameNe: r.nameNe,
@@ -352,7 +352,7 @@ export default async function TopicPage({ params }: { params: Promise<Params> })
               metrics={map.metrics}
               width={map.width}
               height={map.height}
-              caption={`${map.features.length} districts.`}
+              noun="districts"
             />
             <div>
               <h3

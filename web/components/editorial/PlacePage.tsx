@@ -6,6 +6,7 @@ import { GeoExplorer } from "./GeoExplorer";
 import { ordinal } from "./format";
 import { AgePyramid } from "@/components/AgePyramid";
 import { RankedBars } from "@/components/charts";
+import { pluralLower } from "@/lib/words";
 import { DataDisclosure, DataGrid } from "@/components/viz/DataDisclosure";
 import { formatNumber, indicatorSlug } from "@/lib/data";
 
@@ -488,7 +489,7 @@ export function PlacePage({ data }: { data: EditorialPlace }) {
               >
                 <RankedBars
                   label={`${distributions[0].dimensionName} results, ${distributions[0].period}`}
-                  noun="parties"
+                  noun={pluralLower(distributions[0].dimensionName)}
                   rowLabel={distributions[0].dimensionName}
                   valueLabel="Value"
                   compact

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pluralLower } from "@/lib/words";
 import { ExtremesTable } from "@/components/viz/ExtremesTable";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -228,6 +229,7 @@ export default async function IndicatorPage({ params }: { params: Promise<Params
           <RankedBars
             label={`${ind.name_en} by province, ${provinceCmp.period}`}
             valueLabel={ind.name_en}
+            noun="provinces"
             unit={provinceCmp.unit}
             rows={provinceCmp.rows.map((r) => ({
               name: r.place.name_en,
@@ -250,7 +252,7 @@ export default async function IndicatorPage({ params }: { params: Promise<Params
               metrics={map.metrics}
               width={map.width}
               height={map.height}
-              caption={`${map.features.length} districts.`}
+              noun="districts"
             />
             <div>
               <h3
@@ -362,9 +364,10 @@ export default async function IndicatorPage({ params }: { params: Promise<Params
             }))}
             unit={unit}
             valueLabel={unit?.name_en ?? "Value"}
-            noun={`${distribution.dimensionName.toLowerCase()} entries`}
-            // The dimension names its own rows: "Party", not "Name". The
-            // header is read only by someone who cannot see the chart.
+            // The dimension names its own rows: "Party", not "Name". The table
+            // header is read only by someone who cannot see the chart, and the
+            // disclosure noun is derived from it so the two cannot disagree.
+            noun={pluralLower(distribution.dimensionName)}
             rowLabel={distribution.dimensionName}
           />
         </Section>

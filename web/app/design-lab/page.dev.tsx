@@ -474,7 +474,7 @@ export default async function DesignLab() {
                 metrics={localMap.metrics}
                 width={localMap.width}
                 height={localMap.height}
-                caption={`${localMap.features.length} local governments of Dhading, 2021 census.`}
+                noun="local governments"
               />
             )}
           </Variant>

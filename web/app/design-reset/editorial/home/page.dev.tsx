@@ -182,12 +182,7 @@ export default async function EditorialHome() {
               metrics={provinceView.map.metrics}
               width={provinceView.map.width}
               height={provinceView.map.height}
-              caption={
-                <span className="text-ink-faint text-[12px]">
-                  Each province links to its own profile. Switch the measure above the
-                  map.
-                </span>
-              }
+              noun="provinces"
             />
           )}
 
