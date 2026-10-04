@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: refresh-data
@@ -62,7 +63,21 @@ jobs:
       - name: Export published tables
         run: .venv/bin/python -m publish.export
 
-      - name: Commit if the data changed
+      # Through a pull request, not a push to main.
+      #
+      # main requires the `build` and `web` checks to pass, and required checks
+      # reject a direct push whose commit has not been checked yet -- so this
+      # job pushing to main would simply be refused, and a monthly job that
+      # fails is a job nobody notices for a month. A bypass is not available
+      # either: this repository is user-owned, and ruleset bypass actors of
+      # type Integration require an organisation.
+      #
+      # It is the better shape regardless. The data was already tested before
+      # this point, but CI ran *after* the commit landed; now it runs before,
+      # and the same gate that covers human changes covers the robot's.
+      - name: Open a pull request if the data changed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -74,9 +89,27 @@ jobs:
           # Record what moved, so the commit explains itself in the log.
           echo "Changed files:"
           git diff --cached --name-only
+
+          BRANCH="data/refresh-$(date -u +%Y-%m-%d)"
+          git checkout -b "$BRANCH"
           git commit -m "Refresh published data
 
-          Automated re-ingest. All tests passed before commit.
+          Automated re-ingest. All tests passed before the commit, and CI
+          re-runs them on this branch before it can merge.
 
           Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
-          git push
+          git push --force-with-lease origin "$BRANCH"
+
+          gh pr create --base main --head "$BRANCH" \
+            --title "Refresh published data" \
+            --body "Automated monthly re-ingest. Every source re-fetched, the
+          warehouse rebuilt and tested, and publish/dist re-exported. Merges
+          itself once \`build\` and \`web\` pass.
+
+          Changed files are in the commit; the diff is parquet, so read the
+          manifest rather than the binaries."
+
+          # Auto-merge, so the month does not depend on someone being awake.
+          # If CI fails the PR stays open with the failure attached, which is
+          # the outcome worth having.
+          gh pr merge --auto --squash "$BRANCH"
