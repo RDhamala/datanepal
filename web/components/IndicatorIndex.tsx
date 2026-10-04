@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Sparkline } from "@/components/charts";
-import { TYPE } from "@/lib/viz";
 
 /*
   One index, with topic as a filter rather than a destination.
@@ -46,6 +45,8 @@ export type IndicatorRow = {
   /** Set when the figure is a leading member rather than a total. */
   leading: { memberName: string; memberCount: number } | null;
   points: { year: number; value: number }[];
+  /** First and last year with a national value. Null for a snapshot. */
+  span: { from: number; to: number } | null;
 };
 
 export type TopicOption = {
@@ -69,6 +70,108 @@ function matchesCoverage(level: string, filter: string): boolean {
   if (filter === "district") return level === "district" || level === "local";
   if (filter === "local") return level === "local";
   return true;
+}
+
+/*
+  How deep the catalogue goes, drawn rather than asserted.
+
+  "Five of 36 measures go below the national level" was a sentence in a
+  paragraph, and it is the single fact a reader arrives with: can I get this
+  for my district? A bar per depth answers it before any reading, and it
+  responds to the filters, so narrowing to one topic shows that topic's shape.
+*/
+const DEPTHS = [
+  { level: "local", label: "To local government" },
+  { level: "district", label: "To district" },
+  { level: "province", label: "To province" },
+  { level: "national", label: "National only" },
+] as const;
+
+function CoverageStrip({ rows }: { rows: IndicatorRow[] }) {
+  const counts = DEPTHS.map((d) => ({
+    ...d,
+    n: rows.filter((r) => r.coverageLevel === d.level).length,
+  })).filter((d) => d.n > 0);
+  if (!rows.length) return null;
+  const max = Math.max(...counts.map((c) => c.n));
+
+  return (
+    <figure className="m-0 mb-11 max-w-lg">
+      <figcaption className="text-label text-ink-faint mb-3 uppercase">
+        How deep the data goes
+      </figcaption>
+      <ul className="space-y-1.5">
+        {counts.map((c) => (
+          <li
+            key={c.level}
+            className="grid grid-cols-[minmax(7rem,11rem)_minmax(0,1fr)_2rem] items-center gap-3"
+          >
+            <span className="text-ink-soft truncate text-[12px]">{c.label}</span>
+            <span
+              className="bg-surface-sunken block h-2.5 overflow-hidden rounded-full"
+              aria-hidden="true"
+            >
+              <span
+                className="bg-series-1 block h-full rounded-full"
+                style={{ width: `${(c.n / max) * 100}%` }}
+              />
+            </span>
+            <span className="text-ink tabular text-right text-[12px]">{c.n}</span>
+          </li>
+        ))}
+      </ul>
+    </figure>
+  );
+}
+
+/*
+  A measure's period, as a position on the catalogue's own timeline.
+
+  A bar from 1960 to 2025 and a bar from 2021 to 2021 are different kinds of
+  thing, and the list used to say so only in small grey type at the end of a
+  row. Drawn against one shared domain, a census snapshot is a tick and a World
+  Bank series is a rule across the whole width -- the comparison the reader
+  wants is "how much history is there", and it is answered by shape.
+*/
+function SpanBar({
+  span,
+  period,
+  from,
+  to,
+}: {
+  span: { from: number; to: number } | null;
+  period: string | null;
+  from: number;
+  to: number;
+}) {
+  const domain = to - from || 1;
+  const at = (y: number) => ((y - from) / domain) * 100;
+  const snapshotYear = span ? null : Number(period);
+  const hasTick = snapshotYear !== null && Number.isFinite(snapshotYear);
+
+  return (
+    <div className="w-full">
+      <div className="bg-surface-sunken relative h-1 rounded-full" aria-hidden="true">
+        {span ? (
+          <span
+            className="bg-series-1 absolute inset-y-0 rounded-full"
+            style={{
+              left: `${at(span.from)}%`,
+              width: `${Math.max(at(span.to) - at(span.from), 1.5)}%`,
+            }}
+          />
+        ) : hasTick ? (
+          <span
+            className="bg-series-2 absolute top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+            style={{ left: `${at(snapshotYear)}%` }}
+          />
+        ) : null}
+      </div>
+      <p className="text-ink-faint tabular mt-1.5 text-[10.5px]">
+        {span ? `${span.from}–${span.to}` : hasTick ? "one period" : "—"}
+      </p>
+    </div>
+  );
 }
 
 export function IndicatorIndex({
@@ -170,6 +273,22 @@ export function IndicatorIndex({
       });
   }, [shown, topics]);
 
+  /*
+    One shared year domain for every span bar, taken from the whole catalogue
+    rather than from what is on screen. If it moved with the filter, the same
+    measure would draw a different length depending on what else was listed,
+    and the comparison the bars exist to support would be a lie.
+  */
+  const domain = useMemo(() => {
+    const years = rows.flatMap((r) =>
+      r.span ? [r.span.from, r.span.to] : r.value ? [Number(r.value.period)] : [],
+    );
+    const ok = years.filter((y) => Number.isFinite(y));
+    return ok.length
+      ? { from: Math.min(...ok), to: Math.max(...ok) }
+      : { from: 0, to: 1 };
+  }, [rows]);
+
   const filtered = topic !== "all" || coverage !== "all";
 
   return (
@@ -244,6 +363,9 @@ export function IndicatorIndex({
         </div>
       </div>
 
+      {/* ------------------------------------------------------ coverage */}
+      <CoverageStrip rows={shown} />
+
       {/* ---------------------------------------------------------- list */}
       {grouped.length === 0 && (
         <p className="text-ink-soft max-w-prose text-[14px] leading-relaxed">
@@ -253,114 +375,96 @@ export function IndicatorIndex({
       )}
 
       {/*
-        A topic is a disclosure, not a run of rows.
+        An open list, with topic as a heading rather than a lid.
 
-        The page was 6,686px on a desktop and 10,685px on a phone, and a reader
-        could not see which ten domains exist without scrolling past all of
-        them. Worse, its height was a function of how much had been ingested:
-        36 indicators today, and the platform intends to hold many times that.
+        This was a run of `<details>`, collapsed by default, which made the
+        page O(topics) tall instead of O(indicators). That was the right
+        instinct about length and the wrong trade: the page's first impression
+        was ten grey rows and no data, and the one chart it had was behind a
+        click. A catalogue that shows nothing until you open it is a table of
+        contents, not an index.
 
-        Collapsing by topic makes the length O(topics) rather than
-        O(indicators), so ingestion stops lengthening the page. The closed row
-        still carries what a reader needs to choose -- the count, how deep the
-        topic goes, how many of its measures have a time series -- and the
-        rows stay in the HTML, so a crawler and a reader with no JavaScript
-        both get the whole index. details/summary needs no script at all.
+        Length is solved where it was actually coming from. Each row carried
+        its definition as a paragraph -- 185px a row, 6,686px of page -- and
+        the definition is on the indicator's own page, one click away, next to
+        the chart that gives it context. Without it the unfiltered list
+        measures 4,848px with all 36 rows, 36 span bars and 28 sparklines
+        showing, against 6,686px that showed none of them.
 
-        Any active filter opens every matching topic: a reader who has just
-        narrowed to five indicators should see five indicators, not five
-        closed boxes. The key remounts the element when that changes, so
-        manual toggles survive until the filters move.
+        The topic dropdown above still narrows to one domain, which is what
+        the lids were really being used for.
       */}
       {grouped.map(({ topic: t, rows: list, deepestLabel, series }) => (
-        <details
-          key={`${t.id}-${filtered}`}
-          open={filtered}
-          className="border-line group border-b"
+        <section
+          key={t.id}
+          /*
+            Sized to the row, not to the viewport. With the name column as a
+            bare `1fr` it took 600px at 1440 and opened a 560px gap between a
+            measure's name and its value -- the same stretch that left the
+            About page's sidebar floating away from its prose.
+          */
+          className="border-line max-w-[61rem] border-t pt-6 pb-2 first:border-t-0"
         >
-          <summary className="focus-visible:outline-accent cursor-pointer list-none py-5 focus-visible:outline-2 focus-visible:outline-offset-2">
-            <span className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-              <span className="text-heading text-ink font-semibold">
-                <span className="text-ink-faint mr-2 inline-block transition-transform group-open:rotate-90">
-                  ›
+          <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+            <h2 className="text-heading text-ink font-semibold">
+              {t.name}
+              {t.nameNe && (
+                <span className="text-ink-faint ne ml-2 font-normal" lang="ne">
+                  {t.nameNe}
                 </span>
-                {t.name}
-                {t.nameNe && (
-                  <span className="text-ink-faint ne ml-2 font-normal" lang="ne">
-                    {t.nameNe}
-                  </span>
-                )}
-              </span>
-              <span className="text-ink-faint text-[12px]">
-                {list.length} indicator{list.length === 1 ? "" : "s"} · {deepestLabel}
-                {series > 0 && ` · ${series} with a time series`}
-              </span>
-            </span>
-          </summary>
+              )}
+            </h2>
+            <p className="text-ink-faint text-[12px]">
+              {list.length} indicator{list.length === 1 ? "" : "s"} · {deepestLabel}
+              {series > 0 && ` · ${series} with a time series`}
+              {" · "}
+              <Link href={`/topics/${t.slug}/`}>charts and rankings →</Link>
+            </p>
+          </div>
 
-          {/*
-            The hub keeps its link, below the summary rather than inside it:
-            a link inside a summary is a control that does two things
-            depending on where you click it.
-          */}
-          <p className="text-ink-faint mb-3 text-[12px]">
-            <Link href={`/topics/${t.slug}/`}>Charts and rankings for {t.name} →</Link>
-          </p>
-
-          <ul className="divide-line border-line mb-6 divide-y border-t">
+          <ul className="divide-line mb-6 divide-y">
             {list.map((r) => (
               <li
                 key={r.id}
-                className="grid grid-cols-1 items-baseline gap-x-8 gap-y-3 py-5 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto]"
+                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 gap-y-3 py-3.5 sm:grid-cols-[minmax(0,1fr)_9rem_13rem_8.25rem]"
               >
-                <div>
+                <div className="min-w-0">
                   <Link
                     href={`/indicators/${r.slug}/`}
-                    className="text-[15px] font-medium"
+                    className="text-[14px] font-medium"
                   >
                     {r.name}
                   </Link>
                   {r.nameNe && (
-                    <span className="text-ink-faint ne ml-2 text-[13px]" lang="ne">
+                    <span className="text-ink-faint ne ml-2 text-[12px]" lang="ne">
                       {r.nameNe}
                     </span>
                   )}
-                  {r.definition && (
-                    <p className="text-ink-faint mt-1 max-w-prose text-[12px] leading-relaxed">
-                      {r.definition}
-                    </p>
-                  )}
-                  <p className="text-ink-faint mt-1.5 text-[11px]">
-                    {r.unitName}
-                    {" · "}
-                    {r.coverageLabel}
-                    {r.hasTimeSeries && " · time series"}
-                    {!r.additive && " · not additive"}
-                    {r.publisher && ` · ${r.publisher}`}
+                  <p className="text-ink-faint mt-0.5 text-[11px]">
+                    {[r.unitName, r.coverageLabel, r.publisher]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </p>
                 </div>
 
-                {/* Latest value, right-aligned so the column scans as a column
-                    of numbers rather than as prose. */}
-                <div className="sm:text-right">
+                <div className="text-right sm:text-left">
                   {r.value ? (
                     <>
-                      <div className="text-ink tabular text-[1.25rem] leading-none font-semibold tracking-[-0.025em]">
+                      <div className="text-ink tabular text-[15px] font-medium">
                         {r.value.text}
                       </div>
                       {/* A distribution has no national total. Name the member
-                          the figure belongs to, in the same breath as the
-                          figure, so the column cannot be read as one of
-                          national totals. */}
+                          the figure belongs to, so the column cannot be read
+                          as one of national totals. */}
                       {r.leading && (
-                        <div
-                          className="text-ink-muted mt-1"
-                          style={{ fontSize: TYPE.small }}
-                        >
+                        <div className="text-ink-faint mt-0.5 text-[10.5px]">
                           largest of {r.leading.memberCount}: {r.leading.memberName}
                         </div>
                       )}
-                      <div className="text-ink-faint tabular mt-1 text-[11px]">
+                      {/* The period and its status travel with the figure.
+                          A projection shown as a bare number is the one
+                          mistake this platform cannot make. */}
+                      <div className="text-ink-faint tabular mt-0.5 text-[10.5px]">
                         {r.value.period}
                         {r.value.status && ` ${r.value.status}`}
                       </div>
@@ -370,13 +474,22 @@ export function IndicatorIndex({
                   )}
                 </div>
 
-                <div className="sm:w-33">
+                <div className="col-span-2 sm:col-span-1">
+                  <SpanBar
+                    span={r.span}
+                    period={r.value?.period ?? null}
+                    from={domain.from}
+                    to={domain.to}
+                  />
+                </div>
+
+                <div className="hidden sm:block">
                   {r.points.length >= 3 && <Sparkline points={r.points.slice(-30)} />}
                 </div>
               </li>
             ))}
           </ul>
-        </details>
+        </section>
       ))}
     </>
   );

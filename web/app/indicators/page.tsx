@@ -114,6 +114,16 @@ export default async function IndicatorsIndex() {
         ? { memberName: h.leading.memberName, memberCount: h.leading.memberCount }
         : null,
       points: h ? h.points.map((pt) => ({ year: pt.year, value: pt.value })) : [],
+      /*
+        The years this measure actually covers, so the index can show at a
+        glance which series run for decades and which are a single census.
+        Null where there is one period or none -- a span of one year drawn as
+        a bar reads as a short trend rather than as a snapshot.
+      */
+      span:
+        h && h.points.length >= 2
+          ? { from: h.points[0].year, to: h.points[h.points.length - 1].year }
+          : null,
     };
   });
 
