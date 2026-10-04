@@ -7,7 +7,7 @@ import {
   placeBySlug,
   populationOf,
 } from "@/lib/data";
-import { editorialPlace, TYPE_LABEL } from "@/lib/editorial";
+import { editorialPlace, TYPE_NAME } from "@/lib/editorial";
 import { PlacePage } from "@/components/editorial/PlacePage";
 
 type Params = { province: string; district: string; local: string };
@@ -35,7 +35,7 @@ export async function generateMetadata({
   const found = await resolve(params);
   if (!found) return {};
   const { prov, dist, place } = found;
-  const label = TYPE_LABEL[place.place_type] ?? "Local government";
+  const label = TYPE_NAME[place.place_type] ?? "Local government";
   const pop = await populationOf(place);
   return {
     title: `${place.name_en} ${label}`,

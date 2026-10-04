@@ -23,6 +23,14 @@ ingestion_difficulty: hard
 contains_personal_data: false
 caveats:
   - >
+    The Devanagari name of each local unit is not in any NSO data file. The
+    per-province XLSX tables and the longform CSVs are romanised throughout,
+    so the names are read from the translation bundle embedded in the Nepali
+    edition of the results site, keyed by each unit's romanised name. Four of
+    those names are excluded for a defect -- two carry a legacy-font
+    transcoding artefact, one is truncated, one maps to a different name
+    entirely -- see transform/seeds/nso_name_exclusions.csv.
+  - >
     NSO states "Copyright © National Statistics Office 2023. All rights reserved."
     and publishes no open-licence grant. Recording this as reusable with
     attribution is a deliberate DataNepal decision, not a term NSO has offered:

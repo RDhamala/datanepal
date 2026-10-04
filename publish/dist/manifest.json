@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-04T04:27:35.571252+00:00",
+  "generated_at": "2026-10-04T04:53:04.640766+00:00",
   "table_count": 17,
   "tables": [
     {
@@ -96,7 +96,7 @@
       "row_count": 753,
       "parquet": "geography.parquet",
       "json": "geography.json",
-      "bytes": 53271
+      "bytes": 57417
     },
     {
       "table": "indicators",
@@ -169,7 +169,7 @@
       "row_count": 43360,
       "parquet": "observation_dimensions.parquet",
       "json": null,
-      "bytes": 506432
+      "bytes": 506610
     },
     {
       "table": "observations",
@@ -262,7 +262,7 @@
       "row_count": 859,
       "parquet": "place_boundaries.parquet",
       "json": "place_boundaries.json",
-      "bytes": 650702
+      "bytes": 655144
     },
     {
       "table": "place_identifiers",
@@ -317,7 +317,7 @@
       "row_count": 4,
       "parquet": "place_successions.parquet",
       "json": "place_successions.json",
-      "bytes": 3917
+      "bytes": 3970
     },
     {
       "table": "places",
@@ -344,7 +344,7 @@
       "caveats": [
         "place_id is a DataNepal surrogate, not a source code. Source identifiers (OCHA P-codes, Wikidata QIDs) live in place_identifiers so a place survives a source renumbering its codes.\n",
         "Parent relationships are explicit foreign keys, not derived from P-code substrings. Substring nesting works for the administrative hierarchy and breaks for constituencies and protected areas.\n",
-        "Nepali names cover the country, all 7 provinces and all 77 districts, and 64% of local units. Districts come from Wikidata: 67 of 77 by name, and 10 through district_name_fixes.csv because the two sources romanise them differently (Dhanusa/Dhanusha) or name them differently outright (Nawalparasi East/Nawalpur). NULL means no verified name exists; names are never transliterated.\n",
+        "Nepali names cover the country, all 7 provinces, all 77 districts and 752 of 753 local units. Local units come from NSO, the publisher of record, which keys each Devanagari name by the same romanisation its census tables use -- so the two join on a string both sides already agree on rather than being matched across independent transliterations. Wikidata is the fallback and supplies three units whose NSO row is excluded for a transcoding or truncation defect (nso_name_exclusions.csv). Districts come from Wikidata, 67 of 77 by name and 10 through district_name_fixes.csv. One local unit, Pariwartan, has no name: NSO's Nepali for it is a different name rather than a different spelling, and nothing available here settles which is current. NULL means no verified name exists; names are never transliterated.\n",
         "This table includes places that no longer exist. Filter on is_current unless you specifically want historical geography. is_current is derived from valid_to being NULL and is never stored separately.\n",
         "Validity is the half-open interval [valid_from, valid_to). valid_from is NULL for the country and for protected areas, meaning no verified start date rather than existence without beginning.\n",
         "Local units carry valid_from 2017-03-10, the date 744 were gazetted. The count later rose to 753 and the gazette date for the additional nine, all in Madhesh, is not established — so that date is right for 744 of them and possibly early for nine.\n",
@@ -353,7 +353,7 @@
       "row_count": 862,
       "parquet": "places.parquet",
       "json": "places.json",
-      "bytes": 66439
+      "bytes": 70838
     },
     {
       "table": "protected_areas",
@@ -584,6 +584,7 @@
       "update_frequency": "decennial",
       "revises_published_values": false,
       "caveats": [
+        "The Devanagari name of each local unit is not in any NSO data file. The per-province XLSX tables and the longform CSVs are romanised throughout, so the names are read from the translation bundle embedded in the Nepali edition of the results site, keyed by each unit's romanised name. Four of those names are excluded for a defect -- two carry a legacy-font transcoding artefact, one is truncated, one maps to a different name entirely -- see transform/seeds/nso_name_exclusions.csv.\n",
         "NSO states \"Copyright © National Statistics Office 2023. All rights reserved.\" and publishes no open-licence grant. Recording this as reusable with attribution is a deliberate DataNepal decision, not a term NSO has offered: these are official state statistics published for public use, only aggregates are republished, and every figure names NSO and links to source. Anyone relying on these figures commercially should confirm terms with NSO.\n",
         "Each district carries an INSTITUTIONAL row for population not resident in a household — barracks, hostels, prisons, hospitals. It is 239,098 people nationally and belongs to no local government. Local-unit figures therefore sum to 28,925,480, not to the national 29,164,578; the difference is carried as residence_type = institutional at district level so the hierarchy still reconciles.\n",
         "The census tables carry no P-codes. Local units are matched to the spine on district, base name and unit type, which resolves 751 of 753 directly with no type disagreements. The remaining two are corrected by an explicit, committed crosswalk (transform/seeds/nso_name_fixes.csv) rather than by fuzzy name matching.\n",

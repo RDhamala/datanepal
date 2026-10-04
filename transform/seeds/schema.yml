@@ -52,6 +52,25 @@ seeds:
       - name: effective_date
         tests: [not_null]
 
+  - name: nso_name_exclusions
+    description: >
+      Local units whose NSO Nepali name is dropped, with the defect named and a
+      reason. Four rows: two carry a legacy-font transcoding artefact (ड० where
+      the name has ङ), one is truncated in a way that collides with two other
+      units of the same name, and one maps to a different name entirely rather
+      than a different spelling. None is repaired here -- editing a publisher's
+      value is a guess, so the row is excluded and the Wikidata fallback or a
+      visible gap takes over.
+    columns:
+      - name: name_en
+        description: The NSO key being excluded, exactly as NSO writes it.
+        tests: [unique, not_null]
+      - name: defect
+        description: What is wrong -- transcoding, truncated, mismatch.
+        tests: [not_null]
+      - name: reason
+        tests: [not_null]
+
   - name: district_name_fixes
     description: >
       Districts whose Nepali name neither the name tier nor the geometry tier

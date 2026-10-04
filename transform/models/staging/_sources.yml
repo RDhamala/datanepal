@@ -86,3 +86,11 @@ sources:
         description: >
           Literacy of the population aged 5 and over, by sex, for every admin
           level. Only the all-ages aggregate is ingested.
+
+      - name: local_unit_names
+        description: >
+          Devanagari name of every local unit, from the Nepali edition of NSO's
+          results site, keyed by the unit's romanised name including its type
+          suffix -- the same shape as census_population.raw_name. More rows
+          than 753 because NSO publishes its own romanisation aliases, several
+          spellings pointing at one Nepali name.
