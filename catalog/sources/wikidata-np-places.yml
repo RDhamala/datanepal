@@ -1,7 +1,10 @@
 dataset_id: wikidata-np-places
-title: Wikidata — Nepal local units
-description: 'Nepali-language names for Nepal''s local units, with coordinates, retrieved
-  by SPARQL through the district relation.
+title: Wikidata — Nepal districts and local units
+description: 'Nepali-language names for Nepal''s 77 districts and its local units,
+  with coordinates, retrieved by SPARQL. Local units are found through the district
+  relation; districts are found directly, with items carrying a dissolution date
+  (P576) excluded so the two abolished pre-2017 districts cannot be matched to a
+  living one.
 
   '
 publisher_org_id: wikidata
@@ -27,8 +30,14 @@ caveats:
   fed.
 
   '
-- 'Covers ~66% of local units. Typing is inconsistent: metropolitan cities are often modelled
-  as the city rather than the administrative unit.
+- 'Covers all 77 districts and 64% of local units. Typing is inconsistent:
+  metropolitan cities are often modelled as the city rather than the administrative
+  unit.
+
+  '
+- 'Romanisation disagrees with the OCHA COD for ten districts, four of them named
+  differently outright rather than merely spelled differently. Those are resolved in
+  district_name_fixes.csv with a written reason each, never by fuzzy matching.
 
   '
 - Community-maintained, so names are not authoritative.

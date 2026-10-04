@@ -52,6 +52,27 @@ seeds:
       - name: effective_date
         tests: [not_null]
 
+  - name: district_name_fixes
+    description: >
+      Districts whose Nepali name neither the name tier nor the geometry tier
+      of int_district_names can reach, with a written reason for each. Two rows
+      today, and the pattern is deliberately the same as nso_name_fixes: an
+      explicit, auditable residue rather than a similarity threshold that would
+      produce plausible wrong names for a reference dataset other people build
+      on. If this file starts growing, the tiers above it are the thing to fix.
+    columns:
+      - name: ocha_pcode
+        description: The district this name belongs to, by P-code, not by name.
+        tests: [unique, not_null]
+      - name: wikidata_qid
+        description: The Wikidata item the name was taken from, so it can be rechecked.
+        tests: [unique, not_null]
+      - name: name_ne
+        tests: [not_null]
+      - name: reason
+        description: Why neither automated tier reached it, and what makes this mapping verifiable.
+        tests: [not_null]
+
   - name: np_provinces
     description: >
       Nepal's seven federal provinces, hand-verified. This is the only part of
