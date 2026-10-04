@@ -537,12 +537,10 @@ export function PlacePage({ data }: { data: EditorialPlace }) {
           ) : (
             <>
               Measures such as{" "}
-              {nationalOnly.slice(0, 3).map((i, n) => (
+              {namesInline(nationalOnly).map((i, n, a) => (
                 <span key={i.id}>
-                  {n > 0 && ", "}
-                  <Link href={`/indicators/${indicatorSlug(i.id)}/`}>
-                    {i.name.toLowerCase()}
-                  </Link>
+                  {n > 0 && (n === a.length - 1 ? `${i.sep}and ` : i.sep)}
+                  <Link href={`/indicators/${indicatorSlug(i.id)}/`}>{i.name}</Link>
                 </span>
               ))}{" "}
               are published for Nepal as a whole and are not broken down to this level
@@ -554,6 +552,34 @@ export function PlacePage({ data }: { data: EditorialPlace }) {
       </Section>
     </>
   );
+}
+
+/**
+ * Three measure names, ready to read inside a sentence.
+ *
+ * Eight of the eighty indicator names contain a comma of their own --
+ * "Inflation, consumer prices", "Remittances received, total" -- so a
+ * comma-joined list of three of them read as five items: "inflation, consumer
+ * prices, gdp per capita, remittances received, total are published for Nepal
+ * as a whole". Prefer names without one, and fall back to the serial semicolon,
+ * which exists for exactly this. Renaming a measure to tidy the sentence is not
+ * on the table: the name is the publisher's.
+ */
+function namesInline(
+  inds: { id: string; name: string }[],
+  take = 3,
+): { id: string; name: string; sep: string }[] {
+  const picks = [...inds]
+    .sort((a, b) => Number(a.name.includes(",")) - Number(b.name.includes(",")))
+    .slice(0, take);
+  const sep = picks.some((p) => p.name.includes(",")) ? "; " : ", ";
+  return picks.map((p) => ({
+    id: p.id,
+    // A name may end in a full stop of its own; inside a sentence it reads as
+    // one sentence ending early.
+    name: p.name.replace(/\.$/, "").toLowerCase(),
+    sep,
+  }));
 }
 
 /** URL for an ancestor, rebuilt from the chain the page already holds. */
