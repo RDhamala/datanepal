@@ -255,7 +255,12 @@ export function Search({
               <div className="flex items-baseline justify-between gap-3">
                 <span className="text-ink text-[13px] font-medium">
                   {r.t}
-                  {r.n && <span className="text-ink-faint ne font-normal"> {r.n}</span>}
+                  {r.n && (
+                    <span className="text-ink-faint ne font-normal" lang="ne">
+                      {" "}
+                      {r.n}
+                    </span>
+                  )}
                 </span>
                 <span className="text-ink-faint shrink-0 text-[11px]">
                   {KIND_LABEL[r.k]}

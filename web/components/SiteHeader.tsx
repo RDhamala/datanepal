@@ -39,11 +39,22 @@ import { ROLE } from "@/components/editorial/system";
   ranking, and every place page links to one -- they simply stop competing
   with Indicators for the same reader.
 */
+/*
+  Three destinations, not five.
+
+  Compare and Datasets were in the primary nav and neither is a browse
+  destination. Compare covers 5 of 36 indicators -- really three distinct ones,
+  since population, population aged 5+ and literate population are the same
+  census count sliced differently -- so top-level billing promises a tool the
+  data cannot back. Datasets is a reference: it is where licences, publishers
+  and retrieval dates live, and it is linked from the provenance line under
+  every figure on the site, which is the moment a reader actually wants it.
+
+  Both keep their routes and move to the footer. Nothing 404s.
+*/
 const NAV = [
   { href: "/places/", label: "Places" },
-  { href: "/compare/", label: "Compare" },
   { href: "/indicators/", label: "Indicators" },
-  { href: "/datasets/", label: "Datasets" },
   { href: "/about/", label: "About" },
 ];
 

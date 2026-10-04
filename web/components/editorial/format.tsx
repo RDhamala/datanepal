@@ -1,40 +1,26 @@
 import type { Figure, Provenance } from "@/lib/editorial";
-import { formatNumber } from "@/lib/format";
+import { formatNumber, formatWithUnit } from "@/lib/format";
 
 /* Formatting and provenance presentation shared across editorial surfaces. */
 
 /* --------------------------------------------------------------- numbers */
 
 /**
- * Format by the unit's own symbol, not by unit_kind.
+ * A figure, formatted by its unit.
  *
- * Eight units share kind "ratio" -- %, % of GDP, kg/ha, /1000 live births,
- * t CO2e. Assuming "%" rendered cereal yield as "3344.3%".
+ * Delegates to formatWithUnit, which the rest of the site already uses. This
+ * was a second implementation of the same rule for a while, and two
+ * formatters mean two places for a unit to go missing -- which is exactly how
+ * life expectancy came to render as "71".
+ *
+ * The one difference it keeps: currency to whole units, because a per-capita
+ * figure to the cent implies a precision the World Bank series does not carry.
  */
 export function figureText(f: Figure): string {
-  const unit = f.unit;
-  if (!unit) return formatNumber(f.value);
-  const symbol = unit.symbol ?? "";
-  const join = (n: string) =>
-    !symbol ? n : /^[%/]/.test(symbol) ? `${n}${symbol}` : `${n} ${symbol}`;
-
-  switch (unit.unit_kind) {
-    case "currency":
-      // Whole units: a per-capita figure to the cent implies a precision the
-      // World Bank's own series does not carry.
-      return `${symbol}${formatNumber(Math.round(f.value))}`;
-    case "ratio":
-    case "duration":
-      return join(
-        f.value >= 1000
-          ? f.value.toLocaleString(undefined, { maximumFractionDigits: 1 })
-          : f.value.toFixed(1),
-      );
-    case "area":
-      return join(formatNumber(Math.round(f.value)));
-    default:
-      return formatNumber(f.value);
+  if (f.unit?.unit_kind === "currency") {
+    return `${f.unit.symbol ?? "US$"}${formatNumber(Math.round(f.value))}`;
   }
+  return formatWithUnit(f.value, f.unit);
 }
 
 /** The qualifier that belongs under a figure: its period, and its status. */

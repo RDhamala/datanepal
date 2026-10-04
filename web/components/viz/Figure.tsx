@@ -1,4 +1,4 @@
-import { COLOR, TYPE } from "@/lib/viz";
+import { TYPE } from "@/lib/viz";
 import { DataDisclosure } from "./DataDisclosure";
 
 /*
@@ -151,50 +151,6 @@ export function Legend({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * A sequential ramp legend with its real class boundaries labelled.
- *
- * Labelling the breaks rather than only the range ends is what makes a quantile
- * scale honest: the classes are unevenly spaced, and a smooth bar with only two
- * numbers on it implies they are not.
- */
-export function RampLegend({
-  breaks,
-  low,
-  high,
-  format,
-  label,
-}: {
-  breaks: number[];
-  low: number;
-  high: number;
-  format: (v: number) => string;
-  label?: string;
-}) {
-  return (
-    <div className="max-w-md">
-      <div className="flex h-2.5 gap-px overflow-hidden rounded-sm">
-        {COLOR.sequential.map((c) => (
-          <span key={c} className="flex-1" style={{ background: c }} />
-        ))}
-      </div>
-      <div
-        className="text-ink-faint tabular mt-1.5 flex justify-between"
-        style={{ fontSize: TYPE.micro }}
-      >
-        {[low, ...breaks, high].map((v, i) => (
-          <span key={i}>{format(v)}</span>
-        ))}
-      </div>
-      {label && (
-        <p className="text-ink-faint mt-1" style={{ fontSize: TYPE.small }}>
-          {label}
-        </p>
-      )}
-    </div>
-  );
-}
-
-/**
  * The standard table that sits under a visual.
  *
  * Right-aligned tabular numerals, a sticky header, hairline row rules, and one
@@ -203,14 +159,25 @@ export function RampLegend({
  * left-aligned in a proportional face cannot.
  */
 export function FigureTable({
+  caption,
   columns,
   children,
 }: {
+  /**
+   * What the table lists.
+   *
+   * Required, not optional. Headers were scoped here from the start but there
+   * was no caption, so a screen reader got the columns and never the subject --
+   * "Indicator, Nepal, Unit" with no statement of what the rows are. Every
+   * other table on the site goes through DataGrid, which has always had one.
+   */
+  caption: string;
   columns: { label: string; numeric?: boolean }[];
   children: React.ReactNode;
 }) {
   return (
     <table className="w-full" style={{ fontSize: TYPE.body }}>
+      <caption className="sr-only">{caption}</caption>
       <thead className="bg-surface-raised sticky top-0">
         <tr className="border-line border-b">
           {columns.map((c) => (

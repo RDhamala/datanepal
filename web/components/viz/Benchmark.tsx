@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { formatWithUnit, type Benchmark as BenchmarkData } from "@/lib/data";
-import { BAR, COLOR, STROKE, TYPE } from "@/lib/viz";
+import { BAR, COLOR, TYPE } from "@/lib/viz";
 
 /*
   Is this high or low?
@@ -122,47 +122,6 @@ export function Benchmark({ data }: { data: BenchmarkData }) {
           )}
         </p>
       )}
-    </div>
-  );
-}
-
-/**
- * A group of benchmarks, laid out so two sit side by side on a wide screen.
- *
- * Two per row rather than three: a benchmark is read left to right along its
- * bars, and three columns squeeze the bars until the comparison they exist to
- * make stops being visible.
- */
-export function BenchmarkGroup({
-  benchmarks,
-  note,
-}: {
-  benchmarks: BenchmarkData[];
-  note?: string;
-}) {
-  if (!benchmarks.length) return null;
-  return (
-    <div>
-      <div className="grid gap-x-12 gap-y-7 lg:grid-cols-2">
-        {benchmarks.map((b) => (
-          <Benchmark key={b.indicatorId} data={b} />
-        ))}
-      </div>
-      {note && (
-        <p
-          className="text-ink-faint mt-4 max-w-prose leading-relaxed"
-          style={{ fontSize: TYPE.small }}
-        >
-          {note}
-        </p>
-      )}
-      <p
-        className="text-ink-faint mt-2 max-w-prose leading-relaxed"
-        style={{ fontSize: TYPE.small, borderLeftWidth: STROKE.reference }}
-      >
-        Only measures that compare meaningfully appear here. Counts like population are
-        omitted: a district against the nation is a share, not a benchmark.
-      </p>
     </div>
   );
 }

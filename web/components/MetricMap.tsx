@@ -1,6 +1,7 @@
 "use client";
 
 import { DataDisclosure } from "./viz/DataDisclosure";
+import { oneOf } from "@/lib/words";
 import { MapLabelLayer } from "./MapLabels";
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -80,14 +81,21 @@ export function MetricMap({
   metrics,
   width,
   height,
-  caption,
+  noun = "areas",
   outlinePath,
 }: {
   features: MetricMapFeature[];
   metrics: Metric[];
   width: number;
   height: number;
-  caption: React.ReactNode;
+  /**
+   * What the shapes are: "districts", "provinces", "local governments".
+   *
+   * This replaced a free-text `caption`, which both callers used to append
+   * "77 districts." to a sentence that had just said "about 15 of 77 areas" --
+   * the same count, twice, under two different nouns.
+   */
+  noun?: string;
   /** Heavier grouping boundary, drawn over the fills. */
   outlinePath?: string;
 }) {
@@ -161,7 +169,7 @@ export function MetricMap({
           names the whole map; it just no longer deletes its own contents.
         */
         role="group"
-        aria-label={`Map shaded by ${metric.label}. ${features.length} areas. Values are in the table below.`}
+        aria-label={`Map shaded by ${metric.label}. ${features.length} ${noun}. Values are in the table below.`}
       >
         {features.map((f) => {
           const value = metric.values[f.placeId];
@@ -255,8 +263,8 @@ export function MetricMap({
           ) : (
             <span className="text-ink-faint">
               {metrics.length > 1
-                ? "Choose a measure above; hover or focus an area for its value."
-                : "Hover or focus an area for its value."}
+                ? `Choose a measure above; hover or focus ${oneOf(noun)} for its value.`
+                : `Hover or focus ${oneOf(noun)} for its value.`}
             </span>
           )}
         </p>
@@ -264,12 +272,15 @@ export function MetricMap({
         <p className="text-ink-faint mt-2 max-w-prose text-[11px] leading-relaxed">
           {metric.label}
           {metric.note && ` · ${metric.note}`} · five classes, each holding about{" "}
-          {Math.round(features.length / 5)} of {features.length} areas. {caption}
+          {Math.round(features.length / 5)} of {features.length} {noun}.
         </p>
       </figcaption>
 
-      <DataDisclosure count={features.length} noun="areas">
+      <DataDisclosure count={features.length} noun={noun}>
         <table className="w-full text-[13px]">
+          <caption className="sr-only">
+            {metric.label} for all {features.length} {noun} on the map, as exact values
+          </caption>
           <thead className="bg-surface-raised sticky top-0">
             <tr className="border-line border-b">
               <th

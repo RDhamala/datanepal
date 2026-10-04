@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ROLE } from "@/components/editorial/system";
 import type { PublishedTable, SourceDataset } from "@/lib/data";
 
 /* -------------------------------------------------------------- breadcrumb */
@@ -42,24 +43,47 @@ export function PageHeader({
   meta?: React.ReactNode;
 }) {
   return (
-    <header className="border-line mb-10 border-b pb-8">
-      {eyebrow && <p className="text-label text-ink-faint mb-3 uppercase">{eyebrow}</p>}
-      <h1 className="text-display text-ink font-semibold">{title}</h1>
+    <header className="mb-10 pb-2">
+      {eyebrow && (
+        <p
+          className="text-ink-faint mb-2 text-[11px] uppercase"
+          style={{ letterSpacing: "0.08em" }}
+        >
+          {eyebrow}
+        </p>
+      )}
+      {/*
+        One type scale across the site. This used to be a sans --text-display
+        with the Nepali underneath in grey at --text-title, which is a
+        different page from the one the homepage and the 838 place pages set.
+      */}
+      <h1
+        className="text-ink text-[clamp(2.25rem,1.8rem+2.2vw,3.25rem)] leading-[0.98] font-semibold tracking-[-0.035em]"
+        style={ROLE.display}
+      >
+        {title}
+      </h1>
       {native && (
-        <p lang="ne" className="text-title text-ink-soft ne mt-2 font-normal">
+        <p
+          lang="ne"
+          className="text-brand ne mt-1.5 text-[clamp(1.125rem,0.95rem+0.7vw,1.5rem)] leading-tight font-medium"
+        >
           {native}
         </p>
       )}
-      {meta && <div className="text-ink-faint mt-4 text-[13px]">{meta}</div>}
+      {/*
+        A paragraph, not a div. Every caller passes a sentence, and two of them
+        put a link inside it -- which in a div got no underline, because the
+        prose rule in globals.css is scoped to real text elements. Colour alone
+        is not a distinguishing signal (WCAG 1.4.1), and the link here measured
+        1.25:1 against its surrounding text.
+      */}
+      {meta && (
+        <p className="text-ink-soft mt-4 max-w-[70ch] text-[14px] leading-relaxed">
+          {meta}
+        </p>
+      )}
     </header>
-  );
-}
-
-export function Pcode({ code }: { code: string }) {
-  return (
-    <code className="bg-surface-sunken text-ink-soft rounded px-1.5 py-0.5 font-mono text-[11px]">
-      {code}
-    </code>
   );
 }
 
@@ -81,7 +105,7 @@ export function Tile({
   accent?: "series-1" | "series-2";
 }) {
   return (
-    <div className="bg-surface-raised px-4 py-4 sm:px-5">
+    <div className="border-line border-t border-l px-4 py-4 first:border-l-0 sm:px-5">
       <div className="text-label text-ink-faint mb-2 flex items-center gap-1.5 uppercase">
         {accent && (
           <span
@@ -93,16 +117,13 @@ export function Tile({
         )}
         {label}
       </div>
-      <div className="text-stat tabular text-ink font-semibold">{value}</div>
+      <div
+        className="text-ink text-[clamp(1.25rem,1.05rem+0.7vw,1.625rem)] leading-none font-semibold tracking-[-0.03em]"
+        style={ROLE.leadFigure}
+      >
+        {value}
+      </div>
       {sub && <div className="text-ink-faint mt-1 text-[12px]">{sub}</div>}
-    </div>
-  );
-}
-
-export function TileRow({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="border-line bg-line mb-10 grid grid-cols-2 gap-px overflow-hidden rounded-lg border sm:grid-cols-3 lg:grid-cols-6">
-      {children}
     </div>
   );
 }
@@ -119,101 +140,27 @@ export function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mb-11">
-      <h2 className="text-heading text-ink font-semibold">{title}</h2>
+    <section className="border-line border-t pt-7 pb-11">
+      <h2
+        className="text-ink text-[clamp(1.375rem,1.1rem+1vw,1.75rem)] leading-[1.08] font-semibold tracking-[-0.025em]"
+        style={ROLE.section}
+      >
+        {title}
+      </h2>
       {/*
-        max-w-prose on the note, because it was missing and the consequence was
-        measurable: six notes on a district page ran past 1200px, one of them 176
-        characters on a single line. A section heading can span the page; a
+        max-w on the note, because it was missing and the consequence was
+        measurable: six notes on a district page ran past 1200px, one of them
+        176 characters on a single line. A heading can span the page; a
         sentence cannot.
       */}
       {note && (
-        <p className="text-ink-faint mt-1 mb-4 max-w-prose text-[13px] leading-relaxed">
+        <p className="text-ink-soft mt-2 mb-5 max-w-[62ch] text-[14px] leading-relaxed">
           {note}
         </p>
       )}
-      {!note && <div className="mb-4" />}
+      {!note && <div className="mb-6" />}
       {children}
     </section>
-  );
-}
-
-export function Callout({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="border-line-strong bg-surface-sunken text-ink-soft mb-10 rounded-r border-l-2 px-4 py-3 text-[13px]">
-      {children}
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------- tables */
-
-export function DataTable({
-  columns,
-  children,
-}: {
-  columns: { label: string; numeric?: boolean }[];
-  children: React.ReactNode;
-}) {
-  /*
-    A minimum width so the table scrolls instead of compressing.
-
-    `overflow-x-auto` alone does nothing when the table is `w-full`: it shrinks
-    to fit and every cell wraps to a column of single words. A five-column table
-    at 390px became six lines of broken text per row. Scaling the floor with the
-    column count means a two-column table still fits a phone without a
-    pointless scrollbar, while a wide one stays legible and scrolls.
-  */
-  const minWidth = `${Math.max(0, columns.length - 2) * 8.5 + 17}rem`;
-  return (
-    <div className="border-line overflow-x-auto rounded-lg border">
-      <table className="w-full text-[13px]" style={{ minWidth }}>
-        <thead>
-          <tr className="border-line bg-surface-raised border-b">
-            {columns.map((c) => (
-              <th
-                key={c.label}
-                scope="col"
-                className={`text-label text-ink-faint px-4 py-2.5 font-semibold uppercase ${
-                  c.numeric ? "text-right" : "text-left"
-                }`}
-              >
-                {c.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>{children}</tbody>
-      </table>
-    </div>
-  );
-}
-
-export function Row({ children }: { children: React.ReactNode }) {
-  return (
-    <tr className="border-line hover:bg-surface-sunken border-b last:border-0">
-      {children}
-    </tr>
-  );
-}
-
-export function Cell({
-  children,
-  numeric,
-  strong,
-}: {
-  children: React.ReactNode;
-  numeric?: boolean;
-  strong?: boolean;
-}) {
-  return (
-    <td
-      className={`px-4 py-2.5 ${numeric ? "tabular text-right" : "text-left"} ${
-        strong ? "text-ink font-medium" : "text-ink-soft"
-      }`}
-    >
-      {children}
-    </td>
   );
 }
 
@@ -328,41 +275,6 @@ export function SourceNote({
 
 /* -------------------------------------------------------- section jump nav */
 
-/**
- * In-page navigation for a place's sections.
- *
- * Anchors, not tabs. Tabs would need client JavaScript, hide content from
- * search engines, and break deep linking — and on a static site with SEO as the
- * primary discovery path, all three matter. Anchors give a keyboard-navigable
- * jump list, work with no script, and let a reader link to a specific section.
- *
- * Only sections that actually have data are listed. A place page offering an
- * "Economy" jump link that lands on nothing is worse than not offering it.
- */
-export function SectionNav({
-  sections,
-}: {
-  sections: { id: string; label: string }[];
-}) {
-  if (sections.length < 2) return null;
-  return (
-    <nav aria-label="On this page" className="border-line mb-10 border-y py-2.5">
-      <ul className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[13px]">
-        {sections.map((s) => (
-          <li key={s.id}>
-            <a
-              href={`#${s.id}`}
-              className="text-ink-soft hover:text-ink no-underline hover:underline"
-            >
-              {s.label}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </nav>
-  );
-}
-
 /* --------------------------------------------------------------- KPI strip */
 
 /**
@@ -392,31 +304,5 @@ export function FactStrip({
         </div>
       ))}
     </dl>
-  );
-}
-
-/** A section that can be linked to from SectionNav. */
-export function AnchoredSection({
-  id,
-  title,
-  note,
-  children,
-}: {
-  id: string;
-  title: string;
-  note?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <section id={id} className="mb-11 scroll-mt-20">
-      <h2 className="text-heading text-ink font-semibold">{title}</h2>
-      {note && (
-        <p className="text-ink-faint mt-1 mb-4 max-w-prose text-[13px] leading-relaxed">
-          {note}
-        </p>
-      )}
-      {!note && <div className="mb-4" />}
-      {children}
-    </section>
   );
 }

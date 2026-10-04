@@ -58,11 +58,15 @@ export default function DatasetsIndex() {
       >
         <div className="border-line overflow-x-auto rounded-lg border">
           <table className="w-full text-[13px]">
+            <caption className="sr-only">
+              Published tables, with row count, licence and download link
+            </caption>
             <thead className="bg-surface-raised">
               <tr className="border-line border-b">
                 {["Table", "Rows", "Licence", "Download"].map((h, i) => (
                   <th
                     key={h}
+                    scope="col"
                     className={`text-label text-ink-faint px-4 py-2.5 uppercase ${
                       i === 1 ? "text-right" : "text-left"
                     }`}

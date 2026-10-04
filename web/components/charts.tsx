@@ -1,4 +1,5 @@
 import { DataDisclosure, DataGrid } from "./viz/DataDisclosure";
+import { scriptAttrs } from "@/lib/lang";
 import Link from "next/link";
 /*
   Formatting from lib/format, not lib/data.
@@ -17,6 +18,7 @@ import {
   formatWithUnit,
 } from "@/lib/format";
 import type { Unit } from "@/lib/types";
+import { BAR, COLOR, TYPE } from "@/lib/viz";
 
 /*
   The visualization system.
@@ -256,7 +258,7 @@ export function RankedBars({
             key={r.name}
             className="grid grid-cols-[minmax(7rem,11rem)_1fr_auto] items-center gap-3"
           >
-            <span className="truncate text-[13px]">
+            <span {...scriptAttrs(r.name, "truncate text-[13px]")}>
               {r.href ? (
                 <a href={r.href}>{r.name}</a>
               ) : (
@@ -284,7 +286,11 @@ export function RankedBars({
         <DataDisclosure count={rows.length} noun={noun}>
           <DataGrid
             caption={label}
-            columns={[rowLabel ?? ROW_LABEL[noun] ?? "Name", "नेपाली", valueLabel]}
+            columns={[
+              rowLabel ?? ROW_LABEL[noun] ?? "Name",
+              { label: "नेपाली", numeric: false },
+              valueLabel,
+            ]}
             rows={rows.map((r) => [r.name, r.nameNe ?? "—", fmt(r.value)])}
           />
         </DataDisclosure>
@@ -491,5 +497,77 @@ export function Metric({
         </div>
       )}
     </div>
+  );
+}
+
+/* ----------------------------------------------------- a pair of bars */
+
+/**
+ * Two values compared side by side, sharing one zero-anchored scale.
+ *
+ * For the case a place page needs constantly and had no pattern for: female
+ * against male, this year against last. A pair of numbers with no visual makes
+ * the reader do the subtraction; a pair of bars does not.
+ */
+export function PairedBars({
+  caption,
+  pairs,
+  unit,
+  labelWidth = "34%",
+}: {
+  /**
+   * Screen-reader caption. The row headers carry each label, but without a
+   * caption the pair arrives as two unattributed numbers -- the reader hears
+   * "Female 14.9m, Male 14.3m" with no clue what is being counted.
+   */
+  caption: string;
+  pairs: { label: string; value: number; accent?: boolean }[];
+  unit: Unit | undefined;
+  labelWidth?: string;
+}) {
+  const max = Math.max(...pairs.map((p) => p.value));
+  return (
+    <table className="w-full">
+      <caption className="sr-only">{caption}</caption>
+      <tbody>
+        {pairs.map((p) => (
+          <tr key={p.label}>
+            <th
+              scope="row"
+              className="text-ink-soft py-0.5 pr-3 text-left font-normal"
+              style={{ fontSize: TYPE.body, width: labelWidth }}
+            >
+              {p.label}
+            </th>
+            <td className="py-0.5">
+              <span
+                aria-hidden
+                className="block overflow-hidden"
+                style={{
+                  background: COLOR.track,
+                  height: BAR.thicknessCompact,
+                  borderRadius: BAR.radius,
+                }}
+              >
+                <span
+                  className="block h-full"
+                  style={{
+                    width: `${max > 0 ? (p.value / max) * 100 : 0}%`,
+                    background: p.accent ? COLOR.seriesAlt : COLOR.series,
+                    borderRadius: BAR.radius,
+                  }}
+                />
+              </span>
+            </td>
+            <td
+              className="text-ink tabular py-0.5 pl-3 text-right"
+              style={{ fontSize: TYPE.body, width: "24%" }}
+            >
+              {formatWithUnit(p.value, unit)}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }

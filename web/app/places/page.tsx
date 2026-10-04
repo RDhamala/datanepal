@@ -174,7 +174,9 @@ export default async function PlacesIndex() {
                   <Link href={`/np/${province.slug}/`}>{province.name_en}</Link>
                 </h3>
                 {province.name_ne && (
-                  <p className="text-ink-faint ne text-[13px]">{province.name_ne}</p>
+                  <p className="text-ink-faint ne text-[13px]" lang="ne">
+                    {province.name_ne}
+                  </p>
                 )}
                 {population && (
                   <p className="text-ink tabular mt-2 text-[1.5rem] leading-none font-semibold">

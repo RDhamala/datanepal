@@ -300,7 +300,10 @@ export function CompareExplorer({ initial }: { initial: string[] }) {
                       <span className="text-ink text-[14px]">
                         {row[1]}
                         {row[2] && (
-                          <span className="text-ink-faint ne ml-2 text-[12px]">
+                          <span
+                            className="text-ink-faint ne ml-2 text-[12px]"
+                            lang="ne"
+                          >
                             {row[2]}
                           </span>
                         )}
@@ -333,14 +336,27 @@ export function CompareExplorer({ initial }: { initial: string[] }) {
                 <button
                   type="button"
                   onClick={() => remove(r[0])}
-                  className="border-line-strong text-ink-soft hover:bg-surface-sunken focus-visible:outline-accent inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[13px] focus-visible:outline-2 focus-visible:outline-offset-1"
-                  aria-label={`Remove ${r[1]}`}
+                  className="border-line-strong text-ink-soft hover:bg-surface-sunken focus-visible:outline-accent after:text-ink-faint inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[13px] after:content-['×'] focus-visible:outline-2 focus-visible:outline-offset-1"
+                  /*
+                    The accessible name has to contain the visible one, in the
+                    order it is read (WCAG 2.5.3). It was "Remove Nepal" over a
+                    chip reading "Nepal Country", so a voice-control user
+                    saying what they could see missed the control.
+
+                    The name and the type are two separate spans with a real
+                    space between them. Without it they concatenate to
+                    "NepalCountry" in the text layer -- the flex `gap` is a
+                    layout gap, not a word break -- and the accessible name no
+                    longer contains the visible text. The "×" is drawn by a
+                    pseudo-element for the same reason: visible, and not part
+                    of the name either side of the comparison.
+                  */
+                  aria-label={`${r[1]} ${TYPE_LABEL[r[3]] ?? r[3]}, remove`}
                 >
-                  {r[1]}
+                  <span>{r[1]}</span>{" "}
                   <span className="text-ink-faint" style={{ fontSize: TYPE.micro }}>
                     {TYPE_LABEL[r[3]] ?? r[3]}
                   </span>
-                  <span aria-hidden>×</span>
                 </button>
               </li>
             ))}

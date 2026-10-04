@@ -474,7 +474,7 @@ export default async function DesignLab() {
                 metrics={localMap.metrics}
                 width={localMap.width}
                 height={localMap.height}
-                caption={`${localMap.features.length} local governments of Dhading, 2021 census.`}
+                noun="local governments"
               />
             )}
           </Variant>
@@ -524,7 +524,7 @@ export default async function DesignLab() {
       {/* ------------------------------------------------------------ 07 */}
       <Bench
         n={7}
-        title="DataTable and the shared disclosure"
+        title="DataGrid and the shared disclosure"
         owns="Census Reporter — exact-data fallback"
         note="One owner for “show me the numbers”. Nine components had grown their own disclosure with five different labels between them; the control now lives in one place and the label is composed from the count and the noun, so a reader who learns it on a chart knows it under the map below."
       >

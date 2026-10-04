@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { pluralLower } from "@/lib/words";
+import { ExtremesTable } from "@/components/viz/ExtremesTable";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -227,6 +229,7 @@ export default async function IndicatorPage({ params }: { params: Promise<Params
           <RankedBars
             label={`${ind.name_en} by province, ${provinceCmp.period}`}
             valueLabel={ind.name_en}
+            noun="provinces"
             unit={provinceCmp.unit}
             rows={provinceCmp.rows.map((r) => ({
               name: r.place.name_en,
@@ -249,7 +252,7 @@ export default async function IndicatorPage({ params }: { params: Promise<Params
               metrics={map.metrics}
               width={map.width}
               height={map.height}
-              caption={`${map.features.length} districts.`}
+              noun="districts"
             />
             <div>
               <h3
@@ -262,43 +265,19 @@ export default async function IndicatorPage({ params }: { params: Promise<Params
                   the ranking answers "who is at the ends", which is what a
                   reader actually asks of a list this long. The full table
                   below is the exact-lookup fallback. */}
-              <table className="w-full" style={{ fontSize: TYPE.body }}>
-                <tbody>
-                  {[
-                    ...districtCmp.rows.slice(0, 5),
-                    null,
-                    ...districtCmp.rows.slice(-5),
-                  ].map((r, idx) =>
-                    r === null ? (
-                      <tr key="gap">
-                        <td colSpan={2} className="text-ink-faint py-1.5 text-center">
-                          ⋯
-                        </td>
-                      </tr>
-                    ) : (
-                      <tr
-                        key={r.place.place_id ?? idx}
-                        className="border-line border-b"
-                      >
-                        <td className="py-1.5">
-                          <Link
-                            href={`/np/${
-                              allPlaces.find(
-                                (p) => p.place_id === r.place.parent_place_id,
-                              )?.slug ?? ""
-                            }/${r.place.slug}/`}
-                          >
-                            {r.place.name_en}
-                          </Link>
-                        </td>
-                        <td className="text-ink tabular py-1.5 text-right">
-                          {formatWithUnit(r.value, districtCmp.unit)}
-                        </td>
-                      </tr>
-                    ),
-                  )}
-                </tbody>
-              </table>
+              <ExtremesTable
+                caption={`${ind.name_en}: the five highest and five lowest districts`}
+                rows={districtCmp.rows.map((r) => ({
+                  placeId: r.place.place_id,
+                  name: r.place.name_en,
+                  href: `/np/${
+                    allPlaces.find((p) => p.place_id === r.place.parent_place_id)
+                      ?.slug ?? ""
+                  }/${r.place.slug}/`,
+                  value: r.value,
+                }))}
+                unit={districtCmp.unit}
+              />
               <p className="text-ink-faint mt-3" style={{ fontSize: TYPE.small }}>
                 {districtCmp.rows.length} districts, from{" "}
                 {formatWithUnit(
@@ -314,6 +293,10 @@ export default async function IndicatorPage({ params }: { params: Promise<Params
               give: every district, not just the ends. */}
           <DataDisclosure count={districtCmp.rows.length} noun="districts">
             <table className="w-full" style={{ fontSize: TYPE.body }}>
+              <caption className="sr-only">
+                {ind.name_en} for all {districtCmp.rows.length} districts,{" "}
+                {districtCmp.period}
+              </caption>
               <thead className="bg-surface-raised sticky top-0">
                 <tr className="border-line border-b">
                   <th
@@ -381,9 +364,10 @@ export default async function IndicatorPage({ params }: { params: Promise<Params
             }))}
             unit={unit}
             valueLabel={unit?.name_en ?? "Value"}
-            noun={`${distribution.dimensionName.toLowerCase()} entries`}
-            // The dimension names its own rows: "Party", not "Name". The
-            // header is read only by someone who cannot see the chart.
+            // The dimension names its own rows: "Party", not "Name". The table
+            // header is read only by someone who cannot see the chart, and the
+            // disclosure noun is derived from it so the two cannot disagree.
+            noun={pluralLower(distribution.dimensionName)}
             rowLabel={distribution.dimensionName}
           />
         </Section>

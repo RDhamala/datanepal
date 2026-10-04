@@ -97,17 +97,34 @@ export function formatChange(
 /** Render a value with its unit, respecting currency and percentage forms. */
 export function formatWithUnit(value: number, unit: Unit | undefined): string {
   if (!unit) return formatNumber(value);
+  const symbol = unit.symbol ?? "";
+  // Nothing before a symbol that opens with % or /; a space before a word.
+  // That gives 76.2%, 26.0% of GDP, 25.1/1000 live births and 3,344.3 kg/ha
+  // from one rule.
+  const join = (n: string) =>
+    !symbol ? n : /^[%/]/.test(symbol) ? `${n}${symbol}` : `${n} ${symbol}`;
+
   switch (unit.unit_kind) {
     case "ratio":
-      return `${value.toFixed(1)}${unit.symbol ?? "%"}`;
+      return join(value.toFixed(1));
     case "currency":
-      return `${unit.symbol ?? ""}${value >= 1000 ? formatCompact(value) : value.toFixed(2)}`;
+      return `${symbol}${value >= 1000 ? formatCompact(value) : value.toFixed(2)}`;
+    /*
+      Duration and area fell through to formatNumber, which drops the symbol
+      entirely: life expectancy rendered as "71" on the Health topic page, the
+      indicator table and every place page that quoted it, with the unit living
+      only in a column header. A number whose unit is implied is a number a
+      reader has to guess at.
+    */
+    case "duration":
+      return join(value.toFixed(1));
+    case "area":
+      return join(formatNumber(Math.round(value)));
     default:
       return formatNumber(value);
   }
 }
 
-/** Human label for an observation status, or null when it needs no comment. */
 export function statusLabel(status: string): string | null {
   switch (status) {
     case "actual":

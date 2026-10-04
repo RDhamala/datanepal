@@ -122,6 +122,17 @@ function simulate(hex, kind) {
 const LIGHT = {
   surface: "#ffffff",
   ink: "#0f0f0e",
+  // Every text tone, against every surface a reader can find it on. The chips
+  // on a place page put ink-faint on surface-sunken; nothing checked that pair
+  // until Lighthouse did, and it was 4.18:1.
+  text: { ink: "#0f0f0e", "ink-soft": "#4d4c49", "ink-faint": "#6b6a63" },
+  surfaces: {
+    surface: "#ffffff",
+    "surface-raised": "#fbfbfa",
+    "surface-sunken": "#f5f5f3",
+    "surface-inset": "#eeeeeb",
+    "surface-accent": "#f4f8fd",
+  },
   categorical: { "series-1": "#2a78d6", "series-2": "#eb6834" },
   sequential: ["#eef4fd", "#c3dbf7", "#7fb0e9", "#3d84da", "#1c5aa6"],
   // Province grouping tints for the reference map. Four is enough for any
@@ -138,6 +149,14 @@ const LIGHT = {
 const DARK = {
   surface: "#100f0e",
   ink: "#ffffff",
+  text: { ink: "#ffffff", "ink-soft": "#c5c4ba", "ink-faint": "#94938a" },
+  surfaces: {
+    surface: "#100f0e",
+    "surface-raised": "#181817",
+    "surface-sunken": "#222221",
+    "surface-inset": "#2b2b29",
+    "surface-accent": "#15202e",
+  },
   categorical: { "series-1": "#3987e5", "series-2": "#d95926" },
   sequential: ["#16283d", "#1d4270", "#2a6bb5", "#5698e2", "#a8caf1"],
   grouping: ["#1a222e", "#1d1f1b", "#243046", "#2b3029"],
@@ -243,11 +262,35 @@ function checkGrouping(name, palette) {
   }
 }
 
+/*
+  Text on surfaces.
+
+  WCAG AA wants 4.5:1 for body text, and this site's quietest tone is used at
+  11px -- small, not large, so the 3:1 large-text allowance does not apply. The
+  pair that failed was not an exotic one: it was the year chip next to every
+  headline figure on 838 pages, ink-faint on surface-sunken at 4.18:1. The
+  tones and the surfaces are each individually reasonable; only the product of
+  the two matrices shows the problem, which is why it is checked as a matrix.
+*/
+const TEXT_MIN = 4.5;
+
+function checkText(name, palette) {
+  for (const [tn, tc] of Object.entries(palette.text)) {
+    for (const [sn, sc] of Object.entries(palette.surfaces)) {
+      const k = contrast(tc, sc);
+      const line = `${name} ${tn} on ${sn}: contrast ${k.toFixed(2)}`;
+      if (k < TEXT_MIN) fail(`${line} (need >= ${TEXT_MIN})`);
+      else pass(line);
+    }
+  }
+}
+
 for (const [name, palette] of [
   ["light", LIGHT],
   ["dark", DARK],
 ]) {
   console.log(`\n${name} mode`);
+  checkText(name, palette);
   checkCategorical(name, palette);
   checkSequential(name, palette.sequential);
   checkGrouping(name, palette);

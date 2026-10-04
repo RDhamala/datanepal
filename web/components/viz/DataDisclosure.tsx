@@ -1,4 +1,5 @@
 import { TYPE } from "@/lib/viz";
+import { scriptAttrs } from "@/lib/lang";
 
 /*
   One owner for "show me the numbers".
@@ -68,6 +69,12 @@ export function DataDisclosure({
  * different padding. A caller that needs richer cells composes `FigureTable`
  * inside `DataDisclosure` instead; this is the common case.
  */
+export type GridColumn = {
+  label: string;
+  /** Right-aligned and tabular. True for every column but the first. */
+  numeric?: boolean;
+};
+
 export function DataGrid({
   caption,
   columns,
@@ -75,23 +82,36 @@ export function DataGrid({
 }: {
   /** Screen-reader caption. The visible label lives on the disclosure. */
   caption: string;
-  columns: string[];
+  /**
+   * A bare string is the common case: the first column names the row, the rest
+   * hold numbers. Spell a column out when that is wrong -- a place's type and
+   * a party's Nepali name are words, and right-aligning them as if they were
+   * quantities is both ugly and a lie about what they are.
+   */
+  columns: (string | GridColumn)[];
   rows: (string | number)[][];
 }) {
+  const cols: GridColumn[] = columns.map((c, i) =>
+    typeof c === "string" ? { label: c, numeric: i > 0 } : { numeric: i > 0, ...c },
+  );
+
   return (
     <table className="w-full" style={{ fontSize: TYPE.body }}>
       <caption className="sr-only">{caption}</caption>
       <thead className="bg-surface-raised sticky top-0">
         <tr className="border-line border-b">
-          {columns.map((c, i) => (
+          {cols.map((c) => (
             <th
-              key={c}
+              key={c.label}
               scope="col"
-              className={`text-label text-ink-faint px-3 py-2 font-semibold uppercase ${
-                i === 0 ? "text-left" : "text-right"
-              }`}
+              {...scriptAttrs(
+                c.label,
+                `text-label text-ink-faint px-3 py-2 font-semibold uppercase ${
+                  c.numeric ? "text-right" : "text-left"
+                }`,
+              )}
             >
-              {c}
+              {c.label}
             </th>
           ))}
         </tr>
@@ -99,17 +119,38 @@ export function DataGrid({
       <tbody>
         {rows.map((r, ri) => (
           <tr key={ri} className="border-line border-b last:border-0">
-            {r.map((cell, ci) => (
-              <td
-                key={ci}
-                className={`px-3 py-1.5 ${
-                  ci === 0 ? "text-ink-soft" : "text-ink tabular text-right"
-                }`}
-              >
-                {/* A dash, never a zero: they teach opposite lessons. */}
-                {cell === "" || cell === null || cell === undefined ? "—" : cell}
-              </td>
-            ))}
+            {r.map((cell, ci) => {
+              const c = cols[ci] ?? { label: "", numeric: true };
+              /* A dash, never a zero: they teach opposite lessons. */
+              const text =
+                cell === "" || cell === null || cell === undefined ? "—" : cell;
+              const className = `px-3 py-1.5 ${
+                ci === 0
+                  ? "text-ink-soft"
+                  : c.numeric
+                    ? "text-ink tabular text-right"
+                    : "text-ink-soft"
+              }`;
+              /*
+                The first column is the row's name, so it is a row header. A
+                reader on a screen reader otherwise gets a stream of numbers
+                with nothing attached to them -- the table is read column by
+                column and the name never comes back.
+              */
+              return ci === 0 ? (
+                <th
+                  key={ci}
+                  scope="row"
+                  {...scriptAttrs(text, `${className} text-left font-normal`)}
+                >
+                  {text}
+                </th>
+              ) : (
+                <td key={ci} {...scriptAttrs(text, className)}>
+                  {text}
+                </td>
+              );
+            })}
           </tr>
         ))}
       </tbody>

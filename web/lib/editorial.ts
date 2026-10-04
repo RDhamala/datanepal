@@ -695,3 +695,421 @@ export async function searchScope(): Promise<SearchSeed> {
 export const districtsOfProvince = districtsOf;
 /** Re-exported so prototype pages do not import two modules for one page. */
 export { benchmarksFor, seriesFor };
+
+/* ======================================================================
+   Any place, at any level
+   ====================================================================== */
+
+export type ChildGroup = {
+  /** "provinces", "districts", "local governments". */
+  noun: string;
+  rows: LocalUnitRow[];
+  map: Awaited<ReturnType<typeof metricMapFor>>;
+};
+
+export type EditorialPlace = {
+  place: Place;
+  parent: Place | undefined;
+  /** Nearest first, country last. Empty for Nepal. */
+  ancestors: Place[];
+  population: PopulationSummary | null;
+  households: Figure | null;
+  literacy: Figure | null;
+  literacyBySex: { sex: string; value: number }[];
+  /** Self, then each ancestor up to Nepal. One row when there is no ancestor. */
+  literacyBenchmarks: Benchmark[];
+  /** Position among places of the same type, nationally. */
+  literacyRank: { rank: number; of: number; top: string; bottom: string } | null;
+  literacyBreakdown: { label: string; all: number; female: number; male: number }[];
+  areaSqKm: number | null;
+  density: number | null;
+  shareOfParent: number | null;
+  /** Rank by population among places sharing this parent. */
+  parentContext: { siblings: number; rankByPopulation: number } | null;
+  /** The level below, where there is one. Null for a local government. */
+  children: ChildGroup | null;
+  /** For a leaf place: the places it sits among, with it marked. */
+  siblings: ChildGroup | null;
+  /** Indicators published only nationally, for the coverage sentence. */
+  nationalOnly: { id: string; name: string }[];
+  /**
+   * Every topic with a figure, for Nepal only.
+   *
+   * Nepal is the one place that has all ten domains -- below it only the five
+   * census measures exist -- so it is the one page that shows them. Loaded
+   * only there; 837 other pages do not pay for it.
+   */
+  nationalTopics: {
+    name: string;
+    slug: string;
+    figures: { label: string; value: string; period: string }[];
+  }[];
+  /** Indicators with no total, for Nepal's Elections section. */
+  distributions: Distribution[];
+  sources: SourceDataset[];
+};
+
+const CHILD_NOUN: Record<string, string> = {
+  country: "provinces",
+  province: "districts",
+  district: "local governments",
+};
+
+/** Plural for the type of a place, used when ranking it among its peers. */
+const PEER_NOUN: Record<string, string> = {
+  province: "provinces",
+  district: "districts",
+  metropolitan: "local governments",
+  sub_metropolitan: "local governments",
+  municipality: "local governments",
+  rural_municipality: "local governments",
+};
+
+/**
+ * Everything a place page needs, for a place at any level.
+ *
+ * The Dhading-only version of this was the thing standing between the
+ * prototype and 838 pages. Levels differ in three ways and no more: Nepal has
+ * no ancestor to benchmark against, a local government has no children to
+ * explore, and the noun for the level below changes.
+ */
+export async function editorialPlace(
+  place: Place,
+  frame: { maxWidth: number; maxHeight: number },
+): Promise<EditorialPlace> {
+  const all = await places();
+  const byId = new Map(all.map((p) => [p.place_id, p]));
+
+  const ancestors: Place[] = [];
+  let cursor = place;
+  while (cursor.parent_place_id) {
+    const next = byId.get(cursor.parent_place_id);
+    if (!next) break;
+    ancestors.push(next);
+    cursor = next;
+  }
+  const parent = ancestors[0];
+  const nepal = all.find((p) => p.place_type === "country");
+
+  const [pop, profile, obs, m] = await Promise.all([
+    populationOf(place),
+    placeProfile(place),
+    observations(),
+    Promise.resolve(manifest()),
+  ]);
+
+  const metrics = profile.flatMap((t) => t.metrics);
+  const asFigure = (indicatorId: string): Figure | null => {
+    const mt = metrics.find((x) => x.indicatorId === indicatorId);
+    if (!mt) return null;
+    return {
+      indicatorId,
+      label: mt.name,
+      labelNe: mt.nameNe,
+      definition: mt.definition,
+      value: mt.value,
+      unit: mt.unit,
+      period: String(mt.period),
+      status: statusLabel(mt.status),
+      rawStatus: mt.status,
+      source: provenanceOf(mt.datasetId, m.sources),
+      points: [],
+      change: null,
+    };
+  };
+
+  /**
+   * One value per place and indicator, enumeration before projection.
+   *
+   * Status first, then latest year -- the same rule as pickHeadline, and not
+   * optional. A plain latest-first version of this divided Nilkhantha's 2021
+   * census population by Dhading's 2023 *projection* and reported its share of
+   * the district as 17.4% instead of 18.1%. Every figure was individually
+   * correct; the ratio was not. The same trap sits under the sibling rankings,
+   * where one place having a projection and another not would silently sort
+   * them against different reference periods.
+   */
+  const valueAt = (placeId: string, indicatorId: string): number | null => {
+    const rows = obs.filter(
+      (o) =>
+        o.place_id === placeId &&
+        o.indicator_id === indicatorId &&
+        o.value_numeric !== null,
+    );
+    if (!rows.length) return null;
+    const rank: Record<string, number> = {
+      actual: 0,
+      provisional: 1,
+      estimate: 2,
+      projection: 3,
+      forecast: 4,
+    };
+    const yearOf = (r: (typeof rows)[number]) => Number(r.period_start.slice(0, 4));
+    const best = [...rows].sort(
+      (a, b) => (rank[a.status] ?? 5) - (rank[b.status] ?? 5) || yearOf(b) - yearOf(a),
+    )[0];
+    const samePeriod = rows.filter(
+      (r) => r.status === best.status && yearOf(r) === yearOf(best),
+    );
+    return pickAggregate(samePeriod)?.value_numeric ?? null;
+  };
+
+  const literacy = asFigure("literacy_rate");
+  const literacyMetric = metrics.find((x) => x.indicatorId === "literacy_rate");
+
+  /* ---- benchmarks: self, then every ancestor up to Nepal ---- */
+  const literacyBenchmarks: Benchmark[] = [];
+  for (const [p, level] of [
+    [place, TYPE_LABEL[place.place_type] ?? "This place"],
+    ...ancestors.map((a) => [a, TYPE_LABEL[a.place_type] ?? a.name_en] as const),
+  ] as const) {
+    if (!p) continue;
+    const v = valueAt(p.place_id, "literacy_rate");
+    if (v === null) continue;
+    literacyBenchmarks.push({
+      label: p.name_en,
+      level,
+      value: v,
+      isSelf: p.place_id === place.place_id,
+    });
+  }
+
+  /* ---- rank among peers of the same type, nationally ---- */
+  const peers = all
+    .filter((p) => p.place_type === place.place_type)
+    .map((p) => ({ name: p.name_en, value: valueAt(p.place_id, "literacy_rate") }))
+    .filter((x): x is { name: string; value: number } => x.value !== null)
+    .sort((a, b) => b.value - a.value);
+  const idx = peers.findIndex((x) => x.name === place.name_en);
+  const literacyRank =
+    idx >= 0 && peers.length > 2
+      ? {
+          rank: idx + 1,
+          of: peers.length,
+          top: peers[0].name,
+          bottom: peers[peers.length - 1].name,
+        }
+      : null;
+
+  /* ---- the census literacy-status partition ---- */
+  const p5 = obs.filter(
+    (o) =>
+      o.place_id === place.place_id &&
+      o.indicator_id === "population_5plus" &&
+      o.value_numeric !== null &&
+      o.dimension_key.includes("literacy_status="),
+  );
+  const literacyBreakdown = [...new Set(p5.map((o) => o.dimension_key.split("|")[0]))]
+    .map((key) => {
+      const status = key.slice("literacy_status=".length);
+      const forStatus = p5.filter((o) => o.dimension_key.startsWith(key));
+      const pick = (sex: string) =>
+        pickMember(forStatus, "sex", sex)?.value_numeric ?? 0;
+      return {
+        label: LITERACY_STATUS_LABEL[status] ?? status,
+        all: pick("all"),
+        female: pick("female"),
+        male: pick("male"),
+      };
+    })
+    .filter((r) => r.all > 0)
+    .sort((a, b) => b.all - a.all);
+
+  /* ---- the level below, or the peers it sits among ---- */
+  const kids = all.filter((p) => p.parent_place_id === place.place_id);
+  const toRows = (list: Place[]): LocalUnitRow[] =>
+    list
+      .map((u) => ({
+        placeId: u.place_id,
+        name: u.name_en,
+        nameNe: u.name_ne,
+        placeType: u.place_type,
+        slug: u.slug,
+        href: hrefOf(u, byId),
+        population: valueAt(u.place_id, "population"),
+        households: valueAt(u.place_id, "households"),
+        literacy: valueAt(u.place_id, "literacy_rate"),
+      }))
+      .sort((a, b) => (b.population ?? 0) - (a.population ?? 0));
+
+  let children: ChildGroup | null = null;
+  if (kids.length) {
+    children = {
+      noun: CHILD_NOUN[place.place_type] ?? "places",
+      rows: toRows(kids),
+      map: await metricMapFor(
+        kids,
+        ["population", "households", "literacy_rate"],
+        frame,
+      ),
+    };
+  }
+
+  let siblings: ChildGroup | null = null;
+  if (!kids.length && parent) {
+    const peerPlaces = all.filter((p) => p.parent_place_id === parent.place_id);
+    siblings = {
+      noun: PEER_NOUN[place.place_type] ?? "places",
+      rows: toRows(peerPlaces),
+      map: await metricMapFor(
+        peerPlaces,
+        ["population", "households", "literacy_rate"],
+        frame,
+      ),
+    };
+  }
+
+  /* ---- derived figures ---- */
+  const areaSqKm = place.area_sqkm ?? null;
+  const density = pop && areaSqKm && areaSqKm > 0 ? pop.total / areaSqKm : null;
+  const parentPop = parent ? valueAt(parent.place_id, "population") : null;
+  const shareOfParent =
+    pop && parentPop && parentPop > 0 ? (pop.total / parentPop) * 100 : null;
+
+  const siblingPlaces = parent
+    ? all
+        .filter((p) => p.parent_place_id === parent.place_id)
+        .map((p) => ({ name: p.name_en, v: valueAt(p.place_id, "population") }))
+        .filter((x): x is { name: string; v: number } => x.v !== null)
+        .sort((a, b) => b.v - a.v)
+    : [];
+  const myIndex = siblingPlaces.findIndex((x) => x.name === place.name_en);
+  const parentContext =
+    parent && myIndex >= 0
+      ? { siblings: siblingPlaces.length, rankByPopulation: myIndex + 1 }
+      : null;
+
+  /* ---- indicators that stop at the nation, for the coverage sentence ---- */
+  const [inds] = await Promise.all([indicators()]);
+  const typeOf = new Map(all.map((p) => [p.place_id, p.place_type]));
+  const subNational = new Set<string>();
+  for (const o of obs) {
+    if (o.value_numeric === null || !o.place_id) continue;
+    if ((typeOf.get(o.place_id) ?? "country") !== "country") {
+      subNational.add(o.indicator_id);
+    }
+  }
+  const nationalOnly = inds
+    .filter((i) => !subNational.has(i.indicator_id))
+    .map((i) => ({ id: i.indicator_id, name: i.name_en }));
+
+  /* ---- sources: only what backs this page ---- */
+  const onPageIds = new Set<string>([
+    place.place_id,
+    ...kids.map((k) => k.place_id),
+    ...(siblings?.rows.map((r) => r.placeId) ?? []),
+    ...ancestors.map((a) => a.place_id),
+    ...(nepal ? [nepal.place_id] : []),
+  ]);
+  const used = new Set<string>();
+  for (const o of obs) {
+    if (o.value_numeric === null || !onPageIds.has(o.place_id ?? "")) continue;
+    if (
+      [
+        "population",
+        "households",
+        "literacy_rate",
+        "literate_population",
+        "population_5plus",
+      ].includes(o.indicator_id)
+    ) {
+      used.add(o.dataset_id);
+    }
+  }
+
+  /* ---- Nepal only: the other eight domains ---- */
+  const isCountry = place.place_type === "country";
+  const ts = isCountry ? await topics() : [];
+  const us = isCountry ? await units() : [];
+  const unitById = new Map(us.map((u) => [u.unit_id, u]));
+  const nationalTopics = isCountry
+    ? ts
+        .filter((t) => t.indicator_count > 0)
+        .map((t) => ({
+          name: t.name_en,
+          slug: t.slug,
+          figures: profile
+            .filter((g) => g.topic.topic_id === t.topic_id)
+            .flatMap((g) => g.metrics)
+            .slice(0, 3)
+            .map((mt) => ({
+              label: mt.name,
+              value: formatFigureValue(mt.value, unitById.get(mt.unit?.unit_id ?? "")),
+              period: String(mt.period),
+            })),
+        }))
+        .filter((t) => t.figures.length > 0)
+    : [];
+  const dists = isCountry ? await distributionsFor(place.place_id) : [];
+
+  return {
+    place,
+    parent,
+    ancestors,
+    population: pop,
+    households: asFigure("households"),
+    literacy,
+    literacyBySex: literacyMetric?.bySex ?? [],
+    literacyBenchmarks,
+    literacyRank,
+    literacyBreakdown,
+    areaSqKm,
+    density,
+    shareOfParent,
+    parentContext,
+    children,
+    siblings,
+    nationalOnly,
+    nationalTopics,
+    distributions: dists,
+    sources: m.sources.filter((s) => used.has(s.dataset_id)),
+  };
+}
+
+/** Reader-facing label for a place type. */
+export const TYPE_LABEL: Record<string, string> = {
+  country: "Nepal",
+  province: "Province",
+  district: "District",
+  metropolitan: "Metropolitan city",
+  sub_metropolitan: "Sub-metropolitan city",
+  municipality: "Municipality",
+  rural_municipality: "Rural municipality",
+};
+
+/** Hierarchical URL for a place, from the parent chain. */
+function hrefOf(p: Place, byId: Map<string, Place>): string {
+  if (p.place_type === "country") return "/np/";
+  const parts = [p.slug];
+  let cur = p;
+  while (cur.parent_place_id) {
+    const next = byId.get(cur.parent_place_id);
+    if (!next || next.place_type === "country") break;
+    parts.unshift(next.slug);
+    cur = next;
+  }
+  return `/np/${parts.join("/")}/`;
+}
+
+/** Format a metric value by its unit's own symbol. */
+function formatFigureValue(v: number, unit: Unit | undefined): string {
+  if (!unit) return formatNumberPlain(v);
+  const sym = unit.symbol ?? "";
+  const join = (n: string) =>
+    !sym ? n : /^[%/]/.test(sym) ? `${n}${sym}` : `${n} ${sym}`;
+  switch (unit.unit_kind) {
+    case "currency":
+      return `${sym}${formatNumberPlain(Math.round(v))}`;
+    case "ratio":
+    case "duration":
+      return join(
+        v >= 1000
+          ? v.toLocaleString(undefined, { maximumFractionDigits: 1 })
+          : v.toFixed(1),
+      );
+    default:
+      return formatNumberPlain(v);
+  }
+}
+
+const formatNumberPlain = (n: number) => n.toLocaleString("en-US");
